@@ -1,13 +1,14 @@
 "use client";
 
 import { Stack, useRouter } from "expo-router";
-import { Lock, Mail } from "lucide-react-native";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -33,6 +34,8 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showVerificationMessage, setShowVerificationMessage] = useState(false);
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -44,6 +47,10 @@ export default function LoginScreen() {
     try {
       if (isSignUp) {
         await signUp(email, password);
+        if (!UI_DEV) {
+          setShowVerificationMessage(true);
+          return;
+        }
       } else {
         await signIn(email, password);
       }
@@ -52,7 +59,7 @@ export default function LoginScreen() {
       Alert.alert(
         "Error",
         UI_DEV
-          ? "This is a demo login. Any credentials will work."
+          ? "This is a new login. Any credentials will work."
           : error.message || "Failed to authenticate"
       );
     } finally {
@@ -60,10 +67,67 @@ export default function LoginScreen() {
     }
   };
 
+  if (showVerificationMessage) {
+    return (
+      <View className="flex-1">
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView className="flex-1 bg-background">
+          <View className="flex-1 justify-center px-6">
+            <Card className="border-0 mx-auto w-full max-w-lg">
+              <CardHeader className="items-center">
+                <View className="w-16 h-16 rounded-full bg-green-100 items-center justify-center mb-4">
+                  <Mail className="text-green-600" size={32} />
+                </View>
+                <CardTitle>
+                  <Text className="text-xl font-bold text-foreground text-center">
+                    Check your email
+                  </Text>
+                </CardTitle>
+                <CardDescription>
+                  <Text className="text-muted-foreground text-sm text-center mt-2">
+                    We've sent a verification link to{"\n"}
+                    <Text className="font-semibold text-foreground">
+                      {email}
+                    </Text>
+                  </Text>
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="gap-4">
+                <Text className="text-muted-foreground text-sm text-center">
+                  Please check your inbox and click the verification link to
+                  activate your account. Once verified, you can sign in.
+                </Text>
+
+                <Button
+                  onPress={() => {
+                    setShowVerificationMessage(false);
+                    setIsSignUp(false);
+                  }}
+                  className="h-14 rounded-2xl mt-2 bg-foreground"
+                  size="xl"
+                >
+                  <Text className="text-background font-semibold text-base">
+                    Back to Sign In
+                  </Text>
+                </Button>
+
+                <Text className="text-muted-foreground text-xs text-center">
+                  Didn't receive the email? Check your spam folder or try
+                  signing up again.
+                </Text>
+              </CardContent>
+            </Card>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
   return (
     <View className="flex-1">
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView className="flex-1">
+      <SafeAreaView className="flex-1 bg-background">
         <KeyboardAvoidingView
           className="flex-1"
           behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -75,16 +139,16 @@ export default function LoginScreen() {
                 Gopx Drive
               </Text>
               <Text className="text-foreground text-base">
-                Your thoughts, organized
+                Your files & folders, organized
               </Text>
             </View>
 
             {/* Auth Card */}
-            <Card className="bg-white/95 border-0 rounded-3xl">
+            <Card className="border-0 mx-auto w-full max-w-lg">
               <CardHeader>
                 <CardTitle>
                   <Text className="text-xl font-bold text-foreground">
-                    {isSignUp ? "Create demo account" : "Welcome back"}
+                    {isSignUp ? "Create new account" : "Welcome back"}
                   </Text>
                 </CardTitle>
                 <CardDescription>
@@ -105,10 +169,10 @@ export default function LoginScreen() {
                 <View className="gap-2">
                   <Label nativeID="email">Email</Label>
                   <View className="flex-row items-center bg-muted rounded-2xl px-4 h-14 border border-border">
-                    <Mail color="#667eea" size={20} />
+                    <Mail className="text-muted-foreground" size={20} />
                     <Input
-                      className="flex-1 ml-3 border-0 bg-transparent h-full"
-                      placeholder="you@example.com"
+                      className="flex-1 ml-3 border-0 bg-transparent h-full shadow-none"
+                      placeholder="Enter your email"
                       value={email}
                       onChangeText={setEmail}
                       keyboardType="email-address"
@@ -122,15 +186,26 @@ export default function LoginScreen() {
                 <View className="gap-2">
                   <Label nativeID="password">Password</Label>
                   <View className="flex-row items-center bg-muted rounded-2xl px-4 h-14 border border-border">
-                    <Lock color="#667eea" size={20} />
+                    <Lock className="text-muted-foreground" size={20} />
                     <Input
-                      className="flex-1 ml-3 border-0 bg-transparent h-full"
+                      className="flex-1 ml-3 border-0 bg-transparent h-full shadow-none"
                       placeholder="Enter a password"
                       value={password}
                       onChangeText={setPassword}
-                      secureTextEntry
+                      secureTextEntry={!showPassword}
                       accessibilityLabelledBy="password"
                     />
+                    <Pressable
+                      onPress={() => setShowPassword(!showPassword)}
+                      className="p-2"
+                      hitSlop={8}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="text-muted-foreground" size={20} />
+                      ) : (
+                        <Eye className="text-muted-foreground" size={20} />
+                      )}
+                    </Pressable>
                   </View>
                 </View>
 
@@ -138,7 +213,7 @@ export default function LoginScreen() {
                 <Button
                   onPress={handleAuth}
                   className="h-14 rounded-2xl mt-2 bg-foreground"
-                  size="lg"
+                  size="xl"
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -147,10 +222,10 @@ export default function LoginScreen() {
                     <Text className="text-background font-semibold text-base">
                       {isSignUp
                         ? UI_DEV
-                          ? "Create demo account"
+                          ? "Create new account"
                           : "Sign Up"
                         : UI_DEV
-                          ? "Enter app"
+                          ? "Login"
                           : "Sign In"}
                     </Text>
                   )}
