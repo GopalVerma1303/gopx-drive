@@ -33,6 +33,8 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   View,
@@ -85,9 +87,11 @@ export default function NotesScreen() {
   );
 
   return (
-    <View
+    <KeyboardAvoidingView
       className="flex-1 w-full max-w-2xl mx-auto"
       style={{ backgroundColor: colors.background }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
     >
       <Stack.Screen
         options={{
@@ -205,7 +209,7 @@ export default function NotesScreen() {
           )}
         </ScrollView>
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

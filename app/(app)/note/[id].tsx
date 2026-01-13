@@ -221,8 +221,8 @@ export default function NoteEditorScreen() {
         <KeyboardAvoidingView
           className="flex-1"
           style={{ backgroundColor: colors.background }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "android" ? 0 : 0}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
         >
           <View className="flex-1 p-5 pb-0 w-full max-w-2xl mx-auto bg-foreground/5 rounded-2xl">
             <MarkdownEditor

@@ -131,7 +131,8 @@ export default function LoginScreen() {
       <SafeAreaView className="flex-1 bg-background">
         <KeyboardAvoidingView
           className="flex-1"
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
         >
           <View className="flex-1 justify-center px-6">
             {/* Header */}
