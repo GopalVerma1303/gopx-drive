@@ -1,4 +1,5 @@
 import { AuthProvider } from "@/contexts/auth-context";
+import { PortalHost } from "@rn-primitives/portal";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -28,6 +29,7 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <AuthProvider>
           <RootLayoutNav />
+          <PortalHost />
         </AuthProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>

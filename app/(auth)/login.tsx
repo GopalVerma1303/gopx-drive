@@ -1,32 +1,42 @@
-import { useAuth } from "@/contexts/auth-context";
-import { LinearGradient } from "expo-linear-gradient";
-import { Stack } from "expo-router";
+"use client";
+
+import { Stack, useRouter } from "expo-router";
 import { Lock, Mail } from "lucide-react-native";
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Animated,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
+  KeyboardAvoidingView,
+  Platform,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Text } from "@/components/ui/text";
+import { useAuth } from "@/contexts/auth-context";
+import { UI_DEV } from "@/lib/config";
+
 export default function LoginScreen() {
+  const router = useRouter();
   const { signIn, signUp } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const buttonScale = new Animated.Value(1);
-
   const handleAuth = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
+      Alert.alert("Error", "Please enter both email and password");
       return;
     }
 
@@ -34,180 +44,135 @@ export default function LoginScreen() {
     try {
       if (isSignUp) {
         await signUp(email, password);
-        Alert.alert("Success", "Account created! Please sign in.");
-        setIsSignUp(false);
       } else {
         await signIn(email, password);
       }
+      router.replace("/(app)/notes");
     } catch (error: any) {
-      Alert.alert("Error", error.message);
+      Alert.alert(
+        "Error",
+        UI_DEV
+          ? "This is a demo login. Any credentials will work."
+          : error.message || "Failed to authenticate"
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
-  const animateButton = (toValue: number) => {
-    Animated.spring(buttonScale, {
-      toValue,
-      useNativeDriver: true,
-      friction: 3,
-    }).start();
-  };
-
   return (
-    <View style={styles.container}>
+    <View className="flex-1">
       <Stack.Screen options={{ headerShown: false }} />
-      <LinearGradient
-        colors={["#667eea", "#764ba2", "#f093fb"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Notes</Text>
-            <Text style={styles.subtitle}>Your thoughts, organized</Text>
-          </View>
-
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Mail color="#667eea" size={20} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor="rgba(0,0,0,0.4)"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Lock color="#667eea" size={20} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="rgba(0,0,0,0.4)"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
-            </View>
-
-            <Pressable
-              onPress={handleAuth}
-              onPressIn={() => animateButton(0.95)}
-              onPressOut={() => animateButton(1)}
-              disabled={isLoading}
-            >
-              <Animated.View
-                style={[styles.button, { transform: [{ scale: buttonScale }] }]}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>
-                    {isSignUp ? "Sign Up" : "Sign In"}
-                  </Text>
-                )}
-              </Animated.View>
-            </Pressable>
-
-            <Pressable
-              onPress={() => setIsSignUp(!isSignUp)}
-              style={styles.toggleButton}
-            >
-              <Text style={styles.toggleText}>
-                {isSignUp
-                  ? "Already have an account? Sign In"
-                  : "Don't have an account? Sign Up"}
+      <SafeAreaView className="flex-1">
+        <KeyboardAvoidingView
+          className="flex-1"
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <View className="flex-1 justify-center px-6">
+            {/* Header */}
+            <View className="items-center mb-8">
+              <Text className="text-foreground text-4xl font-bold">
+                Gopx Drive
               </Text>
-            </Pressable>
+              <Text className="text-foreground text-base">
+                Your thoughts, organized
+              </Text>
+            </View>
+
+            {/* Auth Card */}
+            <Card className="bg-white/95 border-0 rounded-3xl">
+              <CardHeader>
+                <CardTitle>
+                  <Text className="text-xl font-bold text-foreground">
+                    {isSignUp ? "Create demo account" : "Welcome back"}
+                  </Text>
+                </CardTitle>
+                <CardDescription>
+                  <Text className="text-muted-foreground text-sm">
+                    {UI_DEV
+                      ? isSignUp
+                        ? "Use any email & password to explore the app."
+                        : "Sign in with any email and password to continue."
+                      : isSignUp
+                        ? "Create a new account to get started."
+                        : "Sign in to your account to continue."}
+                  </Text>
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="gap-4">
+                {/* Email Field */}
+                <View className="gap-2">
+                  <Label nativeID="email">Email</Label>
+                  <View className="flex-row items-center bg-muted rounded-2xl px-4 h-14 border border-border">
+                    <Mail color="#667eea" size={20} />
+                    <Input
+                      className="flex-1 ml-3 border-0 bg-transparent h-full"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChangeText={setEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      accessibilityLabelledBy="email"
+                    />
+                  </View>
+                </View>
+
+                {/* Password Field */}
+                <View className="gap-2">
+                  <Label nativeID="password">Password</Label>
+                  <View className="flex-row items-center bg-muted rounded-2xl px-4 h-14 border border-border">
+                    <Lock color="#667eea" size={20} />
+                    <Input
+                      className="flex-1 ml-3 border-0 bg-transparent h-full"
+                      placeholder="Enter a password"
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry
+                      accessibilityLabelledBy="password"
+                    />
+                  </View>
+                </View>
+
+                {/* Submit Button */}
+                <Button
+                  onPress={handleAuth}
+                  className="h-14 rounded-2xl mt-2 bg-foreground"
+                  size="lg"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="background" />
+                  ) : (
+                    <Text className="text-background font-semibold text-base">
+                      {isSignUp
+                        ? UI_DEV
+                          ? "Create demo account"
+                          : "Sign Up"
+                        : UI_DEV
+                          ? "Enter app"
+                          : "Sign In"}
+                    </Text>
+                  )}
+                </Button>
+
+                {/* Toggle Sign Up / Sign In */}
+                <Button
+                  variant="link"
+                  onPress={() => setIsSignUp(!isSignUp)}
+                  className="py-3"
+                >
+                  <Text className="text-foreground text-sm font-medium">
+                    {isSignUp
+                      ? "Already have an account? Sign In"
+                      : "Don't have an account? Sign Up"}
+                  </Text>
+                </Button>
+              </CardContent>
+            </Card>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: 24,
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: 48,
-  },
-  title: {
-    fontSize: 48,
-    fontWeight: "700" as const,
-    color: "#fff",
-    marginBottom: 8,
-    letterSpacing: -1,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: "rgba(255,255,255,0.9)",
-    fontWeight: "400" as const,
-  },
-  form: {
-    gap: 16,
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    height: 56,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: "#000",
-  },
-  button: {
-    backgroundColor: "rgba(0,0,0,0.3)",
-    borderRadius: 16,
-    height: 56,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600" as const,
-  },
-  toggleButton: {
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  toggleText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "500" as const,
-  },
-});

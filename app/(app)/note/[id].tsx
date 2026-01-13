@@ -1,18 +1,19 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/auth-context";
-import { Note, supabase } from "@/lib/supabase";
+import { createNote, getNoteById, updateNote } from "@/lib/notes";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Check } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
-  StyleSheet,
-  TextInput,
   View,
 } from "react-native";
 
@@ -29,14 +30,11 @@ export default function NoteEditorScreen() {
   const { data: note, isLoading } = useQuery({
     queryKey: ["note", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("notes")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (error) throw error;
-      return data as Note;
+      const existingNote = await getNoteById(id);
+      if (!existingNote) {
+        throw new Error("Note not found");
+      }
+      return existingNote;
     },
     enabled: !isNewNote && !!id,
   });
@@ -50,25 +48,22 @@ export default function NoteEditorScreen() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!user?.id) throw new Error("Not authenticated");
+      const userId = user?.id ?? "demo-user";
 
       if (isNewNote) {
-        const { error } = await supabase.from("notes").insert({
-          user_id: user.id,
+        await createNote({
+          user_id: userId,
           title: title || "Untitled",
           content,
         });
-        if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from("notes")
-          .update({
-            title: title || "Untitled",
-            content,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", id);
-        if (error) throw error;
+        const updated = await updateNote(id, {
+          title: title || "Untitled",
+          content,
+        });
+        if (!updated) {
+          throw new Error("Note not found");
+        }
       }
     },
     onSuccess: () => {
@@ -92,15 +87,15 @@ export default function NoteEditorScreen() {
 
   if (isLoading && !isNewNote) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#667eea" />
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color="foreground" />
       </View>
     );
   }
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      className="flex-1 bg-white"
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <Stack.Screen
@@ -108,39 +103,37 @@ export default function NoteEditorScreen() {
           headerShown: true,
           title: isNewNote ? "New Note" : "Edit Note",
           headerStyle: {
-            backgroundColor: "#667eea",
+            backgroundColor: "foreground",
           },
-          headerTintColor: "#fff",
+          headerTintColor: "background",
           headerRight: () => (
-            <Pressable
+            <Button
+              variant="default"
+              size="icon"
               onPress={handleSave}
               disabled={saveMutation.isPending}
-              style={styles.saveButton}
+              className="mr-2"
             >
-              {saveMutation.isPending ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Check color="#fff" size={24} />
-              )}
-            </Pressable>
+              <Check color="background" size={24} />
+            </Button>
           ),
         }}
       />
 
-      <View style={styles.editorContainer}>
-        <TextInput
-          style={styles.titleInput}
+      <View className="flex-1 p-5">
+        <Input
+          className="mb-4 border-0 bg-transparent text-3xl font-bold text-foreground"
           placeholder="Title"
-          placeholderTextColor="#999"
+          placeholderTextColor="muted-foreground"
           value={title}
           onChangeText={setTitle}
           autoFocus={isNewNote}
         />
-        <View style={styles.divider} />
-        <TextInput
-          style={styles.contentInput}
+        <View className="mb-4 h-px bg-muted" />
+        <Input
+          className="flex-1 border-0 bg-transparent text-base leading-6 text-foreground"
           placeholder="Start writing..."
-          placeholderTextColor="#999"
+          placeholderTextColor="muted-foreground"
           value={content}
           onChangeText={setContent}
           multiline
@@ -150,41 +143,3 @@ export default function NoteEditorScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fff",
-  },
-  saveButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  editorContainer: {
-    flex: 1,
-    padding: 20,
-  },
-  titleInput: {
-    fontSize: 28,
-    fontWeight: "700" as const,
-    color: "#000",
-    marginBottom: 16,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: "#e0e0e0",
-    marginBottom: 16,
-  },
-  contentInput: {
-    flex: 1,
-    fontSize: 16,
-    color: "#333",
-    lineHeight: 24,
-  },
-});

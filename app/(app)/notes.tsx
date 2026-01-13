@@ -1,19 +1,22 @@
+"use client";
+
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
-import { Note, supabase } from "@/lib/supabase";
+import { deleteNote, listNotes } from "@/lib/notes";
+import type { Note } from "@/lib/supabase";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import { LogOut, Plus, Search } from "lucide-react-native";
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
   Pressable,
   ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
   View,
 } from "react-native";
 
@@ -25,24 +28,11 @@ export default function NotesScreen() {
 
   const { data: notes = [], isLoading } = useQuery({
     queryKey: ["notes", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("notes")
-        .select("*")
-        .eq("user_id", user?.id)
-        .order("updated_at", { ascending: false });
-
-      if (error) throw error;
-      return data as Note[];
-    },
-    enabled: !!user?.id,
+    queryFn: () => listNotes(user?.id),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("notes").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => deleteNote(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notes"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -75,49 +65,47 @@ export default function NotesScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-muted/30">
       <Stack.Screen
         options={{
           headerShown: true,
           title: "Notes",
           headerStyle: {
-            backgroundColor: "#667eea",
+            backgroundColor: "background",
           },
-          headerTintColor: "#fff",
+          headerTintColor: "foreground",
           headerRight: () => (
-            <Pressable onPress={handleSignOut} style={styles.headerButton}>
-              <LogOut color="#fff" size={22} />
+            <Pressable onPress={handleSignOut} className="p-2 mr-2">
+              <LogOut color="foreground" size={22} />
             </Pressable>
           ),
         }}
       />
 
-      <View style={styles.searchContainer}>
-        <Search color="#667eea" size={20} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
+      {/* Search Container */}
+      <View className="flex-row items-center bg-card mx-4 my-3 px-4 rounded-xl h-12 shadow-sm border border-border">
+        <Search color="foreground" size={20} className="mr-2" />
+        <Input
+          className="flex-1 h-full border-0 bg-transparent px-2"
           placeholder="Search notes..."
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholderTextColor="#999"
+          placeholderTextColor="muted-foreground"
         />
       </View>
 
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#667eea" />
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="foreground" />
         </View>
       ) : (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.notesContainer}
-        >
+        <ScrollView className="flex-1" contentContainerClassName="p-4 pb-24">
           {filteredNotes.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>
+            <View className="flex-1 justify-center items-center pt-24">
+              <Text className="text-xl font-semibold text-muted-foreground mb-2">
                 {searchQuery ? "No notes found" : "No notes yet"}
               </Text>
-              <Text style={styles.emptySubtext}>
+              <Text className="text-sm text-muted-foreground text-center">
                 {searchQuery
                   ? "Try a different search"
                   : "Tap the + button to create your first note"}
@@ -136,14 +124,22 @@ export default function NotesScreen() {
         </ScrollView>
       )}
 
+      {/* FAB Button */}
       <Pressable
-        style={styles.fab}
+        className="absolute right-5 bottom-5 w-16 h-16 rounded-full bg-primary justify-center items-center shadow-lg"
+        style={{
+          shadowColor: "foreground",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.4,
+          shadowRadius: 12,
+          elevation: 8,
+        }}
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           router.push("/(app)/note/new");
         }}
       >
-        <Plus color="#fff" size={28} strokeWidth={2.5} />
+        <Plus color="background" size={28} strokeWidth={2.5} />
       </Pressable>
     </View>
   );
@@ -195,121 +191,25 @@ function NoteCard({ note, onPress, onDelete }: NoteCardProps) {
       onPressOut={handlePressOut}
       onLongPress={onDelete}
     >
-      <Animated.View style={[styles.noteCard, { transform: [{ scale }] }]}>
-        <Text style={styles.noteTitle} numberOfLines={1}>
-          {note.title || "Untitled"}
-        </Text>
-        <Text style={styles.noteContent} numberOfLines={2}>
-          {note.content || "No content"}
-        </Text>
-        <Text style={styles.noteDate}>{formatDate(note.updated_at)}</Text>
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <Card className="p-4 mb-3 rounded-2xl">
+          <Text
+            className="text-lg font-semibold text-foreground mb-2"
+            numberOfLines={1}
+          >
+            {note.title || "Untitled"}
+          </Text>
+          <Text
+            className="text-sm text-muted-foreground leading-5 mb-2"
+            numberOfLines={2}
+          >
+            {note.content || "No content"}
+          </Text>
+          <Text className="text-xs text-muted-foreground/70">
+            {formatDate(note.updated_at)}
+          </Text>
+        </Card>
       </Animated.View>
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f7",
-  },
-  headerButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    height: 48,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: "#000",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  notesContainer: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: 100,
-  },
-  emptyText: {
-    fontSize: 20,
-    fontWeight: "600" as const,
-    color: "#999",
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: "#aaa",
-    textAlign: "center",
-  },
-  noteCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  noteTitle: {
-    fontSize: 18,
-    fontWeight: "600" as const,
-    color: "#000",
-    marginBottom: 8,
-  },
-  noteContent: {
-    fontSize: 14,
-    color: "#666",
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  noteDate: {
-    fontSize: 12,
-    color: "#999",
-  },
-  fab: {
-    position: "absolute",
-    right: 20,
-    bottom: 20,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#667eea",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-});

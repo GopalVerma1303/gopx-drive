@@ -1,5 +1,6 @@
 // Learn more https://docs.expo.io/guides/customizing-metro
-const { getDefaultConfig } = require('expo/metro-config');
+const { getDefaultConfig } = require("expo/metro-config");
+const { withNativeWind } = require("nativewind/metro");
 
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
@@ -8,11 +9,14 @@ const config = getDefaultConfig(__dirname);
 config.resolver = {
   ...config.resolver,
   alias: {
-    '@': __dirname,
+    "@": __dirname,
   },
   extraNodeModules: {
-    '@': __dirname,
+    "@": __dirname,
   },
 };
 
-module.exports = config;
+module.exports = withNativeWind(config, {
+  input: "./global.css",
+  inlineRem: 16,
+});
