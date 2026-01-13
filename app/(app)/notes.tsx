@@ -1,16 +1,32 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
+import { useTheme } from "@/contexts/theme-context";
 import { deleteNote, listNotes } from "@/lib/notes";
 import type { Note } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { LogOut, Plus, Search } from "lucide-react-native";
+import {
+  LogOut,
+  Moon,
+  PanelBottomClose,
+  Plus,
+  Search,
+  Sun,
+} from "lucide-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -25,6 +41,8 @@ export default function NotesScreen() {
   const { signOut, user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { colors } = useThemeColors();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: notes = [], isLoading } = useQuery({
@@ -66,19 +84,77 @@ export default function NotesScreen() {
   );
 
   return (
-    <View className="flex-1 bg-muted/30 w-full max-w-2xl mx-auto">
+    <View
+      className="flex-1 w-full max-w-2xl mx-auto"
+      style={{ backgroundColor: colors.background }}
+    >
       <Stack.Screen
         options={{
           headerShown: true,
           title: "Gopx Drive",
           headerStyle: {
-            backgroundColor: "background",
+            backgroundColor: colors.background,
+            borderBottomWidth: 0,
+            borderBottomColor: colors.border,
+          } as any,
+          headerTintColor: colors.foreground,
+          headerTitleStyle: {
+            color: colors.foreground,
           },
-          headerTintColor: "background",
           headerRight: () => (
-            <Pressable onPress={handleSignOut} className="p-2">
-              <LogOut className="text-foreground" size={22} />
-            </Pressable>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Pressable
+                  className="p-2"
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  }}
+                >
+                  <PanelBottomClose
+                    color={colors.foreground}
+                    size={22}
+                    strokeWidth={2.5}
+                  />
+                </Pressable>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="bottom"
+                align="end"
+                className="mt-2 mr-4 min-w-[180px]"
+              >
+                <DropdownMenuItem
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    router.push("/(app)/note/new");
+                  }}
+                >
+                  <Icon as={Plus} size={18} />
+                  <Text>Add Note</Text>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    toggleTheme();
+                  }}
+                >
+                  {resolvedTheme === "dark" ? (
+                    <Icon as={Sun} size={18} />
+                  ) : (
+                    <Icon as={Moon} size={18} />
+                  )}
+                  <Text>Switch Theme</Text>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    handleSignOut();
+                  }}
+                >
+                  <Icon as={LogOut} size={18} />
+                  <Text>Logout</Text>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ),
         }}
       />
@@ -104,7 +180,7 @@ export default function NotesScreen() {
           <ActivityIndicator size="large" color="foreground" />
         </View>
       ) : (
-        <ScrollView className="flex-1" contentContainerClassName="p-4 pb-24">
+        <ScrollView className="flex-1" contentContainerClassName="p-4">
           {filteredNotes.length === 0 ? (
             <View className="flex-1 justify-center items-center pt-24">
               <Text className="text-xl font-semibold text-muted-foreground mb-2">
@@ -128,25 +204,6 @@ export default function NotesScreen() {
           )}
         </ScrollView>
       )}
-
-      {/* FAB Button */}
-      <Pressable
-        className="absolute right-5 bottom-5 w-14 h-14 rounded-full bg-foreground justify-center items-center shadow-lg"
-        style={{
-          shadowColor: "foreground",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.4,
-          shadowRadius: 12,
-          elevation: 8,
-          backgroundColor: THEME.light.foreground,
-        }}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          router.push("/(app)/note/new");
-        }}
-      >
-        <Plus color={THEME.light.background} size={28} strokeWidth={2.5} />
-      </Pressable>
     </View>
   );
 }
