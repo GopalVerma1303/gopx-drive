@@ -35,6 +35,7 @@ export function MarkdownEditor({
       fontWeight: "bold" as const,
       marginTop: 16,
       marginBottom: 8,
+      lineHeight: 32,
       // fontFamily: "monospace",
     },
     heading2: {
@@ -43,6 +44,7 @@ export function MarkdownEditor({
       fontWeight: "bold" as const,
       marginTop: 14,
       marginBottom: 7,
+      lineHeight: 28,
       // fontFamily: "monospace",
     },
     heading3: {
@@ -51,6 +53,7 @@ export function MarkdownEditor({
       fontWeight: "600" as const,
       marginTop: 12,
       marginBottom: 6,
+      lineHeight: 24,
       // fontFamily: "monospace",
     },
     heading4: {
@@ -59,6 +62,7 @@ export function MarkdownEditor({
       fontWeight: "600" as const,
       marginTop: 10,
       marginBottom: 5,
+      lineHeight: 20,
       // fontFamily: "monospace",
     },
     paragraph: {
@@ -168,7 +172,13 @@ export function MarkdownEditor({
           onChangeText={onChangeText}
           multiline
           textAlignVertical="top"
-          style={{ paddingHorizontal: 12, paddingTop: 11, paddingBottom: 16 }}
+          style={{
+            paddingHorizontal: 12,
+            paddingTop: 11,
+            paddingBottom: 16,
+            fontFamily: "monospace",
+            flex: 1,
+          }}
         />
       )}
     </View>
