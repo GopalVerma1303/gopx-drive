@@ -6,6 +6,7 @@ import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
 import { deleteNote, listNotes } from "@/lib/notes";
 import type { Note } from "@/lib/supabase";
+import { THEME } from "@/lib/theme";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
@@ -65,28 +66,32 @@ export default function NotesScreen() {
   );
 
   return (
-    <View className="flex-1 bg-muted/30">
+    <View className="flex-1 bg-muted/30 w-full max-w-2xl mx-auto">
       <Stack.Screen
         options={{
           headerShown: true,
-          title: "Notes",
+          title: "Gopx Drive",
           headerStyle: {
             backgroundColor: "background",
           },
-          headerTintColor: "foreground",
+          headerTintColor: "background",
           headerRight: () => (
-            <Pressable onPress={handleSignOut} className="p-2 mr-2">
-              <LogOut color="foreground" size={22} />
+            <Pressable onPress={handleSignOut} className="p-2">
+              <LogOut className="text-foreground" size={22} />
             </Pressable>
           ),
         }}
       />
 
       {/* Search Container */}
-      <View className="flex-row items-center bg-card mx-4 my-3 px-4 rounded-xl h-12 shadow-sm border border-border">
-        <Search color="foreground" size={20} className="mr-2" />
+      <View className="flex-row items-center bg-card mx-4 my-3 px-4 rounded-xl h-14 border border-border">
+        <Search
+          className="text-muted-foreground mr-2"
+          color={THEME.light.mutedForeground}
+          size={20}
+        />
         <Input
-          className="flex-1 h-full border-0 bg-transparent px-2"
+          className="flex-1 h-full border-0 bg-transparent px-2 shadow-none"
           placeholder="Search notes..."
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -126,20 +131,21 @@ export default function NotesScreen() {
 
       {/* FAB Button */}
       <Pressable
-        className="absolute right-5 bottom-5 w-16 h-16 rounded-full bg-primary justify-center items-center shadow-lg"
+        className="absolute right-5 bottom-5 w-14 h-14 rounded-full bg-foreground justify-center items-center shadow-lg"
         style={{
           shadowColor: "foreground",
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.4,
           shadowRadius: 12,
           elevation: 8,
+          backgroundColor: THEME.light.foreground,
         }}
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           router.push("/(app)/note/new");
         }}
       >
-        <Plus color="background" size={28} strokeWidth={2.5} />
+        <Plus color={THEME.light.background} size={28} strokeWidth={2.5} />
       </Pressable>
     </View>
   );
@@ -194,7 +200,7 @@ function NoteCard({ note, onPress, onDelete }: NoteCardProps) {
       <Animated.View style={{ transform: [{ scale }] }}>
         <Card className="p-4 mb-3 rounded-2xl">
           <Text
-            className="text-lg font-semibold text-foreground mb-2"
+            className="text-xl font-semibold text-foreground mb-2"
             numberOfLines={1}
           >
             {note.title || "Untitled"}

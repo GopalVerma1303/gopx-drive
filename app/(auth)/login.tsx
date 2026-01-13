@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
 import { UI_DEV } from "@/lib/config";
+import { THEME } from "@/lib/theme";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -169,7 +170,11 @@ export default function LoginScreen() {
                 <View className="gap-2">
                   <Label nativeID="email">Email</Label>
                   <View className="flex-row items-center bg-muted rounded-2xl px-4 h-14 border border-border">
-                    <Mail className="text-muted-foreground" size={20} />
+                    <Mail
+                      className="text-muted-foreground"
+                      color={THEME.light.mutedForeground}
+                      size={20}
+                    />
                     <Input
                       className="flex-1 ml-3 border-0 bg-transparent h-full shadow-none"
                       placeholder="Enter your email"
@@ -186,7 +191,11 @@ export default function LoginScreen() {
                 <View className="gap-2">
                   <Label nativeID="password">Password</Label>
                   <View className="flex-row items-center bg-muted rounded-2xl px-4 h-14 border border-border">
-                    <Lock className="text-muted-foreground" size={20} />
+                    <Lock
+                      className="text-muted-foreground"
+                      color={THEME.light.mutedForeground}
+                      size={20}
+                    />
                     <Input
                       className="flex-1 ml-3 border-0 bg-transparent h-full shadow-none"
                       placeholder="Enter a password"
@@ -201,9 +210,17 @@ export default function LoginScreen() {
                       hitSlop={8}
                     >
                       {showPassword ? (
-                        <EyeOff className="text-muted-foreground" size={20} />
+                        <EyeOff
+                          className="text-muted-foreground"
+                          color={THEME.light.mutedForeground}
+                          size={20}
+                        />
                       ) : (
-                        <Eye className="text-muted-foreground" size={20} />
+                        <Eye
+                          className="text-muted-foreground"
+                          color={THEME.light.mutedForeground}
+                          size={20}
+                        />
                       )}
                     </Pressable>
                   </View>

@@ -25,6 +25,7 @@ export default function RootLayout() {
   }, []);
 
   return (
+    // <ThemeProvider value={NAV_THEME.dark as Theme}>
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <AuthProvider>
@@ -33,5 +34,6 @@ export default function RootLayout() {
         </AuthProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>
+    // </ThemeProvider>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/auth-context";
 import { createNote, getNoteById, updateNote } from "@/lib/notes";
@@ -14,6 +13,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   View,
 } from "react-native";
 
@@ -95,8 +95,8 @@ export default function NoteEditorScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-white"
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      className="flex-1 bg-muted/30"
+      behavior={Platform.OS === "android" ? "padding" : undefined}
     >
       <Stack.Screen
         options={{
@@ -105,24 +105,22 @@ export default function NoteEditorScreen() {
           headerStyle: {
             backgroundColor: "foreground",
           },
-          headerTintColor: "background",
+          headerTintColor: "foreground",
           headerRight: () => (
-            <Button
-              variant="default"
-              size="icon"
+            <Pressable
               onPress={handleSave}
               disabled={saveMutation.isPending}
-              className="mr-2"
+              className="p-2"
             >
-              <Check color="background" size={24} />
-            </Button>
+              <Check className="text-muted-foreground" size={24} />
+            </Pressable>
           ),
         }}
       />
 
-      <View className="flex-1 p-5">
+      <View className="flex-1 p-5 w-full max-w-2xl mx-auto bg-background">
         <Input
-          className="mb-4 border-0 bg-transparent text-3xl font-bold text-foreground"
+          className="mb-4 h-16 border-0 shadow-none bg-transparent text-3xl font-bold text-foreground"
           placeholder="Title"
           placeholderTextColor="muted-foreground"
           value={title}
@@ -131,9 +129,9 @@ export default function NoteEditorScreen() {
         />
         <View className="mb-4 h-px bg-muted" />
         <Input
-          className="flex-1 border-0 bg-transparent text-base leading-6 text-foreground"
+          className="flex-1 border-0 shadow-none bg-transparent text-base leading-6 text-foreground"
           placeholder="Start writing..."
-          placeholderTextColor="muted-foreground"
+          placeholderTextColor="foreground"
           value={content}
           onChangeText={setContent}
           multiline
