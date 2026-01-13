@@ -160,7 +160,7 @@ export default function NotesScreen() {
       />
 
       {/* Search Container */}
-      <View className="flex-row items-center bg-card mx-4 my-3 px-4 rounded-xl h-14 border border-border">
+      <View className="flex-row items-center mx-4 my-3 px-4 rounded-xl h-14 border border-border bg-muted">
         <Search
           className="text-muted-foreground mr-2"
           color={THEME.light.mutedForeground}
@@ -255,7 +255,7 @@ function NoteCard({ note, onPress, onDelete }: NoteCardProps) {
       onLongPress={onDelete}
     >
       <Animated.View style={{ transform: [{ scale }] }}>
-        <Card className="p-4 mb-3 rounded-2xl">
+        <Card className="p-4 mb-3 rounded-2xl bg-foreground/5 border-2 border-foreground/10">
           <Text
             className="text-xl font-semibold text-foreground mb-2"
             numberOfLines={1}

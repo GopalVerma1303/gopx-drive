@@ -143,7 +143,7 @@ export default function NoteEditorScreen() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           keyboardVerticalOffset={Platform.OS === "android" ? 0 : 0}
         >
-          <View className="flex-1 p-5 pb-0 w-full max-w-2xl mx-auto bg-background">
+          <View className="flex-1 p-5 pb-0 w-full max-w-2xl mx-auto bg-foreground/5 rounded-2xl">
             <Input
               className="mb-4 h-16 border-0 shadow-none bg-transparent text-3xl font-bold text-foreground"
               placeholder="Title"
@@ -152,7 +152,7 @@ export default function NoteEditorScreen() {
               onChangeText={setTitle}
               autoFocus={isNewNote}
             />
-            {/* <View className="mb-4 h-px bg-border" /> */}
+            <View className="mb-4 h-0.5 bg-foreground/10" />
             <Input
               className="flex-1 border-0 shadow-none bg-transparent text-base leading-6 text-foreground"
               placeholder="Start writing..."
