@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
+import { stripMarkdown } from "@/lib/markdown-utils";
 import { deleteNote, listNotes } from "@/lib/notes";
 import type { Note } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
@@ -266,7 +267,7 @@ function NoteCard({ note, onPress, onDelete }: NoteCardProps) {
             className="text-sm text-muted-foreground leading-5 mb-2"
             numberOfLines={2}
           >
-            {note.content || "No content"}
+            {note.content ? stripMarkdown(note.content) : "No content"}
           </Text>
           <Text className="text-xs text-muted-foreground/70">
             {formatDate(note.updated_at)}
