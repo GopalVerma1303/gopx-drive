@@ -27,6 +27,7 @@ export function MarkdownEditor({
       color: colors.foreground,
       fontSize: 16,
       lineHeight: 24,
+      // fontFamily: "monospace",
     },
     heading1: {
       color: colors.foreground,
@@ -34,6 +35,7 @@ export function MarkdownEditor({
       fontWeight: "bold" as const,
       marginTop: 16,
       marginBottom: 8,
+      // fontFamily: "monospace",
     },
     heading2: {
       color: colors.foreground,
@@ -41,6 +43,7 @@ export function MarkdownEditor({
       fontWeight: "bold" as const,
       marginTop: 14,
       marginBottom: 7,
+      // fontFamily: "monospace",
     },
     heading3: {
       color: colors.foreground,
@@ -48,6 +51,7 @@ export function MarkdownEditor({
       fontWeight: "600" as const,
       marginTop: 12,
       marginBottom: 6,
+      // fontFamily: "monospace",
     },
     heading4: {
       color: colors.foreground,
@@ -55,6 +59,7 @@ export function MarkdownEditor({
       fontWeight: "600" as const,
       marginTop: 10,
       marginBottom: 5,
+      // fontFamily: "monospace",
     },
     paragraph: {
       color: colors.foreground,
@@ -62,14 +67,17 @@ export function MarkdownEditor({
       lineHeight: 24,
       marginTop: 8,
       marginBottom: 8,
+      // fontFamily: "monospace",
     },
     strong: {
       fontWeight: "bold" as const,
       color: colors.foreground,
+      // fontFamily: "monospace",
     },
     em: {
       fontStyle: "italic" as const,
       color: colors.foreground,
+      // fontFamily: "monospace",
     },
     code_inline: {
       backgroundColor: colors.muted,
@@ -116,6 +124,7 @@ export function MarkdownEditor({
       borderRadius: 4,
       fontStyle: "italic" as const,
       color: colors.mutedForeground,
+      // fontFamily: "monospace",
     },
     list_item: {
       color: colors.foreground,
@@ -123,10 +132,12 @@ export function MarkdownEditor({
       lineHeight: 24,
       marginTop: 4,
       marginBottom: 4,
+      // fontFamily: "monospace",
     },
     link: {
       color: colors.primary,
       textDecorationLine: "underline" as const,
+      // fontFamily: "monospace",
     },
   };
 
@@ -136,7 +147,11 @@ export function MarkdownEditor({
       {isPreview ? (
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ paddingBottom: 16 }}
+          contentContainerStyle={{
+            paddingHorizontal: 12,
+            paddingTop: 3,
+            paddingBottom: 16,
+          }}
         >
           {value ? (
             <Markdown style={markdownStyles}>{value}</Markdown>
@@ -153,6 +168,7 @@ export function MarkdownEditor({
           onChangeText={onChangeText}
           multiline
           textAlignVertical="top"
+          style={{ paddingHorizontal: 12, paddingTop: 11, paddingBottom: 16 }}
         />
       )}
     </View>

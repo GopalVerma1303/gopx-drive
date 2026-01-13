@@ -228,7 +228,7 @@ export default function NoteEditorScreen() {
             <MarkdownEditor
               value={content}
               onChangeText={setContent}
-              placeholder="Start writing in markdown...\n\n# Heading\n**Bold** *Italic*\n- List item\n\n```\nCode block\n```"
+              placeholder="Start writing in markdown..."
               isPreview={isPreview}
             />
           </View>
