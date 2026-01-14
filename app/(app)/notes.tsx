@@ -19,8 +19,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   View,
@@ -73,11 +71,9 @@ export default function NotesScreen() {
   );
 
   return (
-    <KeyboardAvoidingView
+    <View
       className="flex-1 w-full max-w-2xl mx-auto"
       style={{ backgroundColor: colors.background }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
     >
       <Stack.Screen
         options={{
@@ -93,7 +89,7 @@ export default function NotesScreen() {
             color: colors.foreground,
           },
           headerRight: () => (
-            <View className="flex-row items-center gap-2 mr-2">
+            <View className="flex-row items-center gap-2 web:mr-4">
               <Pressable
                 className="p-2"
                 onPress={() => {
@@ -117,7 +113,7 @@ export default function NotesScreen() {
                 )}
               </Pressable>
               <Pressable
-                className="p-2"
+                className="pl-2"
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   handleSignOut();
@@ -175,7 +171,7 @@ export default function NotesScreen() {
           )}
         </ScrollView>
       )}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

@@ -9,9 +9,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +35,7 @@ import { THEME } from "@/lib/theme";
 export default function LoginScreen() {
   const router = useRouter();
   const { signIn, signUp } = useAuth();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
@@ -125,6 +130,137 @@ export default function LoginScreen() {
     );
   }
 
+  const authContent = (
+    <View className="flex-1 justify-center px-6">
+      {/* Header */}
+      <View className="items-center mb-8">
+        <Text className="text-foreground text-4xl font-bold">Gopx Drive</Text>
+        <Text className="text-foreground text-base">
+          Your files & folders, organized
+        </Text>
+      </View>
+
+      {/* Auth Card */}
+      <Card className="border-0 mx-auto w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <Text className="text-xl font-bold text-foreground">
+              {isSignUp ? "Create new account" : "Welcome back"}
+            </Text>
+          </CardTitle>
+          <CardDescription>
+            <Text className="text-muted-foreground text-sm">
+              {UI_DEV
+                ? isSignUp
+                  ? "Use any email & password to explore the app."
+                  : "Sign in with any email and password to continue."
+                : isSignUp
+                  ? "Create a new account to get started."
+                  : "Sign in to your account to continue."}
+            </Text>
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="gap-4">
+          {/* Email Field */}
+          <View className="gap-2">
+            <Label nativeID="email">Email</Label>
+            <View className="flex-row items-center bg-muted rounded-2xl px-4 h-14 border border-border">
+              <Mail
+                className="text-muted-foreground"
+                color={THEME.light.mutedForeground}
+                size={20}
+              />
+              <Input
+                className="flex-1 ml-3 border-0 bg-transparent h-full shadow-none"
+                placeholder="Enter your email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                accessibilityLabelledBy="email"
+              />
+            </View>
+          </View>
+
+          {/* Password Field */}
+          <View className="gap-2">
+            <Label nativeID="password">Password</Label>
+            <View className="flex-row items-center bg-muted rounded-2xl px-4 h-14 border border-border">
+              <Lock
+                className="text-muted-foreground"
+                color={THEME.light.mutedForeground}
+                size={20}
+              />
+              <Input
+                className="flex-1 ml-3 border-0 bg-transparent h-full shadow-none"
+                placeholder="Enter a password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                accessibilityLabelledBy="password"
+              />
+              <Pressable
+                onPress={() => setShowPassword(!showPassword)}
+                className="p-2"
+                hitSlop={8}
+              >
+                {showPassword ? (
+                  <EyeOff
+                    className="text-muted-foreground"
+                    color={THEME.light.mutedForeground}
+                    size={20}
+                  />
+                ) : (
+                  <Eye
+                    className="text-muted-foreground"
+                    color={THEME.light.mutedForeground}
+                    size={20}
+                  />
+                )}
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Submit Button */}
+          <Button
+            onPress={handleAuth}
+            className="h-14 rounded-2xl mt-2 bg-foreground"
+            size="xl"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="background" />
+            ) : (
+              <Text className="text-background font-semibold text-base">
+                {isSignUp
+                  ? UI_DEV
+                    ? "Create new account"
+                    : "Sign Up"
+                  : UI_DEV
+                    ? "Login"
+                    : "Sign In"}
+              </Text>
+            )}
+          </Button>
+
+          {/* Toggle Sign Up / Sign In */}
+          <Button
+            variant="link"
+            onPress={() => setIsSignUp(!isSignUp)}
+            className="py-3"
+          >
+            <Text className="text-foreground text-sm font-medium">
+              {isSignUp
+                ? "Already have an account? Sign In"
+                : "Don't have an account? Sign Up"}
+            </Text>
+          </Button>
+        </CardContent>
+      </Card>
+    </View>
+  );
+
   return (
     <View className="flex-1">
       <Stack.Screen options={{ headerShown: false }} />
@@ -132,138 +268,20 @@ export default function LoginScreen() {
         <KeyboardAvoidingView
           className="flex-1"
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+          keyboardVerticalOffset={
+            Platform.OS === "ios"
+              ? insets.top
+              : insets.top + (Platform.OS === "android" ? 20 : 0)
+          }
         >
-          <View className="flex-1 justify-center px-6">
-            {/* Header */}
-            <View className="items-center mb-8">
-              <Text className="text-foreground text-4xl font-bold">
-                Gopx Drive
-              </Text>
-              <Text className="text-foreground text-base">
-                Your files & folders, organized
-              </Text>
-            </View>
-
-            {/* Auth Card */}
-            <Card className="border-0 mx-auto w-full max-w-lg">
-              <CardHeader>
-                <CardTitle>
-                  <Text className="text-xl font-bold text-foreground">
-                    {isSignUp ? "Create new account" : "Welcome back"}
-                  </Text>
-                </CardTitle>
-                <CardDescription>
-                  <Text className="text-muted-foreground text-sm">
-                    {UI_DEV
-                      ? isSignUp
-                        ? "Use any email & password to explore the app."
-                        : "Sign in with any email and password to continue."
-                      : isSignUp
-                        ? "Create a new account to get started."
-                        : "Sign in to your account to continue."}
-                  </Text>
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent className="gap-4">
-                {/* Email Field */}
-                <View className="gap-2">
-                  <Label nativeID="email">Email</Label>
-                  <View className="flex-row items-center bg-muted rounded-2xl px-4 h-14 border border-border">
-                    <Mail
-                      className="text-muted-foreground"
-                      color={THEME.light.mutedForeground}
-                      size={20}
-                    />
-                    <Input
-                      className="flex-1 ml-3 border-0 bg-transparent h-full shadow-none"
-                      placeholder="Enter your email"
-                      value={email}
-                      onChangeText={setEmail}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      accessibilityLabelledBy="email"
-                    />
-                  </View>
-                </View>
-
-                {/* Password Field */}
-                <View className="gap-2">
-                  <Label nativeID="password">Password</Label>
-                  <View className="flex-row items-center bg-muted rounded-2xl px-4 h-14 border border-border">
-                    <Lock
-                      className="text-muted-foreground"
-                      color={THEME.light.mutedForeground}
-                      size={20}
-                    />
-                    <Input
-                      className="flex-1 ml-3 border-0 bg-transparent h-full shadow-none"
-                      placeholder="Enter a password"
-                      value={password}
-                      onChangeText={setPassword}
-                      secureTextEntry={!showPassword}
-                      accessibilityLabelledBy="password"
-                    />
-                    <Pressable
-                      onPress={() => setShowPassword(!showPassword)}
-                      className="p-2"
-                      hitSlop={8}
-                    >
-                      {showPassword ? (
-                        <EyeOff
-                          className="text-muted-foreground"
-                          color={THEME.light.mutedForeground}
-                          size={20}
-                        />
-                      ) : (
-                        <Eye
-                          className="text-muted-foreground"
-                          color={THEME.light.mutedForeground}
-                          size={20}
-                        />
-                      )}
-                    </Pressable>
-                  </View>
-                </View>
-
-                {/* Submit Button */}
-                <Button
-                  onPress={handleAuth}
-                  className="h-14 rounded-2xl mt-2 bg-foreground"
-                  size="xl"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="background" />
-                  ) : (
-                    <Text className="text-background font-semibold text-base">
-                      {isSignUp
-                        ? UI_DEV
-                          ? "Create new account"
-                          : "Sign Up"
-                        : UI_DEV
-                          ? "Login"
-                          : "Sign In"}
-                    </Text>
-                  )}
-                </Button>
-
-                {/* Toggle Sign Up / Sign In */}
-                <Button
-                  variant="link"
-                  onPress={() => setIsSignUp(!isSignUp)}
-                  className="py-3"
-                >
-                  <Text className="text-foreground text-sm font-medium">
-                    {isSignUp
-                      ? "Already have an account? Sign In"
-                      : "Don't have an account? Sign Up"}
-                  </Text>
-                </Button>
-              </CardContent>
-            </Card>
-          </View>
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {authContent}
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>

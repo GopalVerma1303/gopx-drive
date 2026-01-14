@@ -19,9 +19,13 @@ import {
   Platform,
   Pressable,
   Alert as RNAlert,
+  ScrollView,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 export default function NoteEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -29,6 +33,7 @@ export default function NoteEditorScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { colors } = useThemeColors();
+  const insets = useSafeAreaInsets();
   const isNewNote = id === "new";
 
   const [title, setTitle] = useState("");
@@ -184,7 +189,7 @@ export default function NoteEditorScreen() {
             color: colors.foreground,
           },
           headerLeft: () => (
-            <View className="flex-row items-center flex-1 ml-1">
+            <View className="flex-row items-center flex-1">
               <Pressable
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -221,8 +226,10 @@ export default function NoteEditorScreen() {
                     style={{ flex: 1 }}
                   >
                     <Text
-                      className="text-lg "
+                      className="text-lg"
                       style={{ color: colors.foreground }}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
                     >
                       {displayTitle}
                     </Text>
@@ -283,16 +290,27 @@ export default function NoteEditorScreen() {
           className="flex-1"
           style={{ backgroundColor: colors.background }}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+          keyboardVerticalOffset={
+            Platform.OS === "ios"
+              ? insets.top
+              : insets.top + (Platform.OS === "android" ? 60 : 0)
+          }
         >
-          <View className="flex-1 p-5 pb-0 w-full max-w-2xl mx-auto bg-foreground/5 rounded-2xl">
-            <MarkdownEditor
-              value={content}
-              onChangeText={setContent}
-              placeholder="Start writing in markdown..."
-              isPreview={isPreview}
-            />
-          </View>
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View className="flex-1 p-5 pb-0 w-full max-w-2xl mx-auto bg-foreground/5 rounded-2xl">
+              <MarkdownEditor
+                value={content}
+                onChangeText={setContent}
+                placeholder="Start writing in markdown..."
+                isPreview={isPreview}
+              />
+            </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </>
