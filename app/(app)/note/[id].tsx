@@ -6,18 +6,19 @@ import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
 import { createNote, getNoteById, updateNote } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import { cn } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ArrowLeft, Check, Edit, Eye } from "lucide-react-native";
+import { ArrowLeft, Check, Edit, Eye, RefreshCcw } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  Alert as RNAlert,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -32,11 +33,18 @@ export default function NoteEditorScreen() {
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [lastSavedTitle, setLastSavedTitle] = useState("");
+  const [lastSavedContent, setLastSavedContent] = useState("");
   const [isPreview, setIsPreview] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(isNewNote);
   const titleInputRef = useRef<typeof Input>(null);
 
-  const { data: note, isLoading } = useQuery({
+  const {
+    data: note,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useQuery({
     queryKey: ["note", id],
     queryFn: async () => {
       const existingNote = await getNoteById(id);
@@ -52,6 +60,8 @@ export default function NoteEditorScreen() {
     if (note) {
       setTitle(note.title);
       setContent(note.content);
+      setLastSavedTitle(note.title);
+      setLastSavedContent(note.content);
     }
   }, [note]);
 
@@ -65,16 +75,19 @@ export default function NoteEditorScreen() {
     }
   }, [isEditingTitle]);
 
+  const isDirty = title !== lastSavedTitle || content !== lastSavedContent;
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       const userId = user?.id ?? "demo-user";
 
       if (isNewNote) {
-        await createNote({
+        const created = await createNote({
           user_id: userId,
           title: title || "Untitled",
           content,
         });
+        return created;
       } else {
         const updated = await updateNote(id, {
           title: title || "Untitled",
@@ -83,25 +96,56 @@ export default function NoteEditorScreen() {
         if (!updated) {
           throw new Error("Note not found");
         }
+        return updated;
       }
     },
-    onSuccess: () => {
+    onSuccess: (savedNote) => {
+      const updatedTitle = savedNote.title ?? title;
+      const updatedContent = savedNote.content ?? content;
+
+      setTitle(updatedTitle);
+      setContent(updatedContent);
+      setLastSavedTitle(updatedTitle);
+      setLastSavedContent(updatedContent);
+
       queryClient.invalidateQueries({ queryKey: ["notes"] });
       queryClient.invalidateQueries({ queryKey: ["note", id] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.back();
     },
     onError: (error: any) => {
-      Alert.alert("Error", error.message);
+      RNAlert.alert("Error", error.message);
     },
   });
 
   const handleSave = () => {
     if (!title.trim() && !content.trim()) {
-      Alert.alert("Empty Note", "Please add a title or content");
+      RNAlert.alert("Empty Note", "Please add a title or content");
+      return;
+    }
+    if (!isDirty) {
       return;
     }
     saveMutation.mutate();
+  };
+
+  const handleRefresh = async () => {
+    if (isNewNote || !id) return;
+
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const { data } = await refetch();
+      if (data) {
+        setTitle(data.title);
+        setContent(data.content);
+        setLastSavedTitle(data.title);
+        setLastSavedContent(data.content);
+      }
+    } catch (error: any) {
+      RNAlert.alert(
+        "Sync failed",
+        error?.message ?? "Unable to sync the latest version of this note."
+      );
+    }
   };
 
   const handleTitleBlur = () => {
@@ -109,6 +153,7 @@ export default function NoteEditorScreen() {
   };
 
   const displayTitle = title || (isNewNote ? "New Note" : "Untitled");
+  const canSave = isDirty && !saveMutation.isPending;
 
   if (isLoading && !isNewNote) {
     return (
@@ -164,7 +209,6 @@ export default function NoteEditorScreen() {
                       flex: 1,
                       color: colors.foreground,
                       fontSize: 18,
-                      fontWeight: "600",
                     }}
                     returnKeyType="done"
                   />
@@ -177,7 +221,7 @@ export default function NoteEditorScreen() {
                     style={{ flex: 1 }}
                   >
                     <Text
-                      className="text-lg font-semibold"
+                      className="text-lg "
                       style={{ color: colors.foreground }}
                     >
                       {displayTitle}
@@ -189,6 +233,20 @@ export default function NoteEditorScreen() {
           ),
           headerRight: () => (
             <View className="flex-row items-center">
+              {!isNewNote && (
+                <Pressable
+                  onPress={handleRefresh}
+                  disabled={isFetching}
+                  className={cn("p-2 mr-1", isFetching && "opacity-40")}
+                >
+                  <RefreshCcw
+                    color={
+                      isFetching ? colors.mutedForeground : colors.foreground
+                    }
+                    size={22}
+                  />
+                </Pressable>
+              )}
               <Pressable
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -204,10 +262,13 @@ export default function NoteEditorScreen() {
               </Pressable>
               <Pressable
                 onPress={handleSave}
-                disabled={saveMutation.isPending}
-                className="p-2"
+                disabled={!canSave}
+                className={cn("p-2", !canSave && "opacity-40")}
               >
-                <Check color={colors.foreground} size={24} />
+                <Check
+                  color={canSave ? colors.foreground : colors.mutedForeground}
+                  size={24}
+                />
               </Pressable>
             </View>
           ),
