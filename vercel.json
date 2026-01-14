@@ -1,13 +1,7 @@
 {
-  "buildCommand": "expo export -p web",
-  "outputDirectory": "dist",
+  "buildCommand": "expo export -p web && cp -r dist/client/_expo dist/server/_expo && cp dist/client/favicon.ico dist/server/favicon.ico 2>/dev/null || true",
+  "outputDirectory": "dist/server",
   "devCommand": "expo",
   "cleanUrls": true,
-  "framework": null,
-  "rewrites": [
-    {
-      "source": "/:path*",
-      "destination": "/"
-    }
-  ]
+  "framework": null
 }

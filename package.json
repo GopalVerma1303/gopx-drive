@@ -7,7 +7,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build:web": "expo export --platform web"
+    "build:web": "expo export --platform web",
+    "postbuild:web": "cp -r dist/client/_expo dist/server/_expo && cp dist/client/favicon.ico dist/server/favicon.ico 2>/dev/null || true"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
