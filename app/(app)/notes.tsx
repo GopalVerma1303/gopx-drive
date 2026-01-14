@@ -19,6 +19,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Platform,
   Pressable,
   ScrollView,
   View,
@@ -37,11 +38,19 @@ export default function NotesScreen() {
     queryFn: () => listNotes(user?.id),
   });
 
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteNote(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notes"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setDeleteDialogOpen(false);
+      setNoteToDelete(null);
     },
   });
 
@@ -62,6 +71,17 @@ export default function NotesScreen() {
         onPress: () => deleteMutation.mutate(id),
       },
     ]);
+  };
+
+  const handleRightClickDelete = (id: string, title: string) => {
+    setNoteToDelete({ id, title });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (noteToDelete) {
+      deleteMutation.mutate(noteToDelete.id);
+    }
   };
 
   const filteredNotes = notes.filter(
@@ -166,10 +186,110 @@ export default function NotesScreen() {
                 note={note}
                 onPress={() => router.push(`/(app)/note/${note.id}`)}
                 onDelete={() => handleDeleteNote(note.id, note.title)}
+                onRightClickDelete={
+                  Platform.OS === "web"
+                    ? () => handleRightClickDelete(note.id, note.title)
+                    : undefined
+                }
               />
             ))
           )}
         </ScrollView>
+      )}
+
+      {/* Simple Delete Confirmation Dialog */}
+      {Platform.OS === "web" && deleteDialogOpen && (
+        <View
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          style={{
+            position: "fixed" as any,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 50,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+          }}
+        >
+          <Pressable
+            className="absolute inset-0"
+            style={{ position: "absolute" as any }}
+            onPress={() => setDeleteDialogOpen(false)}
+          />
+          <View
+            className="bg-background border-border w-full max-w-md rounded-lg border p-6 shadow-lg"
+            style={{
+              backgroundColor: colors.background,
+              borderColor: colors.border,
+              borderRadius: 8,
+              padding: 24,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+            }}
+          >
+            <Text
+              className="text-lg font-semibold mb-2"
+              style={{
+                color: colors.foreground,
+                fontSize: 18,
+                fontWeight: "600",
+                marginBottom: 8,
+              }}
+            >
+              Delete Note
+            </Text>
+            <Text
+              className="text-sm mb-6"
+              style={{
+                color: colors.mutedForeground,
+                fontSize: 14,
+                marginBottom: 24,
+              }}
+            >
+              Are you sure you want to delete "{noteToDelete?.title}"? This
+              action cannot be undone.
+            </Text>
+            <View
+              className="flex-row justify-end gap-3"
+              style={{
+                flexDirection: "row",
+                justifyContent: "flex-end",
+                gap: 12,
+              }}
+            >
+              <Pressable
+                className="px-4 py-2 rounded-md border"
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 6,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: colors.background,
+                }}
+                onPress={() => setDeleteDialogOpen(false)}
+              >
+                <Text style={{ color: colors.foreground }}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                className="px-4 py-2 rounded-md"
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 6,
+                  backgroundColor: "#ef4444",
+                }}
+                onPress={handleDeleteConfirm}
+              >
+                <Text style={{ color: "#ffffff", fontWeight: "600" }}>
+                  Delete
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       )}
     </View>
   );
@@ -179,9 +299,15 @@ interface NoteCardProps {
   note: Note;
   onPress: () => void;
   onDelete: () => void;
+  onRightClickDelete?: () => void;
 }
 
-function NoteCard({ note, onPress, onDelete }: NoteCardProps) {
+function NoteCard({
+  note,
+  onPress,
+  onDelete,
+  onRightClickDelete,
+}: NoteCardProps) {
   const scale = new Animated.Value(1);
 
   const handlePressIn = () => {
@@ -197,6 +323,13 @@ function NoteCard({ note, onPress, onDelete }: NoteCardProps) {
       useNativeDriver: true,
       friction: 3,
     }).start();
+  };
+
+  const handleContextMenu = (e: any) => {
+    if (Platform.OS === "web" && onRightClickDelete) {
+      e.preventDefault();
+      onRightClickDelete();
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -220,6 +353,9 @@ function NoteCard({ note, onPress, onDelete }: NoteCardProps) {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onLongPress={onDelete}
+      {...(Platform.OS === "web" && {
+        onContextMenu: handleContextMenu,
+      })}
     >
       <Animated.View style={{ transform: [{ scale }] }}>
         <Card className="p-4 mb-3 rounded-2xl bg-foreground/5 border-2 border-foreground/10">
