@@ -6,6 +6,18 @@
   "framework": null,
   "rewrites": [
     {
+      "source": "/notes",
+      "destination": "(app)/notes.html"
+    },
+    {
+      "source": "/login",
+      "destination": "(auth)/login.html"
+    },
+    {
+      "source": "/note/:id",
+      "destination": "(app)/note/:id.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
