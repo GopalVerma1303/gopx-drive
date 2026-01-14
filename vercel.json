@@ -1,13 +1,13 @@
 {
-  "buildCommand": "bun run build:web",
+  "buildCommand": "expo export -p web",
   "outputDirectory": "dist",
-  "devCommand": "bun run web",
-  "installCommand": "bun install",
+  "devCommand": "expo",
+  "cleanUrls": true,
   "framework": null,
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/:path*",
+      "destination": "/"
     }
   ]
 }
