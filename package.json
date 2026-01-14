@@ -8,7 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:web": "expo export --platform web",
-    "postbuild:web": "cp -r dist/client/_expo dist/server/_expo && cp dist/client/favicon.ico dist/server/favicon.ico 2>/dev/null || true"
+    "postbuild:web": "mkdir -p dist/server/_expo && cp -r dist/client/_expo/static dist/server/_expo/static && cp dist/client/favicon.ico dist/server/favicon.ico 2>/dev/null || true"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
