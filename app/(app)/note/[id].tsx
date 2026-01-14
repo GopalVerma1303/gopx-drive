@@ -184,7 +184,7 @@ export default function NoteEditorScreen() {
             color: colors.foreground,
           },
           headerLeft: () => (
-            <View className="flex-row items-center flex-1 pr-4">
+            <View className="flex-row items-center flex-1 ml-1">
               <Pressable
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -232,12 +232,12 @@ export default function NoteEditorScreen() {
             </View>
           ),
           headerRight: () => (
-            <View className="flex-row items-center">
+            <View className="flex-row items-center gap-2 mr-2">
               {!isNewNote && (
                 <Pressable
                   onPress={handleRefresh}
                   disabled={isFetching}
-                  className={cn("p-2 mr-1", isFetching && "opacity-40")}
+                  className={cn("p-2", isFetching && "opacity-40")}
                 >
                   <RefreshCcw
                     color={
@@ -252,7 +252,7 @@ export default function NoteEditorScreen() {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setIsPreview(!isPreview);
                 }}
-                className="p-2 mr-1"
+                className="p-2"
               >
                 {isPreview ? (
                   <Edit color={colors.foreground} size={24} />

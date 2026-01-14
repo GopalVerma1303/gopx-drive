@@ -1,13 +1,6 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
@@ -20,14 +13,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import {
-  LogOut,
-  Moon,
-  PanelBottomClose,
-  Plus,
-  Search,
-  Sun,
-} from "lucide-react-native";
+import { LogOut, Moon, Plus, Search, Sun } from "lucide-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -107,59 +93,39 @@ export default function NotesScreen() {
             color: colors.foreground,
           },
           headerRight: () => (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Pressable
-                  className="p-2"
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  }}
-                >
-                  <PanelBottomClose
-                    color={colors.foreground}
-                    size={22}
-                    strokeWidth={2.5}
-                  />
-                </Pressable>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                side="bottom"
-                align="end"
-                className="mt-2 mr-4 min-w-[180px]"
+            <View className="flex-row items-center gap-2 mr-2">
+              <Pressable
+                className="p-2"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push("/(app)/note/new");
+                }}
               >
-                <DropdownMenuItem
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    router.push("/(app)/note/new");
-                  }}
-                >
-                  <Icon as={Plus} size={18} />
-                  <Text>Add Note</Text>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    toggleTheme();
-                  }}
-                >
-                  {resolvedTheme === "dark" ? (
-                    <Icon as={Sun} size={18} />
-                  ) : (
-                    <Icon as={Moon} size={18} />
-                  )}
-                  <Text>Switch Theme</Text>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    handleSignOut();
-                  }}
-                >
-                  <Icon as={LogOut} size={18} />
-                  <Text>Logout</Text>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <Plus color={colors.foreground} size={22} strokeWidth={2.5} />
+              </Pressable>
+              <Pressable
+                className="p-2"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  toggleTheme();
+                }}
+              >
+                {resolvedTheme === "dark" ? (
+                  <Sun color={colors.foreground} size={22} strokeWidth={2.5} />
+                ) : (
+                  <Moon color={colors.foreground} size={22} strokeWidth={2.5} />
+                )}
+              </Pressable>
+              <Pressable
+                className="p-2"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  handleSignOut();
+                }}
+              >
+                <LogOut color={colors.foreground} size={22} strokeWidth={2.5} />
+              </Pressable>
+            </View>
           ),
         }}
       />
