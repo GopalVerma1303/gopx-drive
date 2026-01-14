@@ -60,6 +60,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@expo/metro-config": "^54.0.13",
     "@expo/ngrok": "^4.1.0",
     "@types/react": "~19.1.10",
     "eslint": "^9.31.0",
