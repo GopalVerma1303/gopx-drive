@@ -3,5 +3,11 @@
   "outputDirectory": "dist/server",
   "devCommand": "expo",
   "cleanUrls": true,
-  "framework": null
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
