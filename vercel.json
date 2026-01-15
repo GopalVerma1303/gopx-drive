@@ -4,11 +4,14 @@
   "devCommand": "expo",
   "cleanUrls": true,
   "framework": null,
-  "rewrites": [
+  "redirects": [
     {
       "source": "/notes",
-      "destination": "/notes.html"
-    },
+      "destination": "/",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
     {
       "source": "/login",
       "destination": "/login.html"
