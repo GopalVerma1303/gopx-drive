@@ -30,17 +30,49 @@ export const [AuthProvider, useAuth] = createContextHook(
       // In production mode, use Supabase auth
       // Get initial session
       supabase.auth.getSession().then(({ data: { session } }) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+        // Only set user if email is confirmed
+        if (session?.user?.email_confirmed_at) {
+          setSession(session);
+          setUser(session.user);
+        } else {
+          setSession(null);
+          setUser(null);
+        }
         setIsLoading(false);
       });
 
       // Listen for auth changes
       const {
         data: { subscription },
-      } = supabase.auth.onAuthStateChange((_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      } = supabase.auth.onAuthStateChange((event, session) => {
+        // Handle different auth events
+        if (event === "SIGNED_OUT") {
+          setSession(null);
+          setUser(null);
+        } else if (
+          event === "USER_UPDATED" ||
+          event === "SIGNED_IN" ||
+          event === "TOKEN_REFRESHED"
+        ) {
+          // For these events, only set user if email is confirmed
+          if (session?.user?.email_confirmed_at) {
+            setSession(session);
+            setUser(session.user);
+          } else {
+            // User exists but email not confirmed
+            setSession(null);
+            setUser(null);
+          }
+        } else {
+          // For other events (like EMAIL_CONFIRMED), check if email is confirmed
+          if (session?.user?.email_confirmed_at) {
+            setSession(session);
+            setUser(session.user);
+          } else {
+            setSession(null);
+            setUser(null);
+          }
+        }
         setIsLoading(false);
       });
 
@@ -67,8 +99,13 @@ export const [AuthProvider, useAuth] = createContextHook(
         throw error;
       }
 
-      setSession(data.session);
-      setUser(data.user);
+      // Only set session/user if email is confirmed
+      if (data.session && data.user?.email_confirmed_at) {
+        setSession(data.session);
+        setUser(data.user);
+      } else {
+        throw new Error("Please verify your email before signing in");
+      }
     };
 
     const signUp = async (email: string, password: string) => {
@@ -91,8 +128,16 @@ export const [AuthProvider, useAuth] = createContextHook(
         throw error;
       }
 
-      setSession(data.session);
-      setUser(data.user);
+      // Only set session/user if email is confirmed or if session exists
+      // When email confirmation is required, session might be null
+      if (data.session && data.user?.email_confirmed_at) {
+        setSession(data.session);
+        setUser(data.user);
+      } else {
+        // Email verification required - don't set session/user yet
+        setSession(null);
+        setUser(null);
+      }
     };
 
     const signOut = async () => {

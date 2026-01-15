@@ -1,28 +1,21 @@
 "use client";
 
+import { NoteDetailHeader } from "@/components/headers/note-detail-header";
 import { MarkdownEditor } from "@/components/markdown-editor";
-import { Input } from "@/components/ui/input";
-import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
 import { createNote, getNoteById, updateNote } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";
-import { cn } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ArrowLeft, Check, Edit, Eye, RefreshCcw } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
   Alert as RNAlert,
   ScrollView,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function NoteEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -30,7 +23,6 @@ export default function NoteEditorScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { colors } = useThemeColors();
-  const insets = useSafeAreaInsets();
   const isNewNote = id === "new";
 
   const [title, setTitle] = useState("");
@@ -38,8 +30,6 @@ export default function NoteEditorScreen() {
   const [lastSavedTitle, setLastSavedTitle] = useState("");
   const [lastSavedContent, setLastSavedContent] = useState("");
   const [isPreview, setIsPreview] = useState(false);
-  const [isEditingTitle, setIsEditingTitle] = useState(isNewNote);
-  const titleInputRef = useRef<typeof Input>(null);
 
   const {
     data: note,
@@ -66,16 +56,6 @@ export default function NoteEditorScreen() {
       setLastSavedContent(note.content);
     }
   }, [note]);
-
-  useEffect(() => {
-    if (isEditingTitle && titleInputRef.current) {
-      // Small delay to ensure the input is rendered
-      setTimeout(() => {
-        // @ts-ignore: Input ref may not type focus, but it exists on the instance
-        titleInputRef.current?.focus?.();
-      }, 100);
-    }
-  }, [isEditingTitle]);
 
   const isDirty = title !== lastSavedTitle || content !== lastSavedContent;
 
@@ -150,11 +130,6 @@ export default function NoteEditorScreen() {
     }
   };
 
-  const handleTitleBlur = () => {
-    setIsEditingTitle(false);
-  };
-
-  const displayTitle = title || (isNewNote ? "New Note" : "Untitled");
   const canSave = isDirty && !saveMutation.isPending;
 
   if (isLoading && !isNewNote) {
@@ -173,136 +148,37 @@ export default function NoteEditorScreen() {
       <StatusBar style={colors.foreground === "#000000" ? "dark" : "light"} />
       <Stack.Screen
         options={{
-          headerShown: true,
-          title: "",
-          headerStyle: {
-            backgroundColor: colors.background,
-            borderBottomWidth: 0,
-            borderBottomColor: colors.border,
-            elevation: 0,
-          } as any,
-          headerTintColor: colors.foreground,
-          headerTitleStyle: {
-            color: colors.foreground,
-          },
-          headerLeft: () => (
-            <View className="flex-row items-center flex-1">
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.back();
-                }}
-                className="pl-2"
-              >
-                <ArrowLeft color={colors.foreground} size={24} />
-              </Pressable>
-              <View className="flex-row items-center flex-1 ml-2">
-                {isEditingTitle ? (
-                  <Input
-                    // @ts-ignore: Input ref may not type focus, but it exists on the instance
-                    ref={titleInputRef as any}
-                    value={title}
-                    onChangeText={setTitle}
-                    onBlur={handleTitleBlur}
-                    onSubmitEditing={handleTitleBlur}
-                    placeholder="Title"
-                    placeholderTextColor={colors.mutedForeground}
-                    style={{
-                      flex: 1,
-                      color: colors.foreground,
-                      fontSize: 18,
-                    }}
-                    returnKeyType="done"
-                  />
-                ) : (
-                  <Pressable
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setIsEditingTitle(true);
-                    }}
-                    style={{ flex: 1 }}
-                  >
-                    <Text
-                      className="text-lg"
-                      style={{ color: colors.foreground }}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                    >
-                      {displayTitle}
-                    </Text>
-                  </Pressable>
-                )}
-              </View>
-            </View>
-          ),
-          headerRight: () => (
-            <View className="flex-row items-center gap-2 mr-2">
-              {!isNewNote && (
-                <Pressable
-                  onPress={handleRefresh}
-                  disabled={isFetching}
-                  className={cn("p-2", isFetching && "opacity-40")}
-                >
-                  <RefreshCcw
-                    color={
-                      isFetching ? colors.mutedForeground : colors.foreground
-                    }
-                    size={22}
-                  />
-                </Pressable>
-              )}
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setIsPreview(!isPreview);
-                }}
-                className="p-2"
-              >
-                {isPreview ? (
-                  <Edit color={colors.foreground} size={24} />
-                ) : (
-                  <Eye color={colors.foreground} size={24} />
-                )}
-              </Pressable>
-              <Pressable
-                onPress={handleSave}
-                disabled={!canSave}
-                className={cn("p-2", !canSave && "opacity-40")}
-              >
-                <Check
-                  color={canSave ? colors.foreground : colors.mutedForeground}
-                  size={24}
-                />
-              </Pressable>
-            </View>
-          ),
+          headerShown: false,
         }}
       />
-      <KeyboardAvoidingView
+      <NoteDetailHeader
+        title={title}
+        onTitleChange={setTitle}
+        isNewNote={isNewNote}
+        isDirty={isDirty}
+        canSave={canSave}
+        onSave={handleSave}
+        isPreview={isPreview}
+        onPreviewToggle={() => setIsPreview(!isPreview)}
+        isFetching={isFetching}
+        onRefresh={!isNewNote ? handleRefresh : undefined}
+      />
+      <ScrollView
         className="flex-1 bg-background"
-        behavior={Platform.OS === "ios" ? "padding" : "padding"}
-        keyboardVerticalOffset={
-          Platform.OS === "ios"
-            ? insets.top
-            : insets.top + (Platform.OS === "android" ? 60 : 0)
-        }
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        keyboardDismissMode="interactive"
       >
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="flex-1 p-5 pb-0 w-full max-w-2xl mx-auto bg-foreground/5 rounded-2xl">
-            <MarkdownEditor
-              value={content}
-              onChangeText={setContent}
-              placeholder="Start writing in markdown..."
-              isPreview={isPreview}
-            />
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        <View className="flex-1 p-5 pb-0 w-full max-w-2xl mx-auto bg-muted ">
+          <MarkdownEditor
+            value={content}
+            onChangeText={setContent}
+            placeholder="Start writing in markdown..."
+            isPreview={isPreview}
+          />
+        </View>
+      </ScrollView>
     </>
   );
 }

@@ -11,10 +11,7 @@ import {
   Pressable,
   View,
 } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -53,12 +50,14 @@ export default function LoginScreen() {
       if (isSignUp) {
         await signUp(email, password);
         if (!UI_DEV) {
+          setIsLoading(false);
           setShowVerificationMessage(true);
           return;
         }
       } else {
         await signIn(email, password);
       }
+      // Only route to notes if we have a verified session
       router.replace("/(app)/notes");
     } catch (error: any) {
       Alert.alert(
@@ -74,57 +73,53 @@ export default function LoginScreen() {
 
   if (showVerificationMessage) {
     return (
-      <View className="flex-1">
+      <View className="flex-1 bg-background">
         <Stack.Screen options={{ headerShown: false }} />
-        <SafeAreaView className="flex-1 bg-background">
-          <View className="flex-1 justify-center px-6">
-            <Card className="border-0 mx-auto w-full max-w-lg">
-              <CardHeader className="items-center">
-                <View className="w-16 h-16 rounded-full bg-green-100 items-center justify-center mb-4">
-                  <Mail className="text-green-600" size={32} />
-                </View>
-                <CardTitle>
-                  <Text className="text-xl font-bold text-foreground text-center">
-                    Check your email
-                  </Text>
-                </CardTitle>
-                <CardDescription>
-                  <Text className="text-muted-foreground text-sm text-center mt-2">
-                    We've sent a verification link to{"\n"}
-                    <Text className="font-semibold text-foreground">
-                      {email}
-                    </Text>
-                  </Text>
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent className="gap-4">
-                <Text className="text-muted-foreground text-sm text-center">
-                  Please check your inbox and click the verification link to
-                  activate your account. Once verified, you can sign in.
+        <View className="flex-1 justify-center px-6">
+          <Card className="border-2 border-foreground/5 mx-auto w-full max-w-lg bg-muted">
+            <CardHeader className="items-center">
+              <View className="w-16 h-16 rounded-full bg-green-100 items-center justify-center mb-4">
+                <Mail className="text-green-600" size={32} />
+              </View>
+              <CardTitle>
+                <Text className="text-xl font-bold text-foreground text-center">
+                  Check your email
                 </Text>
-
-                <Button
-                  onPress={() => {
-                    setShowVerificationMessage(false);
-                    setIsSignUp(false);
-                  }}
-                  className="h-14 rounded-2xl mt-2 bg-foreground"
-                  size="xl"
-                >
-                  <Text className="text-background font-semibold text-base">
-                    Back to Sign In
-                  </Text>
-                </Button>
-
-                <Text className="text-muted-foreground text-xs text-center">
-                  Didn't receive the email? Check your spam folder or try
-                  signing up again.
+              </CardTitle>
+              <CardDescription>
+                <Text className="text-muted-foreground text-sm text-center mt-2">
+                  We've sent a verification link to{"\n"}
+                  <Text className="font-semibold text-foreground">{email}</Text>
                 </Text>
-              </CardContent>
-            </Card>
-          </View>
-        </SafeAreaView>
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="gap-4">
+              <Text className="text-muted-foreground text-sm text-center">
+                Please check your inbox and click the verification link to
+                activate your account. Once verified, you can sign in.
+              </Text>
+
+              <Button
+                onPress={() => {
+                  setShowVerificationMessage(false);
+                  setIsSignUp(false);
+                }}
+                className="h-14 rounded-2xl mt-2 bg-foreground"
+                size="xl"
+              >
+                <Text className="text-background font-semibold text-base">
+                  Back to Sign In
+                </Text>
+              </Button>
+
+              <Text className="text-muted-foreground text-xs text-center">
+                Didn't receive the email? Check your spam folder or try signing
+                up again.
+              </Text>
+            </CardContent>
+          </Card>
+        </View>
       </View>
     );
   }
@@ -265,7 +260,7 @@ export default function LoginScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <KeyboardAvoidingView
         className="flex-1 bg-background"
-        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={0}
       >
         <View className="flex-1">{authContent}</View>
