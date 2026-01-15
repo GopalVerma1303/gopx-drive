@@ -40,3 +40,6 @@ yarn-error.*
 /ios
 /android
 .vercel
+
+# generated apk
+*.apk
