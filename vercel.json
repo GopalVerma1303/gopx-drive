@@ -7,15 +7,15 @@
   "rewrites": [
     {
       "source": "/notes",
-      "destination": "(app)/notes.html"
+      "destination": "/notes.html"
     },
     {
       "source": "/login",
-      "destination": "(auth)/login.html"
+      "destination": "/login.html"
     },
     {
       "source": "/note/([^/]+)",
-      "destination": "(app)/note/$1.html"
+      "destination": "/note/$1.html"
     },
     {
       "source": "/(.*)",
