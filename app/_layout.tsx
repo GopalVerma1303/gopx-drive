@@ -2,6 +2,7 @@
 
 import { AuthProvider } from "@/contexts/auth-context";
 import { ThemeProvider } from "@/contexts/theme-context";
+import "@/global.css";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { PortalHost } from "@rn-primitives/portal";
