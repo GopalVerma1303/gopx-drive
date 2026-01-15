@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   View,
 } from "react-native";
 import {
@@ -264,26 +263,13 @@ export default function LoginScreen() {
   return (
     <View className="flex-1">
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView className="flex-1 bg-background">
-        <KeyboardAvoidingView
-          className="flex-1"
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={
-            Platform.OS === "ios"
-              ? insets.top
-              : insets.top + (Platform.OS === "android" ? 20 : 0)
-          }
-        >
-          <ScrollView
-            className="flex-1"
-            contentContainerStyle={{ flexGrow: 1 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {authContent}
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+      <KeyboardAvoidingView
+        className="flex-1 bg-background"
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        keyboardVerticalOffset={0}
+      >
+        <View className="flex-1">{authContent}</View>
+      </KeyboardAvoidingView>
     </View>
   );
 }

@@ -10,6 +10,10 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import {
+  initialWindowMetrics,
+  SafeAreaProvider,
+} from "react-native-safe-area-context";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -53,12 +57,14 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <AuthProvider>
-          <ThemeProvider>
-            <RootLayoutNav />
-            <PortalHost />
-          </ThemeProvider>
-        </AuthProvider>
+        <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+          <AuthProvider>
+            <ThemeProvider>
+              <RootLayoutNav />
+              <PortalHost />
+            </ThemeProvider>
+          </AuthProvider>
+        </SafeAreaProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>
   );

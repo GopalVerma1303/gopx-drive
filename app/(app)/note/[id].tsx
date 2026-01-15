@@ -22,10 +22,7 @@ import {
   ScrollView,
   View,
 } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function NoteEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -281,38 +278,31 @@ export default function NoteEditorScreen() {
           ),
         }}
       />
-      <SafeAreaView
-        edges={Platform.OS === "android" ? ["bottom"] : ["top", "bottom"]}
-        className="flex-1"
-        style={{ backgroundColor: colors.background }}
+      <KeyboardAvoidingView
+        className="flex-1 bg-background"
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        keyboardVerticalOffset={
+          Platform.OS === "ios"
+            ? insets.top
+            : insets.top + (Platform.OS === "android" ? 60 : 0)
+        }
       >
-        <KeyboardAvoidingView
+        <ScrollView
           className="flex-1"
-          style={{ backgroundColor: colors.background }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={
-            Platform.OS === "ios"
-              ? insets.top
-              : insets.top + (Platform.OS === "android" ? 60 : 0)
-          }
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <ScrollView
-            className="flex-1"
-            contentContainerStyle={{ flexGrow: 1 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View className="flex-1 p-5 pb-0 w-full max-w-2xl mx-auto bg-foreground/5 rounded-2xl">
-              <MarkdownEditor
-                value={content}
-                onChangeText={setContent}
-                placeholder="Start writing in markdown..."
-                isPreview={isPreview}
-              />
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+          <View className="flex-1 p-5 pb-0 w-full max-w-2xl mx-auto bg-foreground/5 rounded-2xl">
+            <MarkdownEditor
+              value={content}
+              onChangeText={setContent}
+              placeholder="Start writing in markdown..."
+              isPreview={isPreview}
+            />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </>
   );
 }
