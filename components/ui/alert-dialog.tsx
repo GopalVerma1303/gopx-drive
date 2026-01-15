@@ -1,40 +1,70 @@
-import { buttonTextVariants, buttonVariants } from "@/components/ui/button";
-import { NativeOnlyAnimatedView } from "@/components/ui/native-only-animated-view";
-import { TextClassContext } from "@/components/ui/text";
-import { cn } from "@/lib/utils";
+/**
+ * Alert Dialog Component - Atomic Design System
+ * Modal dialog for alerts and confirmations
+ */
+
+import { TextStyleContext } from "@/components/ui/text";
+import {
+  getRadius,
+  getShadow,
+  getSpacing,
+  platformStyle,
+} from "@/lib/theme/styles";
+import { useThemeColors } from "@/lib/theme/useTheme";
+import { composeStyle } from "@/lib/utils";
 import * as AlertDialogPrimitive from "@rn-primitives/alert-dialog";
 import * as React from "react";
-import { Platform, View, type ViewProps } from "react-native";
+import {
+  Platform,
+  View,
+  type TextStyle,
+  type ViewProps,
+  type ViewStyle,
+} from "react-native";
 import { FadeIn, FadeOut } from "react-native-reanimated";
 import { FullWindowOverlay as RNFullWindowOverlay } from "react-native-screens";
+import { NativeOnlyAnimatedView } from "./native-only-animated-view";
 
 const AlertDialog = AlertDialogPrimitive.Root;
-
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
-
 const AlertDialogPortal = AlertDialogPrimitive.Portal;
 
 const FullWindowOverlay =
   Platform.OS === "ios" ? RNFullWindowOverlay : React.Fragment;
 
 function AlertDialogOverlay({
-  className,
+  style,
   children,
   ...props
 }: Omit<AlertDialogPrimitive.OverlayProps, "asChild"> &
   React.RefAttributes<AlertDialogPrimitive.OverlayRef> & {
     children?: React.ReactNode;
+    style?: ViewStyle;
   }) {
+  const overlayStyle: ViewStyle = {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    top: 0,
+    zIndex: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    padding: getSpacing(2),
+    ...platformStyle<ViewStyle>({
+      web: {
+        position: "fixed",
+        // animate-in fade-in-0 handled by animations
+      },
+    }),
+  };
+
   return (
     <FullWindowOverlay>
       <AlertDialogPrimitive.Overlay
-        className={cn(
-          "absolute bottom-0 left-0 right-0 top-0 z-50 flex items-center justify-center bg-black/50 p-2",
-          Platform.select({
-            web: "animate-in fade-in-0 fixed",
-          }),
-          className
-        )}
+        style={composeStyle(overlayStyle, style)}
         {...props}
       >
         <NativeOnlyAnimatedView
@@ -49,7 +79,7 @@ function AlertDialogOverlay({
 }
 
 function AlertDialogContent({
-  className,
+  style,
   portalHost,
   children,
   ...props
@@ -57,23 +87,43 @@ function AlertDialogContent({
   React.RefAttributes<AlertDialogPrimitive.ContentRef> & {
     portalHost?: string;
     children?: React.ReactNode;
+    style?: ViewStyle;
   }) {
-  // Always wrap children in a single View to satisfy React.Children.only requirement
+  const { colors } = useThemeColors();
+
+  const contentStyle: ViewStyle = {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    zIndex: 50,
+    flexDirection: "column",
+    width: "100%",
+    gap: getSpacing(4),
+    borderRadius: getRadius("lg"),
+    padding: getSpacing(6),
+    ...getShadow("lg"),
+    ...platformStyle<ViewStyle>({
+      web: {
+        maxWidth: 512, // sm:max-w-lg
+        // animate-in fade-in-0 zoom-in-95 duration-200 handled by animations
+      },
+      native: {
+        maxWidth: "95%", // Approximate calc(100% - 2rem)
+      },
+    }),
+  };
+
   const wrappedChildren = (
-    <View className="flex flex-col gap-4">{children}</View>
+    <View style={{ flexDirection: "column", gap: getSpacing(4) }}>
+      {children}
+    </View>
   );
 
   return (
     <AlertDialogPortal hostName={portalHost}>
       <AlertDialogOverlay>
         <AlertDialogPrimitive.Content
-          className={cn(
-            "bg-background border-border z-50 flex w-full max-w-[calc(100%-2rem)] flex-col gap-4 rounded-lg border p-6 shadow-lg shadow-black/5 sm:max-w-lg",
-            Platform.select({
-              web: "animate-in fade-in-0 zoom-in-95 duration-200",
-            }),
-            className
-          )}
+          style={composeStyle(contentStyle, style)}
           {...props}
         >
           {wrappedChildren}
@@ -83,81 +133,171 @@ function AlertDialogContent({
   );
 }
 
-function AlertDialogHeader({ className, ...props }: ViewProps) {
+function AlertDialogHeader({ style, ...props }: ViewProps) {
+  const { colors } = useThemeColors();
+
+  const headerStyle: ViewStyle = {
+    flexDirection: "column",
+    gap: getSpacing(2),
+    ...platformStyle<ViewStyle>({
+      native: {
+        alignItems: "center", // text-center
+      },
+    }),
+  };
+
+  const textStyle: TextStyle =
+    platformStyle<TextStyle>({
+      web: {
+        textAlign: "left",
+      },
+      native: {
+        textAlign: "center",
+      },
+    }) || {};
+
   return (
-    <TextClassContext.Provider value="text-center sm:text-left">
-      <View className={cn("flex flex-col gap-2", className)} {...props} />
-    </TextClassContext.Provider>
+    <TextStyleContext.Provider value={textStyle}>
+      <View style={composeStyle(headerStyle, style)} {...props} />
+    </TextStyleContext.Provider>
   );
 }
 
-function AlertDialogFooter({ className, ...props }: ViewProps) {
-  return (
-    <View
-      className={cn(
-        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
-        className
-      )}
-      {...props}
-    />
-  );
+function AlertDialogFooter({ style, ...props }: ViewProps) {
+  const footerStyle: ViewStyle = {
+    flexDirection: "column-reverse",
+    gap: getSpacing(2),
+    ...platformStyle<ViewStyle>({
+      web: {
+        flexDirection: "row",
+        justifyContent: "flex-end",
+      },
+    }),
+  };
+
+  return <View style={composeStyle(footerStyle, style)} {...props} />;
 }
 
 function AlertDialogTitle({
-  className,
+  style,
   ...props
 }: AlertDialogPrimitive.TitleProps &
-  React.RefAttributes<AlertDialogPrimitive.TitleRef>) {
+  React.RefAttributes<AlertDialogPrimitive.TitleRef> & {
+    style?: TextStyle;
+  }) {
+  const { colors } = useThemeColors();
+
+  const titleStyle: TextStyle = {
+    color: colors.foreground,
+    fontSize: 18,
+    fontWeight: "600",
+  };
+
   return (
     <AlertDialogPrimitive.Title
-      className={cn("text-foreground text-lg font-semibold", className)}
+      style={composeStyle(titleStyle, style)}
       {...props}
     />
   );
 }
 
 function AlertDialogDescription({
-  className,
+  style,
   ...props
 }: AlertDialogPrimitive.DescriptionProps &
-  React.RefAttributes<AlertDialogPrimitive.DescriptionRef>) {
+  React.RefAttributes<AlertDialogPrimitive.DescriptionRef> & {
+    style?: TextStyle;
+  }) {
+  const { colors } = useThemeColors();
+
+  const descriptionStyle: TextStyle = {
+    color: colors.mutedForeground,
+    fontSize: 14,
+  };
+
   return (
     <AlertDialogPrimitive.Description
-      className={cn("text-muted-foreground text-sm", className)}
+      style={composeStyle(descriptionStyle, style)}
       {...props}
     />
   );
 }
 
 function AlertDialogAction({
-  className,
+  style,
   ...props
 }: AlertDialogPrimitive.ActionProps &
-  React.RefAttributes<AlertDialogPrimitive.ActionRef>) {
+  React.RefAttributes<AlertDialogPrimitive.ActionRef> & {
+    style?: ViewStyle;
+  }) {
+  const { colors } = useThemeColors();
+  const buttonStyle = React.useMemo(() => {
+    const baseStyle: ViewStyle = {
+      flexShrink: 0,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: getSpacing(2),
+      borderRadius: getRadius("md"),
+      height: 40,
+      paddingHorizontal: getSpacing(4),
+      paddingVertical: getSpacing(2),
+      backgroundColor: colors.primary,
+      ...getShadow("sm"),
+    };
+    return composeStyle(baseStyle, style);
+  }, [colors, style]);
+
+  const textStyle: TextStyle = {
+    fontSize: 14,
+    fontWeight: "500",
+    color: colors.primaryForeground,
+  };
+
   return (
-    <TextClassContext.Provider value={buttonTextVariants({ className })}>
-      <AlertDialogPrimitive.Action
-        className={cn(buttonVariants(), className)}
-        {...props}
-      />
-    </TextClassContext.Provider>
+    <TextStyleContext.Provider value={textStyle}>
+      <AlertDialogPrimitive.Action style={buttonStyle} {...props} />
+    </TextStyleContext.Provider>
   );
 }
 
 function AlertDialogCancel({
-  className,
+  style,
   ...props
 }: AlertDialogPrimitive.CancelProps &
-  React.RefAttributes<AlertDialogPrimitive.CancelRef>) {
+  React.RefAttributes<AlertDialogPrimitive.CancelRef> & {
+    style?: ViewStyle;
+  }) {
+  const { colors } = useThemeColors();
+  const buttonStyle = React.useMemo(() => {
+    const baseStyle: ViewStyle = {
+      flexShrink: 0,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: getSpacing(2),
+      borderRadius: getRadius("md"),
+      height: 40,
+      paddingHorizontal: getSpacing(4),
+      paddingVertical: getSpacing(2),
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...getShadow("sm"),
+    };
+    return composeStyle(baseStyle, style);
+  }, [colors, style]);
+
+  const textStyle: TextStyle = {
+    fontSize: 14,
+    fontWeight: "500",
+    color: colors.foreground,
+  };
+
   return (
-    <TextClassContext.Provider
-      value={buttonTextVariants({ className, variant: "outline" })}
-    >
-      <AlertDialogPrimitive.Cancel
-        className={cn(buttonVariants({ variant: "outline" }), className)}
-        {...props}
-      />
-    </TextClassContext.Provider>
+    <TextStyleContext.Provider value={textStyle}>
+      <AlertDialogPrimitive.Cancel style={buttonStyle} {...props} />
+    </TextStyleContext.Provider>
   );
 }
 

@@ -1,15 +1,16 @@
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useThemeColors } from "@/lib/use-theme-colors";
-import { cn } from "@/lib/utils";
-import { ScrollView, View } from "react-native";
+import { getSpacing } from "@/lib/theme/styles";
+import { composeStyle } from "@/lib/utils";
+import { ScrollView, View, type ViewStyle } from "react-native";
 import Markdown from "react-native-markdown-display";
 
 interface MarkdownEditorProps {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
-  className?: string;
+  style?: ViewStyle;
   isPreview?: boolean;
 }
 
@@ -17,7 +18,7 @@ export function MarkdownEditor({
   value,
   onChangeText,
   placeholder = "Start writing in markdown...",
-  className,
+  style,
   isPreview = false,
 }: MarkdownEditorProps) {
   const { colors } = useThemeColors();
@@ -146,39 +147,48 @@ export function MarkdownEditor({
   };
 
   return (
-    <View className={cn("flex-1", className)}>
+    <View style={composeStyle({ flex: 1 }, style)}>
       {/* Editor or Preview */}
       {isPreview ? (
         <ScrollView
-          className="flex-1"
+          style={{ flex: 1 }}
           contentContainerStyle={{
-            paddingHorizontal: 12,
-            paddingTop: 20,
-            paddingBottom: 16,
+            paddingHorizontal: getSpacing(3),
+            paddingTop: getSpacing(5),
+            paddingBottom: getSpacing(4),
           }}
         >
           {value ? (
             <Markdown style={markdownStyles}>{value}</Markdown>
           ) : (
-            <Text className="text-muted-foreground italic">{placeholder}</Text>
+            <Text
+              variant="muted"
+              style={{ fontStyle: "italic" }}
+            >
+              {placeholder}
+            </Text>
           )}
         </ScrollView>
       ) : (
         <Input
-          className="flex-1 border-0 shadow-none bg-transparent text-base leading-6 text-foreground font-mono"
+          style={{
+            flex: 1,
+            borderWidth: 0,
+            backgroundColor: "transparent",
+            fontSize: 16,
+            lineHeight: 24,
+            color: colors.foreground,
+            fontFamily: "monospace",
+            paddingHorizontal: getSpacing(3),
+            paddingTop: getSpacing(7.5),
+            paddingBottom: getSpacing(4),
+          }}
           placeholder={placeholder}
           placeholderTextColor={colors.mutedForeground}
           value={value}
           onChangeText={onChangeText}
           multiline
           textAlignVertical="top"
-          style={{
-            paddingHorizontal: 12,
-            paddingTop: 30,
-            paddingBottom: 16,
-            fontFamily: "monospace",
-            flex: 1,
-          }}
         />
       )}
     </View>

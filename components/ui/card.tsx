@@ -1,73 +1,101 @@
-import { Text, TextClassContext } from "@/components/ui/text";
-import { cn } from "@/lib/utils";
-import { View, type ViewProps } from "react-native";
+/**
+ * Card Component - Atomic Design System
+ * Container component for card-based layouts
+ */
 
-function Card({ className, ...props }: ViewProps & React.RefAttributes<View>) {
+import { Text, TextStyleContext } from "@/components/ui/text";
+import { composeStyle } from "@/lib/utils";
+import { useThemeColors } from "@/lib/theme/useTheme";
+import {
+  getRadius,
+  getShadow,
+  getSpacing,
+} from "@/lib/theme/styles";
+import { View, type ViewProps, type ViewStyle } from "react-native";
+import * as React from "react";
+
+function Card({ style, ...props }: ViewProps) {
+  const { colors } = useThemeColors();
+  const cardStyle: ViewStyle = {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: "column",
+    gap: getSpacing(6),
+    borderRadius: getRadius("xl"),
+    paddingVertical: getSpacing(6),
+    ...getShadow("sm"),
+  };
+
   return (
-    <TextClassContext.Provider value="text-card-foreground">
-      <View
-        className={cn(
-          "bg-card border-border flex flex-col gap-6 rounded-xl border py-6 shadow-sm shadow-black/5",
-          className
-        )}
-        {...props}
-      />
-    </TextClassContext.Provider>
+    <TextStyleContext.Provider
+      value={{
+        color: colors.cardForeground,
+      }}
+    >
+      <View style={composeStyle(cardStyle, style)} {...props} />
+    </TextStyleContext.Provider>
   );
 }
 
-function CardHeader({
-  className,
-  ...props
-}: ViewProps & React.RefAttributes<View>) {
-  return (
-    <View className={cn("flex flex-col gap-1.5 px-6", className)} {...props} />
-  );
+function CardHeader({ style, ...props }: ViewProps) {
+  const headerStyle: ViewStyle = {
+    flexDirection: "column",
+    gap: getSpacing(1.5),
+    paddingHorizontal: getSpacing(6),
+  };
+
+  return <View style={composeStyle(headerStyle, style)} {...props} />;
 }
 
 function CardTitle({
-  className,
+  style,
   ...props
-}: React.ComponentProps<typeof Text> & React.RefAttributes<Text>) {
+}: React.ComponentProps<typeof Text>) {
+  const titleStyle: ViewStyle = {
+    fontWeight: "600",
+    lineHeight: 1,
+  };
+
   return (
     <Text
       role="heading"
       aria-level={3}
-      className={cn("font-semibold leading-none", className)}
+      style={composeStyle(titleStyle, style)}
       {...props}
     />
   );
 }
 
 function CardDescription({
-  className,
+  style,
   ...props
-}: React.ComponentProps<typeof Text> & React.RefAttributes<Text>) {
-  return (
-    <Text
-      className={cn("text-muted-foreground text-sm", className)}
-      {...props}
-    />
-  );
+}: React.ComponentProps<typeof Text>) {
+  const { colors } = useThemeColors();
+  const descriptionStyle: ViewStyle = {
+    color: colors.mutedForeground,
+    fontSize: 14,
+  };
+
+  return <Text style={composeStyle(descriptionStyle, style)} {...props} />;
 }
 
-function CardContent({
-  className,
-  ...props
-}: ViewProps & React.RefAttributes<View>) {
-  return <View className={cn("px-6", className)} {...props} />;
+function CardContent({ style, ...props }: ViewProps) {
+  const contentStyle: ViewStyle = {
+    paddingHorizontal: getSpacing(6),
+  };
+
+  return <View style={composeStyle(contentStyle, style)} {...props} />;
 }
 
-function CardFooter({
-  className,
-  ...props
-}: ViewProps & React.RefAttributes<View>) {
-  return (
-    <View
-      className={cn("flex flex-row items-center px-6", className)}
-      {...props}
-    />
-  );
+function CardFooter({ style, ...props }: ViewProps) {
+  const footerStyle: ViewStyle = {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: getSpacing(6),
+  };
+
+  return <View style={composeStyle(footerStyle, style)} {...props} />;
 }
 
 export {

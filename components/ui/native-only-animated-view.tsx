@@ -1,6 +1,12 @@
-import { cn } from "@/lib/utils";
-import type { ViewProps } from "react-native";
+/**
+ * Native Only Animated View Component
+ * Animated View that only uses native animations
+ */
+
+import { composeStyle } from "@/lib/utils";
+import type { ViewProps, ViewStyle } from "react-native";
 import { View } from "react-native";
+import * as React from "react";
 
 // Use a type-only import to avoid runtime issues
 type BaseAnimationBuilder = any;
@@ -8,7 +14,7 @@ type BaseAnimationBuilder = any;
 type NativeOnlyAnimatedViewProps = ViewProps & {
   entering?: BaseAnimationBuilder;
   exiting?: BaseAnimationBuilder;
-  className?: string;
+  style?: ViewStyle;
   children?: React.ReactNode;
 };
 
@@ -45,7 +51,7 @@ function getAnimatedView() {
  * Falls back to regular View if Reanimated is not available.
  */
 export function NativeOnlyAnimatedView({
-  className,
+  style,
   entering,
   exiting,
   children,
@@ -56,7 +62,7 @@ export function NativeOnlyAnimatedView({
   // Fallback to regular View if Reanimated is not available
   if (!AnimatedView) {
     return (
-      <View className={cn(className)} {...props}>
+      <View style={composeStyle(style)} {...props}>
         {children}
       </View>
     );
@@ -66,7 +72,7 @@ export function NativeOnlyAnimatedView({
     <AnimatedView
       entering={entering}
       exiting={exiting}
-      className={cn(className)}
+      style={composeStyle(style)}
       {...props}
     >
       {children}

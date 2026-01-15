@@ -1,25 +1,55 @@
-import { cn } from "@/lib/utils";
+/**
+ * Label Component - Atomic Design System
+ * Accessible label component
+ */
+
+import { composeStyle } from "@/lib/utils";
+import { useThemeColors } from "@/lib/theme/useTheme";
+import { getSpacing, platformStyle } from "@/lib/theme/styles";
 import * as LabelPrimitive from "@rn-primitives/label";
-import { Platform } from "react-native";
+import { Platform, type TextStyle } from "react-native";
+import * as React from "react";
 
 function Label({
-  className,
+  style,
   onPress,
   onLongPress,
   onPressIn,
   onPressOut,
   disabled,
   ...props
-}: LabelPrimitive.TextProps & React.RefAttributes<LabelPrimitive.TextRef>) {
+}: LabelPrimitive.TextProps & {
+  style?: TextStyle;
+  disabled?: boolean;
+}) {
+  const { colors } = useThemeColors();
+
+  const rootStyle = {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: getSpacing(2),
+    ...platformStyle<typeof rootStyle>({
+      web: {
+        // cursor-default, leading-none, peer-disabled:cursor-not-allowed, etc. handled by web
+      },
+    }),
+    ...(disabled && { opacity: 0.5 }),
+  };
+
+  const textStyle: TextStyle = {
+    color: colors.foreground,
+    fontSize: 14,
+    fontWeight: "500",
+    ...platformStyle<TextStyle>({
+      web: {
+        lineHeight: 1,
+      },
+    }),
+  };
+
   return (
     <LabelPrimitive.Root
-      className={cn(
-        "flex select-none flex-row items-center gap-2",
-        Platform.select({
-          web: "cursor-default leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-50 group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50",
-        }),
-        disabled && "opacity-50"
-      )}
+      style={rootStyle}
       onPress={onPress}
       onLongPress={onLongPress}
       onPressIn={onPressIn}
@@ -27,11 +57,7 @@ function Label({
       disabled={disabled}
     >
       <LabelPrimitive.Text
-        className={cn(
-          "text-foreground text-sm font-medium",
-          Platform.select({ web: "leading-none" }),
-          className
-        )}
+        style={composeStyle(textStyle, style)}
         {...props}
       />
     </LabelPrimitive.Root>

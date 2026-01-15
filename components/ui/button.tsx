@@ -1,128 +1,250 @@
-import { TextClassContext } from "@/components/ui/text";
-import { cn } from "@/lib/utils";
-import { cva, type VariantProps } from "class-variance-authority";
-import { Platform, Pressable } from "react-native";
+/**
+ * Button Component - Atomic Design System
+ * Reusable button with variants and sizes
+ */
 
-const buttonVariants = cva(
-  cn(
-    "group shrink-0 flex-row items-center justify-center gap-2 rounded-md shadow-none",
-    Platform.select({
-      web: "focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive whitespace-nowrap outline-none transition-all focus-visible:ring-[3px] disabled:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
-    })
-  ),
-  {
-    variants: {
-      variant: {
-        default: cn(
-          "bg-primary active:bg-primary/90 shadow-sm shadow-black/5",
-          Platform.select({ web: "hover:bg-primary/90" })
-        ),
-        destructive: cn(
-          "bg-destructive active:bg-destructive/90 dark:bg-destructive/60 shadow-sm shadow-black/5",
-          Platform.select({
-            web: "hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
-          })
-        ),
-        outline: cn(
-          "border-border bg-background active:bg-accent dark:bg-input/30 dark:border-input dark:active:bg-input/50 border shadow-sm shadow-black/5",
-          Platform.select({
-            web: "hover:bg-accent dark:hover:bg-input/50",
-          })
-        ),
-        secondary: cn(
-          "bg-secondary active:bg-secondary/80 shadow-sm shadow-black/5",
-          Platform.select({ web: "hover:bg-secondary/80" })
-        ),
-        ghost: cn(
-          "active:bg-accent dark:active:bg-accent/50",
-          Platform.select({ web: "hover:bg-accent dark:hover:bg-accent/50" })
-        ),
-        link: "",
-      },
-      size: {
-        default: cn(
-          "h-10 px-4 py-2 sm:h-9",
-          Platform.select({ web: "has-[>svg]:px-3" })
-        ),
-        sm: cn(
-          "h-9 gap-1.5 rounded-md px-3 sm:h-8",
-          Platform.select({ web: "has-[>svg]:px-2.5" })
-        ),
-        lg: cn(
-          "h-11 rounded-md px-6 sm:h-10",
-          Platform.select({ web: "has-[>svg]:px-4" })
-        ),
-        xl: cn(
-          "h-14 rounded-2xl px-6 has-[>svg]:px-4",
-          Platform.select({ web: "has-[>svg]:px-4" })
-        ),
-        icon: "h-10 w-10 sm:h-9 sm:w-9",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
+import { TextStyleContext } from "@/components/ui/text";
+import { composeStyle } from "@/lib/utils";
+import { useThemeColors } from "@/lib/theme/useTheme";
+import {
+  getRadius,
+  getShadow,
+  getSpacing,
+  platformStyle,
+} from "@/lib/theme/styles";
+import { Platform, Pressable, type PressableProps, type ViewStyle } from "react-native";
+import * as React from "react";
+
+export type ButtonVariant =
+  | "default"
+  | "destructive"
+  | "outline"
+  | "secondary"
+  | "ghost"
+  | "link";
+
+export type ButtonSize = "default" | "sm" | "lg" | "xl" | "icon";
+
+interface ButtonStyleProps {
+  variant: ButtonVariant;
+  size: ButtonSize;
+  disabled?: boolean;
+  colors: ReturnType<typeof useThemeColors>["colors"];
+}
+
+function getButtonStyles({
+  variant,
+  size,
+  disabled,
+  colors,
+}: ButtonStyleProps): ViewStyle {
+  const baseStyle: ViewStyle = {
+    flexShrink: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: getSpacing(2),
+    borderRadius: getRadius("md"),
+    ...getShadow("sm"),
+  };
+
+  // Variant styles
+  let variantStyle: ViewStyle = {};
+  switch (variant) {
+    case "default":
+      variantStyle = {
+        backgroundColor: colors.primary,
+        ...platformStyle<ViewStyle>({
+          web: {
+            // hover:bg-primary/90 handled by web
+          },
+        }),
+      };
+      break;
+    case "destructive":
+      variantStyle = {
+        backgroundColor: colors.destructive,
+        ...platformStyle<ViewStyle>({
+          web: {
+            // hover:bg-destructive/90 handled by web
+          },
+        }),
+      };
+      break;
+    case "outline":
+      variantStyle = {
+        backgroundColor: colors.background,
+        borderWidth: 1,
+        borderColor: colors.border,
+        ...platformStyle<ViewStyle>({
+          web: {
+            backgroundColor: colors.input + "4D", // 30% opacity
+            borderColor: colors.input,
+            // hover:bg-accent handled by web
+          },
+        }),
+      };
+      break;
+    case "secondary":
+      variantStyle = {
+        backgroundColor: colors.secondary,
+      };
+      break;
+    case "ghost":
+      variantStyle = {
+        backgroundColor: "transparent",
+      };
+      break;
+    case "link":
+      variantStyle = {
+        backgroundColor: "transparent",
+      };
+      break;
   }
-);
 
-const buttonTextVariants = cva(
-  cn(
-    "text-foreground text-sm font-medium",
-    Platform.select({ web: "pointer-events-none transition-colors" })
-  ),
-  {
-    variants: {
-      variant: {
-        default: "text-primary-foreground",
-        destructive: "text-white",
-        outline: cn(
-          "group-active:text-accent-foreground",
-          Platform.select({ web: "group-hover:text-accent-foreground" })
-        ),
-        secondary: "text-secondary-foreground",
-        ghost: "group-active:text-accent-foreground",
-        link: cn(
-          "text-primary group-active:underline",
-          Platform.select({
-            web: "underline-offset-4 hover:underline group-hover:underline",
-          })
-        ),
-      },
-      size: {
-        default: "",
-        sm: "",
-        lg: "",
-        xl: "",
-        icon: "",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
+  // Size styles
+  let sizeStyle: ViewStyle = {};
+  switch (size) {
+    case "sm":
+      sizeStyle = {
+        height: 36,
+        gap: getSpacing(1.5),
+        borderRadius: getRadius("md"),
+        paddingHorizontal: getSpacing(3),
+        ...platformStyle<ViewStyle>({
+          web: {
+            height: 32,
+          },
+        }),
+      };
+      break;
+    case "lg":
+      sizeStyle = {
+        height: 44,
+        borderRadius: getRadius("md"),
+        paddingHorizontal: getSpacing(6),
+        ...platformStyle<ViewStyle>({
+          web: {
+            height: 40,
+          },
+        }),
+      };
+      break;
+    case "xl":
+      sizeStyle = {
+        height: 56,
+        borderRadius: getRadius("2xl"),
+        paddingHorizontal: getSpacing(6),
+      };
+      break;
+    case "icon":
+      sizeStyle = {
+        height: 40,
+        width: 40,
+        ...platformStyle<ViewStyle>({
+          web: {
+            height: 36,
+            width: 36,
+          },
+        }),
+      };
+      break;
+    default:
+      sizeStyle = {
+        height: 40,
+        paddingHorizontal: getSpacing(4),
+        paddingVertical: getSpacing(2),
+        ...platformStyle<ViewStyle>({
+          web: {
+            height: 36,
+          },
+        }),
+      };
   }
-);
 
-type ButtonProps = React.ComponentProps<typeof Pressable> &
-  React.RefAttributes<typeof Pressable> &
-  VariantProps<typeof buttonVariants>;
+  const disabledStyle: ViewStyle = disabled
+    ? {
+        opacity: 0.5,
+      }
+    : {};
 
-function Button({ className, variant, size, ...props }: ButtonProps) {
+  return composeStyle(baseStyle, variantStyle, sizeStyle, disabledStyle);
+}
+
+function getButtonTextStyles(
+  variant: ButtonVariant,
+  colors: ReturnType<typeof useThemeColors>["colors"]
+): React.ComponentProps<typeof TextStyleContext.Provider>["value"] {
+  const baseStyle: ViewStyle = {
+    fontSize: 14,
+    fontWeight: "500",
+    color: colors.foreground,
+  };
+
+  switch (variant) {
+    case "default":
+      return {
+        ...baseStyle,
+        color: colors.primaryForeground,
+      };
+    case "destructive":
+      return {
+        ...baseStyle,
+        color: "#ffffff",
+      };
+    case "outline":
+      return baseStyle;
+    case "secondary":
+      return {
+        ...baseStyle,
+        color: colors.secondaryForeground,
+      };
+    case "ghost":
+      return baseStyle;
+    case "link":
+      return {
+        ...baseStyle,
+        color: colors.primary,
+        textDecorationLine: "underline",
+        textDecorationStyle: "solid",
+        ...platformStyle<ViewStyle>({
+          web: {
+            // hover:underline handled by web
+          },
+        }),
+      };
+    default:
+      return baseStyle;
+  }
+}
+
+export interface ButtonProps extends Omit<PressableProps, "style"> {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  style?: ViewStyle;
+}
+
+function Button({
+  variant = "default",
+  size = "default",
+  style,
+  disabled,
+  ...props
+}: ButtonProps) {
+  const { colors } = useThemeColors();
+  const buttonStyle = getButtonStyles({ variant, size, disabled, colors });
+  const textStyle = getButtonTextStyles(variant, colors);
+
   return (
-    <TextClassContext.Provider value={buttonTextVariants({ variant, size })}>
+    <TextStyleContext.Provider value={textStyle}>
       <Pressable
-        className={cn(
-          props.disabled && "opacity-50",
-          buttonVariants({ variant, size }),
-          className
-        )}
+        style={composeStyle(buttonStyle, style)}
         role="button"
+        disabled={disabled}
         {...props}
       />
-    </TextClassContext.Provider>
+    </TextStyleContext.Provider>
   );
 }
 
-export { Button, buttonTextVariants, buttonVariants };
-export type { ButtonProps };
+export { Button };

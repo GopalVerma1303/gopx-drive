@@ -1,7 +1,19 @@
+/**
+ * Dropdown Menu Component - Atomic Design System
+ * Dropdown menu with theme support
+ */
+
 import { Icon } from "@/components/ui/icon";
 import { NativeOnlyAnimatedView } from "@/components/ui/native-only-animated-view";
-import { TextClassContext } from "@/components/ui/text";
-import { cn } from "@/lib/utils";
+import { TextStyleContext } from "@/components/ui/text";
+import {
+  getRadius,
+  getShadow,
+  getSpacing,
+  platformStyle,
+} from "@/lib/theme/styles";
+import { useThemeColors } from "@/lib/theme/useTheme";
+import { composeStyle } from "@/lib/utils";
 import * as DropdownMenuPrimitive from "@rn-primitives/dropdown-menu";
 import {
   Check,
@@ -16,6 +28,7 @@ import {
   StyleSheet,
   Text,
   type TextProps,
+  type TextStyle,
   View,
   type ViewStyle,
 } from "react-native";
@@ -23,78 +36,108 @@ import { FadeIn } from "react-native-reanimated";
 import { FullWindowOverlay as RNFullWindowOverlay } from "react-native-screens";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
-
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
-
 const DropdownMenuGroup = DropdownMenuPrimitive.Group;
-
 const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
-
 const DropdownMenuSub = DropdownMenuPrimitive.Sub;
-
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
 function DropdownMenuSubTrigger({
-  className,
+  style,
   inset,
   children,
-  iconClassName,
+  iconStyle,
   ...props
 }: DropdownMenuPrimitive.SubTriggerProps &
   React.RefAttributes<DropdownMenuPrimitive.SubTriggerRef> & {
     children?: React.ReactNode;
-    iconClassName?: string;
+    iconStyle?: ViewStyle;
     inset?: boolean;
+    style?: ViewStyle;
   }) {
+  const { colors } = useThemeColors();
   const { open } = DropdownMenuPrimitive.useSubContext();
   const icon =
     Platform.OS === "web" ? ChevronRight : open ? ChevronUp : ChevronDown;
+
+  const triggerStyle: ViewStyle = {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: getRadius("sm"),
+    paddingHorizontal: getSpacing(2),
+    paddingVertical: getSpacing(2),
+    backgroundColor: open ? colors.accent : "transparent",
+    ...platformStyle<ViewStyle>({
+      web: {
+        paddingVertical: getSpacing(1.5),
+        // focus:bg-accent, cursor-default, outline-none handled by web
+      },
+    }),
+    ...(inset && { paddingLeft: getSpacing(8) }),
+  };
+
+  const textStyle: TextStyle = {
+    fontSize: 14,
+    color: open ? colors.accentForeground : colors.foreground,
+    ...platformStyle<TextStyle>({
+      web: {
+        // select-none handled by web
+      },
+    }),
+  };
+
+  const iconContainerStyle: ViewStyle = {
+    marginLeft: "auto",
+    width: 16,
+    height: 16,
+    flexShrink: 0,
+  };
+
   return (
-    <TextClassContext.Provider
-      value={cn(
-        "text-sm select-none group-active:text-accent-foreground",
-        open && "text-accent-foreground"
-      )}
-    >
+    <TextStyleContext.Provider value={textStyle}>
       <DropdownMenuPrimitive.SubTrigger
-        className={cn(
-          "active:bg-accent group flex flex-row items-center rounded-sm px-2 py-2 sm:py-1.5",
-          Platform.select({
-            web: "focus:bg-accent focus:text-accent-foreground cursor-default outline-none [&_svg]:pointer-events-none",
-          }),
-          open && "bg-accent",
-          inset && "pl-8"
-        )}
+        style={composeStyle(triggerStyle, style)}
         {...props}
       >
         <>{children}</>
-        <Icon
-          as={icon}
-          className={cn(
-            "text-foreground ml-auto size-4 shrink-0",
-            iconClassName
-          )}
-        />
+        <View style={composeStyle(iconContainerStyle, iconStyle)}>
+          <Icon as={icon} size={16} color={colors.foreground} />
+        </View>
       </DropdownMenuPrimitive.SubTrigger>
-    </TextClassContext.Provider>
+    </TextStyleContext.Provider>
   );
 }
 
 function DropdownMenuSubContent({
-  className,
+  style,
   ...props
 }: DropdownMenuPrimitive.SubContentProps &
-  React.RefAttributes<DropdownMenuPrimitive.SubContentRef>) {
+  React.RefAttributes<DropdownMenuPrimitive.SubContentRef> & {
+    style?: ViewStyle;
+  }) {
+  const { colors } = useThemeColors();
+
+  const contentStyle: ViewStyle = {
+    backgroundColor: colors.popover,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
+    borderRadius: getRadius("md"),
+    padding: getSpacing(1),
+    ...getShadow("lg"),
+    ...platformStyle<ViewStyle>({
+      web: {
+        zIndex: 50,
+        minWidth: 128, // min-w-[8rem]
+        // animate-in animations handled by animations
+      },
+    }),
+  };
+
   return (
     <NativeOnlyAnimatedView entering={FadeIn}>
       <DropdownMenuPrimitive.SubContent
-        className={cn(
-          "bg-popover border-border overflow-hidden rounded-md border p-1 shadow-lg shadow-black/5",
-          Platform.select({
-            web: "animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 fade-in-0 data-[state=closed]:zoom-out-95 zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-context-menu-content-transform-origin) z-50 min-w-[8rem]",
-          }),
-          className
-        )}
+        style={composeStyle(contentStyle, style)}
         {...props}
       />
     </NativeOnlyAnimatedView>
@@ -105,49 +148,58 @@ const FullWindowOverlay =
   Platform.OS === "ios" ? RNFullWindowOverlay : React.Fragment;
 
 function DropdownMenuContent({
-  className,
-  overlayClassName,
+  style,
   overlayStyle,
   portalHost,
   ...props
 }: DropdownMenuPrimitive.ContentProps &
   React.RefAttributes<DropdownMenuPrimitive.ContentRef> & {
     overlayStyle?: StyleProp<ViewStyle>;
-    overlayClassName?: string;
     portalHost?: string;
   }) {
+  const { colors } = useThemeColors();
+
+  const contentStyle: ViewStyle = {
+    backgroundColor: colors.popover,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minWidth: 128, // min-w-[8rem]
+    overflow: "hidden",
+    borderRadius: getRadius("md"),
+    padding: getSpacing(1),
+    ...getShadow("lg"),
+    ...platformStyle<ViewStyle>({
+      web: {
+        zIndex: 50,
+        // animate-in animations handled by animations
+      },
+    }),
+  };
+
+  const textStyle: TextStyle = {
+    color: colors.popoverForeground,
+  };
+
   return (
     <DropdownMenuPrimitive.Portal hostName={portalHost}>
       <FullWindowOverlay>
         <DropdownMenuPrimitive.Overlay
-          style={Platform.select({
-            web: overlayStyle ?? undefined,
-            native: overlayStyle
+          style={
+            overlayStyle
               ? StyleSheet.flatten([
                   StyleSheet.absoluteFill,
                   overlayStyle as typeof StyleSheet.absoluteFill,
                 ])
-              : StyleSheet.absoluteFill,
-          })}
-          className={overlayClassName}
+              : StyleSheet.absoluteFill
+          }
         >
           <NativeOnlyAnimatedView entering={FadeIn}>
-            <TextClassContext.Provider value="text-popover-foreground">
+            <TextStyleContext.Provider value={textStyle}>
               <DropdownMenuPrimitive.Content
-                className={cn(
-                  "bg-popover border-border min-w-[8rem] overflow-hidden rounded-md border p-1 shadow-lg shadow-black/5",
-                  Platform.select({
-                    web: cn(
-                      "animate-in fade-in-0 zoom-in-95 max-h-(--radix-context-menu-content-available-height) origin-(--radix-context-menu-content-transform-origin) z-50 cursor-default",
-                      props.side === "bottom" && "slide-in-from-top-2",
-                      props.side === "top" && "slide-in-from-bottom-2"
-                    ),
-                  }),
-                  className
-                )}
+                style={composeStyle(contentStyle, style)}
                 {...props}
               />
-            </TextClassContext.Provider>
+            </TextStyleContext.Provider>
           </NativeOnlyAnimatedView>
         </DropdownMenuPrimitive.Overlay>
       </FullWindowOverlay>
@@ -156,163 +208,271 @@ function DropdownMenuContent({
 }
 
 function DropdownMenuItem({
-  className,
+  style,
   inset,
   variant,
   ...props
 }: DropdownMenuPrimitive.ItemProps &
   React.RefAttributes<DropdownMenuPrimitive.ItemRef> & {
-    className?: string;
+    style?: ViewStyle;
     inset?: boolean;
     variant?: "default" | "destructive";
   }) {
+  const { colors } = useThemeColors();
+
+  const itemStyle: ViewStyle = {
+    position: "relative",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: getSpacing(2),
+    borderRadius: getRadius("sm"),
+    paddingHorizontal: getSpacing(2),
+    paddingVertical: getSpacing(2),
+    backgroundColor: "transparent",
+    ...platformStyle<ViewStyle>({
+      web: {
+        paddingVertical: getSpacing(1.5),
+        // focus:bg-accent, cursor-default, outline-none handled by web
+      },
+    }),
+    ...(variant === "destructive" && {
+      backgroundColor: "transparent",
+    }),
+    ...(inset && { paddingLeft: getSpacing(8) }),
+    ...(props.disabled && { opacity: 0.5 }),
+  };
+
+  const textStyle: TextStyle = {
+    fontSize: 14,
+    color:
+      variant === "destructive" ? colors.destructive : colors.popoverForeground,
+    ...platformStyle<TextStyle>({
+      web: {
+        // select-none handled by web
+      },
+    }),
+  };
+
   return (
-    <TextClassContext.Provider
-      value={cn(
-        "select-none text-sm text-popover-foreground group-active:text-popover-foreground",
-        variant === "destructive" &&
-          "text-destructive group-active:text-destructive"
-      )}
-    >
+    <TextStyleContext.Provider value={textStyle}>
       <DropdownMenuPrimitive.Item
-        className={cn(
-          "active:bg-accent group relative flex flex-row items-center gap-2 rounded-sm px-2 py-2 sm:py-1.5",
-          Platform.select({
-            web: cn(
-              "focus:bg-accent focus:text-accent-foreground cursor-default outline-none data-[disabled]:pointer-events-none",
-              variant === "destructive" &&
-                "focus:bg-destructive/10 dark:focus:bg-destructive/20"
-            ),
-          }),
-          variant === "destructive" &&
-            "active:bg-destructive/10 dark:active:bg-destructive/20",
-          props.disabled && "opacity-50",
-          inset && "pl-8",
-          className
-        )}
+        style={composeStyle(itemStyle, style)}
         {...props}
       />
-    </TextClassContext.Provider>
+    </TextStyleContext.Provider>
   );
 }
 
 function DropdownMenuCheckboxItem({
-  className,
+  style,
   children,
   ...props
 }: DropdownMenuPrimitive.CheckboxItemProps &
   React.RefAttributes<DropdownMenuPrimitive.CheckboxItemRef> & {
     children?: React.ReactNode;
+    style?: ViewStyle;
   }) {
+  const { colors } = useThemeColors();
+
+  const itemStyle: ViewStyle = {
+    position: "relative",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: getSpacing(2),
+    borderRadius: getRadius("sm"),
+    paddingVertical: getSpacing(2),
+    paddingLeft: getSpacing(8),
+    paddingRight: getSpacing(2),
+    ...platformStyle<ViewStyle>({
+      web: {
+        paddingVertical: getSpacing(1.5),
+        // focus:bg-accent, cursor-default, outline-none handled by web
+      },
+    }),
+    ...(props.disabled && { opacity: 0.5 }),
+  };
+
+  const textStyle: TextStyle = {
+    fontSize: 14,
+    color: colors.popoverForeground,
+    ...platformStyle<TextStyle>({
+      web: {
+        // select-none handled by web
+      },
+    }),
+  };
+
+  const indicatorStyle: ViewStyle = {
+    position: "absolute",
+    left: getSpacing(2),
+    flexDirection: "row",
+    height: 14,
+    width: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  };
+
   return (
-    <TextClassContext.Provider value="text-sm text-popover-foreground select-none group-active:text-accent-foreground">
+    <TextStyleContext.Provider value={textStyle}>
       <DropdownMenuPrimitive.CheckboxItem
-        className={cn(
-          "active:bg-accent group relative flex flex-row items-center gap-2 rounded-sm py-2 pl-8 pr-2 sm:py-1.5",
-          Platform.select({
-            web: "focus:bg-accent focus:text-accent-foreground cursor-default outline-none data-[disabled]:pointer-events-none",
-          }),
-          props.disabled && "opacity-50",
-          className
-        )}
+        style={composeStyle(itemStyle, style)}
         {...props}
       >
-        <View className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+        <View style={indicatorStyle}>
           <DropdownMenuPrimitive.ItemIndicator>
-            <Icon
-              as={Check}
-              className={cn(
-                "text-foreground size-4",
-                Platform.select({ web: "pointer-events-none" })
-              )}
-            />
+            <Icon as={Check} size={16} color={colors.foreground} />
           </DropdownMenuPrimitive.ItemIndicator>
         </View>
         <>{children}</>
       </DropdownMenuPrimitive.CheckboxItem>
-    </TextClassContext.Provider>
+    </TextStyleContext.Provider>
   );
 }
 
 function DropdownMenuRadioItem({
-  className,
+  style,
   children,
   ...props
 }: DropdownMenuPrimitive.RadioItemProps &
   React.RefAttributes<DropdownMenuPrimitive.RadioItemRef> & {
     children?: React.ReactNode;
+    style?: ViewStyle;
   }) {
+  const { colors } = useThemeColors();
+
+  const itemStyle: ViewStyle = {
+    position: "relative",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: getSpacing(2),
+    borderRadius: getRadius("sm"),
+    paddingVertical: getSpacing(2),
+    paddingLeft: getSpacing(8),
+    paddingRight: getSpacing(2),
+    ...platformStyle<ViewStyle>({
+      web: {
+        paddingVertical: getSpacing(1.5),
+        // focus:bg-accent, cursor-default, outline-none handled by web
+      },
+    }),
+    ...(props.disabled && { opacity: 0.5 }),
+  };
+
+  const textStyle: TextStyle = {
+    fontSize: 14,
+    color: colors.popoverForeground,
+    ...platformStyle<TextStyle>({
+      web: {
+        // select-none handled by web
+      },
+    }),
+  };
+
+  const indicatorStyle: ViewStyle = {
+    position: "absolute",
+    left: getSpacing(2),
+    flexDirection: "row",
+    height: 14,
+    width: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  };
+
+  const dotStyle: ViewStyle = {
+    backgroundColor: colors.foreground,
+    height: 8,
+    width: 8,
+    borderRadius: 9999,
+  };
+
   return (
-    <TextClassContext.Provider value="text-sm text-popover-foreground select-none group-active:text-accent-foreground">
+    <TextStyleContext.Provider value={textStyle}>
       <DropdownMenuPrimitive.RadioItem
-        className={cn(
-          "active:bg-accent group relative flex flex-row items-center gap-2 rounded-sm py-2 pl-8 pr-2 sm:py-1.5",
-          Platform.select({
-            web: "focus:bg-accent focus:text-accent-foreground cursor-default outline-none data-[disabled]:pointer-events-none",
-          }),
-          props.disabled && "opacity-50",
-          className
-        )}
+        style={composeStyle(itemStyle, style)}
         {...props}
       >
-        <View className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+        <View style={indicatorStyle}>
           <DropdownMenuPrimitive.ItemIndicator>
-            <View className="bg-foreground h-2 w-2 rounded-full" />
+            <View style={dotStyle} />
           </DropdownMenuPrimitive.ItemIndicator>
         </View>
         <>{children}</>
       </DropdownMenuPrimitive.RadioItem>
-    </TextClassContext.Provider>
+    </TextStyleContext.Provider>
   );
 }
 
 function DropdownMenuLabel({
-  className,
+  style,
   inset,
   ...props
 }: DropdownMenuPrimitive.LabelProps &
   React.RefAttributes<DropdownMenuPrimitive.LabelRef> & {
-    className?: string;
+    style?: TextStyle;
     inset?: boolean;
   }) {
+  const { colors } = useThemeColors();
+
+  const labelStyle: TextStyle = {
+    color: colors.foreground,
+    paddingHorizontal: getSpacing(2),
+    paddingVertical: getSpacing(2),
+    fontSize: 14,
+    fontWeight: "500",
+    ...platformStyle<TextStyle>({
+      web: {
+        paddingVertical: getSpacing(1.5),
+      },
+    }),
+    ...(inset && { paddingLeft: getSpacing(8) }),
+  };
+
   return (
     <DropdownMenuPrimitive.Label
-      className={cn(
-        "text-foreground px-2 py-2 text-sm font-medium sm:py-1.5",
-        inset && "pl-8",
-        className
-      )}
+      style={composeStyle(labelStyle, style)}
       {...props}
     />
   );
 }
 
 function DropdownMenuSeparator({
-  className,
+  style,
   ...props
 }: DropdownMenuPrimitive.SeparatorProps &
-  React.RefAttributes<DropdownMenuPrimitive.SeparatorRef>) {
+  React.RefAttributes<DropdownMenuPrimitive.SeparatorRef> & {
+    style?: ViewStyle;
+  }) {
+  const { colors } = useThemeColors();
+
+  const separatorStyle: ViewStyle = {
+    backgroundColor: colors.border,
+    marginHorizontal: -getSpacing(1),
+    marginVertical: getSpacing(1),
+    height: 1,
+  };
+
   return (
     <DropdownMenuPrimitive.Separator
-      className={cn("bg-border -mx-1 my-1 h-px", className)}
+      style={composeStyle(separatorStyle, style)}
       {...props}
     />
   );
 }
 
 function DropdownMenuShortcut({
-  className,
+  style,
   ...props
-}: TextProps & React.RefAttributes<Text>) {
-  return (
-    <Text
-      className={cn(
-        "text-muted-foreground ml-auto text-xs tracking-widest",
-        className
-      )}
-      {...props}
-    />
-  );
+}: TextProps & React.RefAttributes<Text> & { style?: TextStyle }) {
+  const { colors } = useThemeColors();
+
+  const shortcutStyle: TextStyle = {
+    color: colors.mutedForeground,
+    marginLeft: "auto",
+    fontSize: 12,
+    letterSpacing: 4,
+  };
+
+  return <Text style={composeStyle(shortcutStyle, style)} {...props} />;
 }
 
 export {

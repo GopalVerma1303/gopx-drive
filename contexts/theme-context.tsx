@@ -1,7 +1,6 @@
 "use client";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useColorScheme as useNativeWindColorScheme } from "nativewind";
 import {
   createContext,
   useContext,
@@ -28,7 +27,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("system");
   const [isLoaded, setIsLoaded] = useState(false);
   const systemColorScheme = useRNColorScheme();
-  const { setColorScheme } = useNativeWindColorScheme();
 
   const resolvedTheme =
     theme === "system" ? (systemColorScheme ?? "light") : theme;
@@ -54,13 +52,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     };
     loadTheme();
   }, []);
-
-  // Apply theme to NativeWind whenever it changes
-  useEffect(() => {
-    if (isLoaded) {
-      setColorScheme(resolvedTheme);
-    }
-  }, [resolvedTheme, isLoaded, setColorScheme]);
 
   const setTheme = async (newTheme: Theme) => {
     setThemeState(newTheme);

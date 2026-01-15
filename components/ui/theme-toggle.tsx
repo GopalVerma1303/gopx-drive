@@ -1,43 +1,74 @@
+/**
+ * Theme Toggle Component
+ * Toggle between light and dark themes
+ */
+
 "use client";
 
 import { Text } from "@/components/ui/text";
 import { useTheme } from "@/contexts/theme-context";
+import { useThemeColors } from "@/lib/theme/useTheme";
+import { getRadius, getSpacing } from "@/lib/theme/styles";
+import { composeStyle } from "@/lib/utils";
 import { Moon, Sun } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { Pressable, View, type ViewStyle } from "react-native";
+import * as React from "react";
 
-interface ThemeToggleProps {
+export interface ThemeToggleProps {
   size?: number;
   showLabel?: boolean;
-  className?: string;
+  style?: ViewStyle;
 }
 
 export function ThemeToggle({
   size = 22,
   showLabel = false,
-  className,
+  style,
 }: ThemeToggleProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
+  const { colors } = useThemeColors();
   const isDark = resolvedTheme === "dark";
 
-  // Define colors based on theme - these match the CSS variables in globals.css
-  const iconColor = isDark ? "hsl(210, 40%, 98%)" : "hsl(222.2, 84%, 4.9%)";
+  const containerStyle: ViewStyle = {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: getSpacing(2),
+    borderRadius: getRadius("lg"),
+  };
+
+  const iconContainerStyle: ViewStyle = {
+    position: "relative",
+    width: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  };
+
+  const textStyle: ViewStyle = {
+    marginLeft: getSpacing(2),
+    color: colors.foreground,
+  };
 
   return (
     <Pressable
       onPress={toggleTheme}
-      className={`flex-row items-center p-2 rounded-lg active:opacity-70 ${className}`}
+      style={({ pressed }) =>
+        composeStyle(
+          containerStyle,
+          pressed && { opacity: 0.7 },
+          style
+        )
+      }
     >
-      <View className="relative w-6 h-6 items-center justify-center">
+      <View style={iconContainerStyle}>
         {isDark ? (
-          <Moon size={size} color={iconColor} />
+          <Moon size={size} color={colors.foreground} />
         ) : (
-          <Sun size={size} color={iconColor} />
+          <Sun size={size} color={colors.foreground} />
         )}
       </View>
       {showLabel && (
-        <Text className="ml-2 text-foreground">
-          {isDark ? "Dark" : "Light"}
-        </Text>
+        <Text style={textStyle}>{isDark ? "Dark" : "Light"}</Text>
       )}
     </Pressable>
   );

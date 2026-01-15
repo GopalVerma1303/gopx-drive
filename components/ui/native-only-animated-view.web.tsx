@@ -1,30 +1,35 @@
-import { cn } from '@/lib/utils';
-import type { ViewProps } from 'react-native';
-import { View } from 'react-native';
+/**
+ * Web implementation of NativeOnlyAnimatedView
+ * On web, we use CSS animations instead of react-native-reanimated
+ */
+
+import { composeStyle } from "@/lib/utils";
+import type { ViewProps, ViewStyle } from "react-native";
+import { View } from "react-native";
+import * as React from "react";
 
 type NativeOnlyAnimatedViewProps = ViewProps & {
   entering?: unknown;
   exiting?: unknown;
-  className?: string;
+  style?: ViewStyle;
   children?: React.ReactNode;
 };
 
 /**
  * Web implementation of NativeOnlyAnimatedView.
- * On web, we use CSS animations instead of react-native-reanimated,
- * so this is just a regular View.
+ * On web, animations are handled by CSS, so this is just a regular View.
  */
 export function NativeOnlyAnimatedView({
-  className,
+  style,
   entering,
   exiting,
   children,
   ...props
 }: NativeOnlyAnimatedViewProps) {
-  // On web, animations are handled by CSS/Tailwind classes
+  // On web, animations are handled by CSS
   // so we just render a regular View
   return (
-    <View className={cn(className)} {...props}>
+    <View style={composeStyle(style)} {...props}>
       {children}
     </View>
   );

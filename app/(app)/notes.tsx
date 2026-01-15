@@ -8,8 +8,9 @@ import { useAuth } from "@/contexts/auth-context";
 import { stripMarkdown } from "@/lib/markdown-utils";
 import { deleteNote, listNotes } from "@/lib/notes";
 import type { Note } from "@/lib/supabase";
-import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import { getRadius, getSpacing } from "@/lib/theme/styles";
+import { composeStyle } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
@@ -91,8 +92,10 @@ export default function NotesScreen() {
 
   return (
     <View
-      className="flex-1 w-full mx-auto"
-      style={{ backgroundColor: colors.background }}
+      style={composeStyle(
+        { flex: 1, width: "100%", alignSelf: "center" },
+        { backgroundColor: colors.background }
+      )}
     >
       <Stack.Screen
         options={{
@@ -100,35 +103,85 @@ export default function NotesScreen() {
         }}
       />
       <NotesHeader onSignOut={handleSignOut} />
-      <View className="w-full h-full max-w-2xl mx-auto">
+      <View
+        style={{
+          width: "100%",
+          height: "100%",
+          maxWidth: 672, // max-w-2xl
+          alignSelf: "center",
+        }}
+      >
         {/* Search Container */}
-        <View className="flex-row items-center mx-4 my-3 px-4 rounded-2xl h-14 border border-border bg-muted">
-          <Search
-            className="text-muted border-border mr-2"
-            color={THEME.light.mutedForeground}
-            size={20}
-          />
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginHorizontal: getSpacing(4),
+            marginVertical: getSpacing(3),
+            paddingHorizontal: getSpacing(4),
+            borderRadius: getRadius("2xl"),
+            height: 56,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: colors.muted,
+          }}
+        >
+          <Search color={colors.mutedForeground} size={20} />
           <Input
-            className="flex-1 h-full border-0 bg-transparent px-2 shadow-none"
+            style={{
+              flex: 1,
+              height: "100%",
+              borderWidth: 0,
+              backgroundColor: "transparent",
+              paddingHorizontal: getSpacing(2),
+            }}
             placeholder="Search notes..."
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholderTextColor="muted-foreground"
+            placeholderTextColor={colors.mutedForeground}
           />
         </View>
 
         {isLoading ? (
-          <View className="flex-1 justify-center items-center">
-            <ActivityIndicator size="large" color="foreground" />
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <ActivityIndicator size="large" color={colors.foreground} />
           </View>
         ) : (
-          <ScrollView className="flex-1" contentContainerClassName="p-4">
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: getSpacing(4) }}
+          >
             {filteredNotes.length === 0 ? (
-              <View className="flex-1 justify-center items-center pt-24">
-                <Text className="text-xl font-semibold text-muted-foreground mb-2">
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  paddingTop: getSpacing(24),
+                }}
+              >
+                <Text
+                  variant="large"
+                  style={{
+                    color: colors.mutedForeground,
+                    marginBottom: getSpacing(2),
+                  }}
+                >
                   {searchQuery ? "No notes found" : "No notes yet"}
                 </Text>
-                <Text className="text-sm text-muted-foreground text-center">
+                <Text
+                  variant="small"
+                  style={{
+                    color: colors.mutedForeground,
+                    textAlign: "center",
+                  }}
+                >
                   {searchQuery
                     ? "Try a different search"
                     : "Tap the + button to create your first note"}
@@ -156,71 +209,77 @@ export default function NotesScreen() {
       {/* Simple Delete Confirmation Dialog */}
       {Platform.OS === "web" && deleteDialogOpen && (
         <View
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           style={{
-            position: "fixed" as any,
+            position: "absolute",
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
             zIndex: 50,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
             backgroundColor: "rgba(0, 0, 0, 0.5)",
+            padding: getSpacing(4),
           }}
         >
           <Pressable
-            className="absolute inset-0"
-            style={{ position: "absolute" as any }}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+            }}
             onPress={() => setDeleteDialogOpen(false)}
           />
           <View
-            className="bg-background border-border w-full max-w-md rounded-lg border p-6 shadow-lg"
             style={{
               backgroundColor: colors.background,
+              borderWidth: 1,
               borderColor: colors.border,
-              borderRadius: 8,
-              padding: 24,
+              width: "100%",
+              maxWidth: 448, // max-w-md
+              borderRadius: getRadius("lg"),
+              padding: getSpacing(6),
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.1,
               shadowRadius: 8,
+              elevation: 5,
             }}
           >
             <Text
-              className="text-lg font-semibold mb-2"
+              variant="large"
               style={{
                 color: colors.foreground,
-                fontSize: 18,
-                fontWeight: "600",
-                marginBottom: 8,
+                marginBottom: getSpacing(2),
               }}
             >
               Delete Note
             </Text>
             <Text
-              className="text-sm mb-6"
+              variant="small"
               style={{
                 color: colors.mutedForeground,
-                fontSize: 14,
-                marginBottom: 24,
+                marginBottom: getSpacing(6),
               }}
             >
               Are you sure you want to delete "{noteToDelete?.title}"? This
               action cannot be undone.
             </Text>
             <View
-              className="flex-row justify-end gap-3"
               style={{
                 flexDirection: "row",
                 justifyContent: "flex-end",
-                gap: 12,
+                gap: getSpacing(3),
               }}
             >
               <Pressable
-                className="px-4 py-2 rounded-md border"
                 style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderRadius: 6,
+                  paddingHorizontal: getSpacing(4),
+                  paddingVertical: getSpacing(2),
+                  borderRadius: getRadius("md"),
                   borderWidth: 1,
                   borderColor: colors.border,
                   backgroundColor: colors.background,
@@ -230,12 +289,11 @@ export default function NotesScreen() {
                 <Text style={{ color: colors.foreground }}>Cancel</Text>
               </Pressable>
               <Pressable
-                className="px-4 py-2 rounded-md"
                 style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderRadius: 6,
-                  backgroundColor: "#ef4444",
+                  paddingHorizontal: getSpacing(4),
+                  paddingVertical: getSpacing(2),
+                  borderRadius: getRadius("md"),
+                  backgroundColor: colors.destructive,
                 }}
                 onPress={handleDeleteConfirm}
               >
@@ -264,6 +322,7 @@ function NoteCard({
   onDelete,
   onRightClickDelete,
 }: NoteCardProps) {
+  const { colors } = useThemeColors();
   const scale = new Animated.Value(1);
 
   const handlePressIn = () => {
@@ -314,20 +373,44 @@ function NoteCard({
       })}
     >
       <Animated.View style={{ transform: [{ scale }] }}>
-        <Card className="p-4 mb-3 rounded-2xl bg-muted border border-border">
+        <Card
+          style={{
+            padding: getSpacing(4),
+            marginBottom: getSpacing(3),
+            borderRadius: getRadius("2xl"),
+            backgroundColor: colors.muted,
+            borderWidth: 1,
+            borderColor: colors.border,
+          }}
+        >
           <Text
-            className="text-xl font-semibold text-foreground mb-2"
+            variant="h4"
+            style={{
+              color: colors.foreground,
+              marginBottom: getSpacing(2),
+            }}
             numberOfLines={1}
           >
             {note.title || "Untitled"}
           </Text>
           <Text
-            className="text-sm text-muted-foreground leading-5 mb-2"
+            variant="small"
+            style={{
+              color: colors.mutedForeground,
+              lineHeight: 20,
+              marginBottom: getSpacing(2),
+            }}
             numberOfLines={2}
           >
             {note.content ? stripMarkdown(note.content) : "No content"}
           </Text>
-          <Text className="text-xs text-muted-foreground/70">
+          <Text
+            variant="small"
+            style={{
+              fontSize: 12,
+              color: colors.mutedForeground + "B3", // 70% opacity
+            }}
+          >
             {formatDate(note.updated_at)}
           </Text>
         </Card>

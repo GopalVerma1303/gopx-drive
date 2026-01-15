@@ -5,6 +5,8 @@ import { MarkdownEditor } from "@/components/markdown-editor";
 import { useAuth } from "@/contexts/auth-context";
 import { createNote, getNoteById, updateNote } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import { getSpacing } from "@/lib/theme/styles";
+import { composeStyle } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -135,8 +137,14 @@ export default function NoteEditorScreen() {
   if (isLoading && !isNewNote) {
     return (
       <View
-        className="flex-1 items-center justify-center"
-        style={{ backgroundColor: colors.background }}
+        style={composeStyle(
+          {
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+          },
+          { backgroundColor: colors.background }
+        )}
       >
         <ActivityIndicator size="large" color={colors.foreground} />
       </View>
@@ -164,13 +172,25 @@ export default function NoteEditorScreen() {
         onRefresh={!isNewNote ? handleRefresh : undefined}
       />
       <ScrollView
-        className="flex-1 bg-background"
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+        }}
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive"
       >
-        <View className="flex-1 px-5 w-full max-w-2xl mx-auto bg-muted ">
+        <View
+          style={{
+            flex: 1,
+            paddingHorizontal: getSpacing(5),
+            width: "100%",
+            maxWidth: 672, // max-w-2xl
+            alignSelf: "center",
+            backgroundColor: colors.muted,
+          }}
+        >
           <MarkdownEditor
             value={content}
             onChangeText={setContent}
