@@ -153,7 +153,7 @@ export function MarkdownEditor({
           className="flex-1"
           contentContainerStyle={{
             paddingHorizontal: 12,
-            paddingTop: 3,
+            paddingTop: 20,
             paddingBottom: 16,
           }}
         >
@@ -174,7 +174,7 @@ export function MarkdownEditor({
           textAlignVertical="top"
           style={{
             paddingHorizontal: 12,
-            paddingTop: 11,
+            paddingTop: 30,
             paddingBottom: 16,
             fontFamily: "monospace",
             flex: 1,

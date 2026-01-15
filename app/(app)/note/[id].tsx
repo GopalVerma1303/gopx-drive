@@ -170,7 +170,7 @@ export default function NoteEditorScreen() {
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive"
       >
-        <View className="flex-1 p-5 pb-0 w-full max-w-2xl mx-auto bg-muted ">
+        <View className="flex-1 px-5 w-full max-w-2xl mx-auto bg-muted ">
           <MarkdownEditor
             value={content}
             onChangeText={setContent}
