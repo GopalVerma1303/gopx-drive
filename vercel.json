@@ -14,8 +14,8 @@
       "destination": "(auth)/login.html"
     },
     {
-      "source": "/note/:id",
-      "destination": "(app)/note/:id.html"
+      "source": "/note/([^/]+)",
+      "destination": "(app)/note/$1.html"
     },
     {
       "source": "/(.*)",
