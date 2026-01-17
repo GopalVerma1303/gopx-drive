@@ -314,11 +314,10 @@ export default function NotesScreen() {
                     paddingHorizontal: 16,
                     paddingVertical: 8,
                     borderRadius: 6,
-                    backgroundColor: "#ef4444",
                   }}
                   onPress={handleDeleteConfirm}
                 >
-                  <Text style={{ color: "#ffffff", fontWeight: "600" }}>
+                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>
                     Delete
                   </Text>
                 </Pressable>
@@ -409,11 +408,10 @@ export default function NotesScreen() {
                     paddingHorizontal: 16,
                     paddingVertical: 8,
                     borderRadius: 6,
-                    backgroundColor: "#ef4444",
                   }}
                   onPress={handleDeleteConfirm}
                 >
-                  <Text style={{ color: "#ffffff", fontWeight: "600" }}>
+                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>
                     Delete
                   </Text>
                 </Pressable>

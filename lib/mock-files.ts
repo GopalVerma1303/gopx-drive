@@ -38,6 +38,17 @@ let files: File[] = [
     created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     updated_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
   },
+  {
+    id: "file-4",
+    user_id: "demo-user",
+    name: "presentation.pptx",
+    file_path: "files/demo-user/presentation.pptx",
+    file_size: 3072000,
+    mime_type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    extension: "pptx",
+    created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+    updated_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+  }
 ];
 
 const generateId = () => `file-${Math.random().toString(36).slice(2, 10)}`;

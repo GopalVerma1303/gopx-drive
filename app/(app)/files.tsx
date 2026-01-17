@@ -1,6 +1,5 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
@@ -13,11 +12,12 @@ import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
 import { Stack } from "expo-router";
 import { Plus, Search } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
+  Dimensions,
   Linking,
   Modal,
   Platform,
@@ -35,6 +35,40 @@ export default function FilesScreen() {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [screenWidth, setScreenWidth] = useState(() => {
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined") {
+        return window.innerWidth;
+      }
+    }
+    return Dimensions.get("window").width;
+  });
+
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      const handleResize = () => {
+        if (typeof window !== "undefined") {
+          setScreenWidth(window.innerWidth);
+        }
+      };
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    } else {
+      const subscription = Dimensions.addEventListener("change", ({ window }) => {
+        setScreenWidth(window.width);
+      });
+      return () => subscription?.remove();
+    }
+  }, []);
+
+  // Calculate columns based on screen size
+  const getColumns = () => {
+    if (screenWidth >= 1024) return 4; // lg
+    if (screenWidth >= 768) return 3; // md
+    return 2; // sm
+  };
+
+  const columns = getColumns();
 
   const {
     data: files = [],
@@ -297,20 +331,53 @@ export default function FilesScreen() {
                 </Text>
               </View>
             ) : (
-              filteredFiles.map((file: FileRecord) => (
-                <View key={file.id} className="w-full max-w-2xl mx-auto">
-                  <FileCard
-                    file={file}
-                    onDelete={() => handleRightClickAction(file)}
-                    onRightClickAction={
-                      Platform.OS === "web"
-                        ? () => handleRightClickAction(file)
-                        : undefined
-                    }
-                    formatFileSize={formatFileSize}
-                  />
+              <View className="w-full max-w-2xl mx-auto">
+                <View
+                  style={{
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    justifyContent: "flex-start",
+                  }}
+                >
+                  {filteredFiles.map((file: FileRecord, index: number) => {
+                    // Calculate card width to fill available space evenly
+                    // max-w-2xl is 672px
+                    const maxWidth = 672; // max-w-2xl
+                    const containerPadding = 16; // p-4 = 16px
+                    const gap = 16; // gap between cards
+                    const availableWidth = Math.min(screenWidth, maxWidth) - containerPadding * 2;
+                    // Calculate width to fill evenly: (availableWidth - gaps) / columns
+                    const cardWidth = (availableWidth - gap * (columns - 1)) / columns;
+                    
+                    // Calculate margins for grid spacing
+                    const marginRight = index % columns < columns - 1 ? gap : 0;
+                    const marginBottom = 16;
+                    
+                    return (
+                      <View
+                        key={file.id}
+                        style={{
+                          width: cardWidth,
+                          marginRight,
+                          marginBottom,
+                        }}
+                      >
+                        <FileCard
+                          file={file}
+                          onDelete={() => handleRightClickAction(file)}
+                          onRightClickAction={
+                            Platform.OS === "web"
+                              ? () => handleRightClickAction(file)
+                              : undefined
+                          }
+                          formatFileSize={formatFileSize}
+                          cardWidth={cardWidth}
+                        />
+                      </View>
+                    );
+                  })}
                 </View>
-              ))
+              </View>
             )}
           </ScrollView>
         )}
@@ -374,15 +441,14 @@ export default function FilesScreen() {
                     paddingHorizontal: 16,
                     paddingVertical: 8,
                     borderRadius: 6,
-                    backgroundColor: "#22c55e",
                     flexDirection: "row",
                     alignItems: "center",
                     gap: 8,
                   }}
                   onPress={handleDownload}
                 >
-                  <Text style={{ color: "#ffffff", fontWeight: "600" }}>
-                    Download
+                  <Text style={{ color: "#3b82f6", fontWeight: "600" }}>
+                    Preview
                   </Text>
                 </Pressable>
                 <Pressable
@@ -391,14 +457,13 @@ export default function FilesScreen() {
                     paddingHorizontal: 16,
                     paddingVertical: 8,
                     borderRadius: 6,
-                    backgroundColor: "#ef4444",
                     flexDirection: "row",
                     alignItems: "center",
                     gap: 8,
                   }}
                   onPress={handleDeleteConfirm}
                 >
-                  <Text style={{ color: "#ffffff", fontWeight: "600" }}>
+                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>
                     Delete
                   </Text>
                 </Pressable>
@@ -470,12 +535,11 @@ export default function FilesScreen() {
                     paddingHorizontal: 16,
                     paddingVertical: 8,
                     borderRadius: 6,
-                    backgroundColor: "#22c55e",
                   }}
                   onPress={handleDownload}
                 >
-                  <Text style={{ color: "#ffffff", fontWeight: "600" }}>
-                    Download
+                  <Text style={{ color: "#3b82f6", fontWeight: "600" }}>
+                    Preview
                   </Text>
                 </Pressable>
                 <Pressable
@@ -483,11 +547,10 @@ export default function FilesScreen() {
                     paddingHorizontal: 16,
                     paddingVertical: 8,
                     borderRadius: 6,
-                    backgroundColor: "#ef4444",
                   }}
                   onPress={handleDeleteConfirm}
                 >
-                  <Text style={{ color: "#ffffff", fontWeight: "600" }}>
+                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>
                     Delete
                   </Text>
                 </Pressable>
@@ -505,6 +568,7 @@ interface FileCardProps {
   onDelete: () => void;
   onRightClickAction?: () => void;
   formatFileSize: (bytes: number) => string;
+  cardWidth: number;
 }
 
 function FileCard({
@@ -512,7 +576,9 @@ function FileCard({
   onDelete,
   onRightClickAction,
   formatFileSize,
+  cardWidth,
 }: FileCardProps) {
+  const { colors } = useThemeColors();
   const scale = new Animated.Value(1);
 
   const handlePressIn = () => {
@@ -552,6 +618,12 @@ function FileCard({
     return date.toLocaleDateString();
   };
 
+  // File icon dimensions - scale to fill card width
+  const padding = 8; // Padding around the file icon
+  const fileWidth = cardWidth - padding * 2; // Use full available width minus padding
+  const fileHeight = (fileWidth / 130) * 150; // Maintain aspect ratio (120:150)
+  const foldSize = Math.max(20, fileWidth * 0.2); // Size of the folded corner
+
   return (
     <Pressable
       onPressIn={handlePressIn}
@@ -562,26 +634,122 @@ function FileCard({
       })}
     >
       <Animated.View style={{ transform: [{ scale }] }}>
-        <Card className="p-4 mb-3 rounded-2xl bg-muted border border-border">
-          <Text
-            className="text-xl font-semibold text-foreground"
-            numberOfLines={1}
+        <View
+          style={{
+            marginBottom: 12,
+            alignItems: "center",
+          }}
+        >
+          {/* File Icon Shape */}
+          <View
+            style={{
+              width: fileWidth,
+              height: fileHeight,
+              backgroundColor: colors.muted,
+              borderWidth: 0,
+              borderColor: colors.border,
+              borderRadius: 4,
+              position: "relative",
+              overflow: "hidden",
+            }}
           >
-            {file.name}
-          </Text>
-          <View style={{ flexDirection: "row", gap: 12 }}>
-            <Text className="text-sm text-muted-foreground">
-              {file.extension.toUpperCase()}
+            {/* Folded Corner Inner Triangle (darker shade for depth) */}
+            <View
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                width: 0,
+                height: 0,
+                borderTopWidth: foldSize,
+                borderRightWidth: foldSize,
+                borderTopColor: colors.background,
+                borderRightColor: "transparent",
+                borderBottomWidth: 0,
+                borderLeftWidth: 0,
+                opacity: 1,
+                transform: [{ rotate: "90deg" }],
+              }}
+            />
+
+            {/* Content inside file icon */}
+            <View
+              style={{
+                flex: 1,
+                padding: 12,
+                paddingTop: 16,
+                paddingRight: foldSize + 4,
+                justifyContent: "space-between",
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "600",
+                    color: colors.foreground,
+                    marginBottom: 4,
+                  }}
+                  numberOfLines={2}
+                >
+                  {file.name.length > 15
+                    ? file.name.substring(0, 15) + "..."
+                    : file.name}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 10,
+                    color: colors.mutedForeground,
+                    marginTop: 4,
+                  }}
+                >
+                  {file.extension.toUpperCase()}
+                </Text>
+              </View>
+              <View style={{ marginTop: "auto" }}>
+                <Text
+                  style={{
+                    fontSize: 9,
+                    color: colors.mutedForeground,
+                    opacity: 0.7,
+                  }}
+                >
+                  {formatFileSize(file.file_size)}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* File info below icon */}
+          <View
+            style={{
+              marginTop: 8,
+              width: cardWidth,
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: "500",
+                color: colors.foreground,
+                textAlign: "center",
+              }}
+              numberOfLines={1}
+            >
+              {file.name}
             </Text>
-            <Text className="text-sm text-muted-foreground">•</Text>
-            <Text className="text-sm text-muted-foreground">
-              {formatFileSize(file.file_size)}
+            <Text
+              style={{
+                fontSize: 10,
+                color: colors.mutedForeground,
+                marginTop: 2,
+              }}
+            >
+              {formatDate(file.updated_at)}
             </Text>
           </View>
-          <Text className="text-xs text-muted-foreground/70">
-            {formatDate(file.updated_at)}
-          </Text>
-        </Card>
+        </View>
       </Animated.View>
     </Pressable>
   );
