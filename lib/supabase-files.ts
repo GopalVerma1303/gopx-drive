@@ -1,4 +1,6 @@
 import { supabase, type File } from "@/lib/supabase";
+import { decode } from "base64-arraybuffer";
+import * as FileSystem from "expo-file-system/legacy";
 import { Platform } from "react-native";
 
 export const listFiles = async (userId?: string): Promise<File[]> => {
@@ -54,35 +56,44 @@ export const uploadFile = async (input: {
   const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
   const filePath = `${user_id}/${fileName}`;
 
-  // Read file as blob
-  let fileBlob: Blob;
+  // Read file and prepare for upload
+  let fileData: Blob | ArrayBuffer;
   if (Platform.OS === "web") {
     // Web: expo-document-picker returns a File object or blob URI
     if (file.uri instanceof globalThis.File) {
-      fileBlob = file.uri;
+      fileData = file.uri;
     } else if (typeof file.uri === "string") {
       if (file.uri.startsWith("blob:") || file.uri.startsWith("http")) {
         // Fetch blob URL or HTTP URL
         const response = await fetch(file.uri);
-        fileBlob = await response.blob();
+        fileData = await response.blob();
       } else {
         // Try to read as file path
         const response = await fetch(file.uri);
-        fileBlob = await response.blob();
+        fileData = await response.blob();
       }
     } else {
       throw new Error("Invalid file URI for web platform");
     }
   } else {
-    // React Native: fetch the file URI (always a string)
-    const response = await fetch(file.uri as string);
-    fileBlob = await response.blob();
+    // React Native: Use expo-file-system to read local file as base64, then convert to ArrayBuffer
+    // Supabase Storage accepts ArrayBuffer directly in React Native (Blob doesn't work reliably)
+    try {
+      const base64 = await FileSystem.readAsStringAsync(file.uri as string, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      
+      // Convert base64 to ArrayBuffer (Supabase Storage accepts ArrayBuffer in React Native)
+      fileData = decode(base64);
+    } catch (error: any) {
+      throw new Error(`Failed to read file: ${error.message || "Unknown error"}`);
+    }
   }
 
   // Upload to Supabase Storage
   const { data: uploadData, error: uploadError } = await supabase.storage
     .from("files")
-    .upload(filePath, fileBlob, {
+    .upload(filePath, fileData, {
       contentType: file.type,
       upsert: false,
     });
