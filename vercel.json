@@ -17,6 +17,18 @@
       "destination": "/login.html"
     },
     {
+      "source": "/notes",
+      "destination": "/notes.html"
+    },
+    {
+      "source": "/files",
+      "destination": "/files.html"
+    },
+    {
+      "source": "/settings",
+      "destination": "/settings.html"
+    },
+    {
       "source": "/note/([^/]+)",
       "destination": "/note/$1.html"
     },
