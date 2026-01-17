@@ -86,13 +86,6 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
   const isMd = screenSize === "md";
   const isSm = screenSize === "sm";
 
-  // Debug: log pathname changes
-  useEffect(() => {
-    if (__DEV__) {
-      console.log("Navigation pathname:", pathname);
-    }
-  }, [pathname]);
-
   // No need to close on route change for md screens since sidebar is always visible
 
   const handleNavPress = (href: string) => {
@@ -110,6 +103,8 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
       alignItems: horizontal ? "center" : "stretch",
       justifyContent: horizontal ? "space-around" : "flex-start",
       ...(horizontal && { width: "100%" }),
+      backgroundColor: colors.background,
+      paddingVertical: 8,
     }}>
       {navItems.map((item) => {
         const Icon = item.icon;
@@ -144,6 +139,7 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
             key={item.href}
             onPress={() => handleNavPress(item.href)}
             style={({ pressed }) => ({
+              flex: horizontal ? 1 : undefined,
               flexDirection: horizontal ? "column" : "row",
               alignItems: "center",
               justifyContent: horizontal ? "center" : "flex-start",
@@ -152,7 +148,7 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
               borderRadius: 8,
               backgroundColor: pressed ? colors.accent : "transparent",
               marginHorizontal: iconOnly ? 0 : 8,
-              minWidth: horizontal ? 60 : undefined,
+              ...(horizontal && { width: "100%" }),
             })}
           >
             <Icon
@@ -193,7 +189,6 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
           borderTopWidth: 1,
           borderTopColor: colors.border,
           paddingBottom: insets.bottom,
-          paddingTop: 8,
           elevation: 10,
           zIndex: 1000,
         }}

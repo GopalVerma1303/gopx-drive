@@ -1,10 +1,11 @@
-import { useAuth } from "@/contexts/auth-context";
 import { Navigation } from "@/components/navigation";
+import { useAuth } from "@/contexts/auth-context";
 import { NavigationProvider, useNavigation } from "@/contexts/navigation-context";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import { useQueryClient } from "@tanstack/react-query";
 import { Redirect, Stack, usePathname } from "expo-router";
-import { ActivityIndicator, View, Dimensions, Platform } from "react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, AppState, AppStateStatus, Dimensions, Platform, View } from "react-native";
 
 function AppLayoutContent() {
   const { colors } = useThemeColors();
@@ -49,7 +50,7 @@ function AppLayoutContent() {
         {!isNoteDetail && <Navigation isOpen={isOpen} onClose={close} />}
         <View style={{ 
           flex: 1,
-          paddingBottom: 70, // Add padding for bottom bar on small screens
+          paddingBottom: isNoteDetail ? 0 : 70, // Add padding for bottom bar on small screens only when navbar is visible
         }}>
           <Stack
             screenOptions={{
@@ -64,10 +65,26 @@ function AppLayoutContent() {
     );
   }
 
-  // On medium and large screens: use flex row layout with sidebar
+  // On medium and large screens: use flex row layout with sidebar when navbar is visible
+  // When navbar is hidden, content should take full width
+  if (isNoteDetail) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: {
+              backgroundColor: colors.background,
+            },
+          }}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, flexDirection: "row", backgroundColor: colors.background }}>
-      {!isNoteDetail && <Navigation isOpen={isOpen} onClose={close} />}
+      <Navigation isOpen={isOpen} onClose={close} />
       <View style={{ flex: 1 }}>
         <Stack
           screenOptions={{
@@ -85,6 +102,33 @@ function AppLayoutContent() {
 export default function AppLayout() {
   const { user, isLoading } = useAuth();
   const { colors } = useThemeColors();
+  const queryClient = useQueryClient();
+  const appState = useRef(AppState.currentState);
+
+  useEffect(() => {
+    // Refetch queries when app comes to foreground
+    const subscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === "active"
+      ) {
+        // App has come to the foreground, refetch notes and files
+        queryClient.refetchQueries({ queryKey: ["notes"] });
+        queryClient.refetchQueries({ queryKey: ["files"] });
+      }
+      appState.current = nextAppState;
+    });
+
+    // Also refetch on initial mount (when app first opens)
+    if (user) {
+      queryClient.refetchQueries({ queryKey: ["notes"] });
+      queryClient.refetchQueries({ queryKey: ["files"] });
+    }
+
+    return () => {
+      subscription.remove();
+    };
+  }, [queryClient, user]);
 
   if (isLoading) {
     return (

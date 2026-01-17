@@ -4,7 +4,6 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
-import { useTheme } from "@/contexts/theme-context";
 import { stripMarkdown } from "@/lib/markdown-utils";
 import { deleteNote, listNotes } from "@/lib/notes";
 import type { Note } from "@/lib/supabase";
@@ -13,27 +12,26 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { LogOut, Moon, Plus, Search, Sun } from "lucide-react-native";
+import { Plus, Search } from "lucide-react-native";
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Modal,
-    Platform,
-    Pressable,
-    RefreshControl,
-    ScrollView,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function NotesScreen() {
-  const { signOut, user } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { colors } = useThemeColors();
-  const { resolvedTheme, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -45,6 +43,8 @@ export default function NotesScreen() {
   } = useQuery({
     queryKey: ["notes", user?.id],
     queryFn: () => listNotes(user?.id),
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -64,13 +64,6 @@ export default function NotesScreen() {
     },
   });
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
-    }
-  };
 
   const handleDeleteNote = (id: string, title: string) => {
     Alert.alert("Delete Note", `Are you sure you want to delete "${title}"?`, [
@@ -171,46 +164,26 @@ export default function NotesScreen() {
             >
               <Plus color={colors.foreground} size={22} strokeWidth={2.5} />
             </Pressable>
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                toggleTheme();
-              }}
-              style={{ padding: 8 }}
-            >
-              {resolvedTheme === "dark" ? (
-                <Sun color={colors.foreground} size={22} strokeWidth={2.5} />
-              ) : (
-                <Moon color={colors.foreground} size={22} strokeWidth={2.5} />
-              )}
-            </Pressable>
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                handleSignOut();
-              }}
-              style={{ padding: 8 }}
-            >
-              <LogOut color={colors.foreground} size={22} strokeWidth={2.5} />
-            </Pressable>
           </View>
         </View>
       </View>
-      <View className="w-full h-full max-w-2xl mx-auto">
+      <View className="w-full h-full">
         {/* Search Container */}
-        <View className="flex-row items-center mx-4 my-3 px-4 rounded-2xl h-14 border border-border bg-muted">
-          <Search
-            className="text-muted border-border mr-2"
-            color={THEME.light.mutedForeground}
-            size={20}
-          />
-          <Input
-            className="flex-1 h-full border-0 bg-transparent px-2 shadow-none"
-            placeholder="Search notes..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="muted-foreground"
-          />
+        <View className="w-full max-w-3xl mx-auto">
+          <View className="flex-row items-center mx-4 my-3 px-4 rounded-2xl h-14 border border-border bg-muted">
+            <Search
+              className="text-muted border-border mr-2"
+              color={THEME.light.mutedForeground}
+              size={20}
+            />
+            <Input
+              className="flex-1 h-full border-0 bg-transparent px-2 shadow-none"
+              placeholder="Search notes..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor="muted-foreground"
+            />
+          </View>
         </View>
 
         {isLoading ? (
@@ -232,7 +205,7 @@ export default function NotesScreen() {
             }
           >
             {filteredNotes.length === 0 ? (
-              <View className="flex-1 justify-center items-center pt-24">
+              <View className="w-full max-w-2xl mx-auto flex-1 justify-center items-center pt-24">
                 <Text className="text-xl font-semibold text-muted-foreground mb-2">
                   {searchQuery ? "No notes found" : "No notes yet"}
                 </Text>
@@ -244,17 +217,18 @@ export default function NotesScreen() {
               </View>
             ) : (
               filteredNotes.map((note) => (
-                <NoteCard
-                  key={note.id}
-                  note={note}
-                  onPress={() => router.push(`/(app)/note/${note.id}`)}
-                  onDelete={() => handleRightClickDelete(note.id, note.title)}
-                  onRightClickDelete={
-                    Platform.OS === "web"
-                      ? () => handleRightClickDelete(note.id, note.title)
-                      : undefined
-                  }
-                />
+                <View key={note.id} className="w-full max-w-2xl mx-auto">
+                  <NoteCard
+                    note={note}
+                    onPress={() => router.push(`/(app)/note/${note.id}`)}
+                    onDelete={() => handleRightClickDelete(note.id, note.title)}
+                    onRightClickDelete={
+                      Platform.OS === "web"
+                        ? () => handleRightClickDelete(note.id, note.title)
+                        : undefined
+                    }
+                  />
+                </View>
               ))
             )}
           </ScrollView>
