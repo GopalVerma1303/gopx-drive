@@ -12,7 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
 import { Stack } from "expo-router";
-import { Download, Plus, Search, Trash2 } from "lucide-react-native";
+import { Plus, Search } from "lucide-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -339,7 +339,7 @@ export default function FilesScreen() {
             <View
               className="bg-background border-border w-full max-w-md rounded-lg border p-6 shadow-lg"
               style={{
-                backgroundColor: colors.background,
+                backgroundColor: colors.muted,
                 borderColor: colors.border,
                 borderRadius: 8,
                 padding: 24,
@@ -381,7 +381,6 @@ export default function FilesScreen() {
                   }}
                   onPress={handleDownload}
                 >
-                  <Download color="#ffffff" size={18} />
                   <Text style={{ color: "#ffffff", fontWeight: "600" }}>
                     Download
                   </Text>
@@ -399,7 +398,6 @@ export default function FilesScreen() {
                   }}
                   onPress={handleDeleteConfirm}
                 >
-                  <Trash2 color="#ffffff" size={18} />
                   <Text style={{ color: "#ffffff", fontWeight: "600" }}>
                     Delete
                   </Text>
@@ -436,7 +434,7 @@ export default function FilesScreen() {
             />
             <View
               style={{
-                backgroundColor: colors.background,
+                backgroundColor: colors.muted,
                 borderColor: colors.border,
                 borderRadius: 8,
                 borderWidth: 1,
@@ -473,13 +471,9 @@ export default function FilesScreen() {
                     paddingVertical: 8,
                     borderRadius: 6,
                     backgroundColor: "#22c55e",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 8,
                   }}
                   onPress={handleDownload}
                 >
-                  <Download color="#ffffff" size={18} />
                   <Text style={{ color: "#ffffff", fontWeight: "600" }}>
                     Download
                   </Text>
@@ -490,13 +484,9 @@ export default function FilesScreen() {
                     paddingVertical: 8,
                     borderRadius: 6,
                     backgroundColor: "#ef4444",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 8,
                   }}
                   onPress={handleDeleteConfirm}
                 >
-                  <Trash2 color="#ffffff" size={18} />
                   <Text style={{ color: "#ffffff", fontWeight: "600" }}>
                     Delete
                   </Text>

@@ -258,7 +258,7 @@ export default function NotesScreen() {
             <View
               className="bg-background border-border w-full max-w-md rounded-lg border p-6 shadow-lg"
               style={{
-                backgroundColor: colors.background,
+                backgroundColor: colors.muted,
                 borderColor: colors.border,
                 borderRadius: 8,
                 padding: 24,
@@ -299,14 +299,10 @@ export default function NotesScreen() {
                 }}
               >
                 <Pressable
-                  className="px-4 py-2 rounded-md border"
+                  className="px-4 py-2"
                   style={{
                     paddingHorizontal: 16,
                     paddingVertical: 8,
-                    borderRadius: 6,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    backgroundColor: colors.background,
                   }}
                   onPress={() => setDeleteDialogOpen(false)}
                 >
@@ -358,7 +354,7 @@ export default function NotesScreen() {
             />
             <View
               style={{
-                backgroundColor: colors.background,
+                backgroundColor: colors.muted,
                 borderColor: colors.border,
                 borderRadius: 8,
                 borderWidth: 1,
@@ -403,10 +399,6 @@ export default function NotesScreen() {
                   style={{
                     paddingHorizontal: 16,
                     paddingVertical: 8,
-                    borderRadius: 6,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    backgroundColor: colors.background,
                   }}
                   onPress={() => setDeleteDialogOpen(false)}
                 >
