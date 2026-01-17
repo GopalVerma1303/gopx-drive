@@ -9,6 +9,16 @@
       "source": "/notes",
       "destination": "/",
       "permanent": false
+    },
+    {
+      "source": "/files",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/settings",
+      "destination": "/",
+      "permanent": false
     }
   ],
   "rewrites": [
