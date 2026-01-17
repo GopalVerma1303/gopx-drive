@@ -1,10 +1,10 @@
 "use client";
 
-import { NotesHeader } from "@/components/headers/notes-header";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
+import { useTheme } from "@/contexts/theme-context";
 import { stripMarkdown } from "@/lib/markdown-utils";
 import { deleteNote, listNotes } from "@/lib/notes";
 import type { Note } from "@/lib/supabase";
@@ -13,25 +13,28 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Search } from "lucide-react-native";
+import { LogOut, Moon, Plus, Search, Sun } from "lucide-react-native";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Modal,
-  Platform,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Modal,
+    Platform,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function NotesScreen() {
   const { signOut, user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { colors } = useThemeColors();
+  const { resolvedTheme, toggleTheme } = useTheme();
+  const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
 
   const {
@@ -123,7 +126,76 @@ export default function NotesScreen() {
           headerShown: false,
         }}
       />
-      <NotesHeader onSignOut={handleSignOut} />
+      <View
+        style={{
+          paddingTop: insets.top,
+          backgroundColor: colors.background,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            height: 56,
+            paddingHorizontal: 16,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "600",
+                color: colors.foreground,
+              }}
+            >
+              Notes
+            </Text>
+          </View>
+
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                router.push("/(app)/note/new");
+              }}
+              style={{ padding: 8 }}
+            >
+              <Plus color={colors.foreground} size={22} strokeWidth={2.5} />
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                toggleTheme();
+              }}
+              style={{ padding: 8 }}
+            >
+              {resolvedTheme === "dark" ? (
+                <Sun color={colors.foreground} size={22} strokeWidth={2.5} />
+              ) : (
+                <Moon color={colors.foreground} size={22} strokeWidth={2.5} />
+              )}
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                handleSignOut();
+              }}
+              style={{ padding: 8 }}
+            >
+              <LogOut color={colors.foreground} size={22} strokeWidth={2.5} />
+            </Pressable>
+          </View>
+        </View>
+      </View>
       <View className="w-full h-full max-w-2xl mx-auto">
         {/* Search Container */}
         <View className="flex-row items-center mx-4 my-3 px-4 rounded-2xl h-14 border border-border bg-muted">

@@ -29,7 +29,7 @@ export default function NoteEditorScreen() {
   const [content, setContent] = useState("");
   const [lastSavedTitle, setLastSavedTitle] = useState("");
   const [lastSavedContent, setLastSavedContent] = useState("");
-  const [isPreview, setIsPreview] = useState(false);
+  const [isPreview, setIsPreview] = useState(true);
 
   const {
     data: note,
