@@ -574,12 +574,12 @@ function FileCard({
       <Animated.View style={{ transform: [{ scale }] }}>
         <Card className="p-4 mb-3 rounded-2xl bg-muted border border-border">
           <Text
-            className="text-xl font-semibold text-foreground mb-2"
+            className="text-xl font-semibold text-foreground"
             numberOfLines={1}
           >
             {file.name}
           </Text>
-          <View style={{ flexDirection: "row", gap: 12, marginBottom: 8 }}>
+          <View style={{ flexDirection: "row", gap: 12 }}>
             <Text className="text-sm text-muted-foreground">
               {file.extension.toUpperCase()}
             </Text>

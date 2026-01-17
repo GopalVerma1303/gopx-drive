@@ -499,13 +499,13 @@ function NoteCard({
       <Animated.View style={{ transform: [{ scale }] }}>
         <Card className="p-4 mb-3 rounded-2xl bg-muted border border-border">
           <Text
-            className="text-xl font-semibold text-foreground mb-2"
+            className="text-xl font-semibold text-foreground"
             numberOfLines={1}
           >
             {note.title || "Untitled"}
           </Text>
           <Text
-            className="text-sm text-muted-foreground leading-5 mb-2"
+            className="text-sm text-muted-foreground leading-5"
             numberOfLines={2}
           >
             {note.content ? stripMarkdown(note.content) : "No content"}
