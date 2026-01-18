@@ -19,6 +19,11 @@
       "source": "/settings",
       "destination": "/",
       "permanent": false
+    },
+    {
+      "source": "/calendar",
+      "destination": "/",
+      "permanent": false
     }
   ],
   "rewrites": [
@@ -33,6 +38,10 @@
     {
       "source": "/files",
       "destination": "/files.html"
+    },
+    {
+      "source": "/calendar",
+      "destination": "/calendar.html"
     },
     {
       "source": "/settings",
