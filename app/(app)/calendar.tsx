@@ -23,6 +23,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -1784,225 +1785,242 @@ function EventModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View
+      <KeyboardAvoidingView
         style={{
           flex: 1,
-          backgroundColor: "rgba(0, 0, 0, 0.5)",
         }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "android" ? 0 : 0}
       >
-        <BlurView
-          intensity={20}
-          tint="dark"
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 16,
-          }}
-        >
-          <Pressable
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-            }}
-            onPress={onClose}
-          />
         <View
           style={{
-            backgroundColor: colors.muted,
-            borderColor: colors.border,
-            borderRadius: 8,
-            borderWidth: 1,
-            padding: 24,
-            width: "100%",
-            maxWidth: 400,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
-            elevation: 5,
+            flex: 1,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
           }}
         >
-          <Text
+          <BlurView
+            intensity={20}
+            tint="dark"
             style={{
-              color: colors.foreground,
-              fontSize: 20,
-              fontWeight: "600",
-              marginBottom: 20,
+              flex: 1,
+              padding: 16,
             }}
           >
-            {event ? "Edit Event" : "Create Event"}
-          </Text>
-
-          <View style={{ marginBottom: 16 }}>
-            <Text
+            <Pressable
               style={{
-                color: colors.foreground,
-                fontSize: 14,
-                fontWeight: "500",
-                marginBottom: 8,
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
               }}
-            >
-              Title
-            </Text>
-            <Input
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Event title"
-              style={{
-                backgroundColor: colors.background,
-                borderColor: colors.border,
-                color: colors.foreground,
-              }}
+              onPress={onClose}
             />
-          </View>
-
-          <View style={{ marginBottom: 56 }}>
-            <Text
-              style={{
-                color: colors.foreground,
-                fontSize: 14,
-                fontWeight: "500",
-                marginBottom: 8,
-              }}
-            >
-              Description
-            </Text>
-            <Input
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Event description"
-              multiline
-              numberOfLines={4}
-              style={{
-                backgroundColor: colors.background,
-                borderColor: colors.border,
-                color: colors.foreground,
-                minHeight: 80,
-                textAlignVertical: "top",
-              }}
-            />
-          </View>
-
-          <View style={{ marginBottom: 16 }}>
-            <Text
-              style={{
-                color: colors.foreground,
-                fontSize: 14,
-                fontWeight: "500",
-                marginBottom: 8,
-              }}
-            >
-              Date
-            </Text>
-            <Input
-              value={eventDate}
-              onChangeText={handleDateChange}
-              placeholder="YYYY-MM-DD"
-              style={{
-                backgroundColor: colors.background,
-                borderColor: dateError ? "#ef4444" : colors.border,
-                color: colors.foreground,
-              }}
-            />
-            {dateError ? (
-              <Text
-                style={{
-                  color: "#ef4444",
-                  fontSize: 12,
-                  marginTop: 4,
-                }}
-              >
-                {dateError}
-              </Text>
-            ) : null}
-          </View>
-
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                color: colors.foreground,
-                fontSize: 14,
-                fontWeight: "500",
-                marginBottom: 8,
-              }}
-            >
-              Time
-            </Text>
-            <Input
-              value={eventTime}
-              onChangeText={handleTimeChange}
-              placeholder="HH:mm AM/PM (e.g., 2:30 PM)"
-              style={{
-                backgroundColor: colors.background,
-                borderColor: timeError ? "#ef4444" : colors.border,
-                color: colors.foreground,
-              }}
-            />
-            {timeError ? (
-              <Text
-                style={{
-                  color: "#ef4444",
-                  fontSize: 12,
-                  marginTop: 4,
-                }}
-              >
-                {timeError}
-              </Text>
-            ) : null}
-          </View>
-
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              gap: 12,
+          <ScrollView
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              paddingVertical: 20,
             }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            {event && (
-              <Pressable
-                onPress={handleDelete}
+            <View
+              style={{
+                backgroundColor: colors.muted,
+                borderColor: colors.border,
+                borderRadius: 8,
+                borderWidth: 1,
+                padding: 24,
+                width: "100%",
+                maxWidth: 400,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+                elevation: 5,
+              }}
+            >
+              <Text
                 style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 6,
-                  backgroundColor: "transparent",
+                  color: colors.foreground,
+                  fontSize: 20,
+                  fontWeight: "600",
+                  marginBottom: 20,
                 }}
               >
-                <Text style={{ color: "#ef4444", fontWeight: "600" }}>
-                  Delete
+                {event ? "Edit Event" : "Create Event"}
+              </Text>
+
+              <View style={{ marginBottom: 16 }}>
+                <Text
+                  style={{
+                    color: colors.foreground,
+                    fontSize: 14,
+                    fontWeight: "500",
+                    marginBottom: 8,
+                  }}
+                >
+                  Title
                 </Text>
-              </Pressable>
-            )}
-            <View style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end", gap: 12 }}>
-              <Pressable
-                onPress={onClose}
+                <Input
+                  value={title}
+                  onChangeText={setTitle}
+                  placeholder="Event title"
+                  style={{
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                    color: colors.foreground,
+                  }}
+                />
+              </View>
+
+              <View style={{ marginBottom: 16 }}>
+                <Text
+                  style={{
+                    color: colors.foreground,
+                    fontSize: 14,
+                    fontWeight: "500",
+                    marginBottom: 8,
+                  }}
+                >
+                  Description
+                </Text>
+                <Input
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="Event description"
+                  multiline
+                  numberOfLines={4}
+                  style={{
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                    color: colors.foreground,
+                    minHeight: 80,
+                    textAlignVertical: "top",
+                  }}
+                />
+              </View>
+
+              <View style={{ marginBottom: 16, marginTop: 40 }}>
+                <Text
+                  style={{
+                    color: colors.foreground,
+                    fontSize: 14,
+                    fontWeight: "500",
+                    marginBottom: 8,
+                  }}
+                >
+                  Date
+                </Text>
+                <Input
+                  value={eventDate}
+                  onChangeText={handleDateChange}
+                  placeholder="YYYY-MM-DD"
+                  style={{
+                    backgroundColor: colors.background,
+                    borderColor: dateError ? "#ef4444" : colors.border,
+                    color: colors.foreground,
+                  }}
+                />
+                {dateError ? (
+                  <Text
+                    style={{
+                      color: "#ef4444",
+                      fontSize: 12,
+                      marginTop: 4,
+                    }}
+                  >
+                    {dateError}
+                  </Text>
+                ) : null}
+              </View>
+
+              <View style={{ marginBottom: 24 }}>
+                <Text
+                  style={{
+                    color: colors.foreground,
+                    fontSize: 14,
+                    fontWeight: "500",
+                    marginBottom: 8,
+                  }}
+                >
+                  Time
+                </Text>
+                <Input
+                  value={eventTime}
+                  onChangeText={handleTimeChange}
+                  placeholder="HH:mm AM/PM (e.g., 2:30 PM)"
+                  style={{
+                    backgroundColor: colors.background,
+                    borderColor: timeError ? "#ef4444" : colors.border,
+                    color: colors.foreground,
+                  }}
+                />
+                {timeError ? (
+                  <Text
+                    style={{
+                      color: "#ef4444",
+                      fontSize: 12,
+                      marginTop: 4,
+                    }}
+                  >
+                    {timeError}
+                  </Text>
+                ) : null}
+              </View>
+
+              <View
                 style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 6,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  gap: 12,
                 }}
               >
-                <Text style={{ color: colors.foreground }}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                onPress={handleSave}
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 6,
-                }}
-              >
-                <Text style={{ color: "#3b82f6", fontWeight: "600" }}>Save</Text>
-              </Pressable>
+                {event && (
+                  <Pressable
+                    onPress={handleDelete}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderRadius: 6,
+                      backgroundColor: "transparent",
+                    }}
+                  >
+                    <Text style={{ color: "#ef4444", fontWeight: "600" }}>
+                      Delete
+                    </Text>
+                  </Pressable>
+                )}
+                <View style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end", gap: 12 }}>
+                  <Pressable
+                    onPress={onClose}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderRadius: 6,
+                    }}
+                  >
+                    <Text style={{ color: colors.foreground }}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleSave}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderRadius: 6,
+                    }}
+                  >
+                    <Text style={{ color: "#3b82f6", fontWeight: "600" }}>Save</Text>
+                  </Pressable>
+                </View>
+              </View>
             </View>
-          </View>
+          </ScrollView>
+        </BlurView>
         </View>
-      </BlurView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
       )}
 
