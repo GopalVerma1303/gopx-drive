@@ -10,8 +10,8 @@ import type { Note } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import * as Haptics from "expo-haptics";
 import { BlurView } from "expo-blur";
+import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import { Plus, Search } from "lucide-react-native";
 import { useState } from "react";
@@ -250,7 +250,6 @@ export default function NotesScreen() {
               zIndex: 50,
               backgroundColor: "rgba(0, 0, 0, 0.5)",
               backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
             }}
           >
             <Pressable
@@ -335,26 +334,32 @@ export default function NotesScreen() {
           animationType="fade"
           onRequestClose={() => setDeleteDialogOpen(false)}
         >
-          <BlurView
-            intensity={20}
-            tint="dark"
+          <View
             style={{
               flex: 1,
-              justifyContent: "center",
-              alignItems: "center",
-              padding: 16,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
             }}
           >
-            <Pressable
+            <BlurView
+              intensity={20}
+              tint="dark"
               style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                padding: 16,
               }}
-              onPress={() => setDeleteDialogOpen(false)}
-            />
+            >
+              <Pressable
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+                onPress={() => setDeleteDialogOpen(false)}
+              />
             <View
               style={{
                 backgroundColor: colors.muted,
@@ -422,6 +427,7 @@ export default function NotesScreen() {
               </View>
             </View>
           </BlurView>
+          </View>
         </Modal>
       )}
     </View>

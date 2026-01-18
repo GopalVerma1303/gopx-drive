@@ -36,3 +36,13 @@ export interface File {
   created_at: string;
   updated_at: string;
 }
+
+export interface Event {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  event_date: string;
+  created_at: string;
+  updated_at: string;
+}

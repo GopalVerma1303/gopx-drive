@@ -8,9 +8,9 @@ import type { File as FileRecord } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BlurView } from "expo-blur";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
-import { BlurView } from "expo-blur";
 import { Stack } from "expo-router";
 import { Plus, Search } from "lucide-react-native";
 import { useEffect, useState } from "react";
@@ -398,7 +398,6 @@ export default function FilesScreen() {
               zIndex: 50,
               backgroundColor: "rgba(0, 0, 0, 0.5)",
               backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
             }}
           >
             <Pressable
@@ -481,26 +480,32 @@ export default function FilesScreen() {
           animationType="fade"
           onRequestClose={() => setActionDialogOpen(false)}
         >
-          <BlurView
-            intensity={20}
-            tint="dark"
+          <View
             style={{
               flex: 1,
-              justifyContent: "center",
-              alignItems: "center",
-              padding: 16,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
             }}
           >
-            <Pressable
+            <BlurView
+              intensity={20}
+              tint="dark"
               style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                padding: 16,
               }}
-              onPress={() => setActionDialogOpen(false)}
-            />
+            >
+              <Pressable
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+                onPress={() => setActionDialogOpen(false)}
+              />
             <View
               style={{
                 backgroundColor: colors.muted,
@@ -561,6 +566,7 @@ export default function FilesScreen() {
               </View>
             </View>
           </BlurView>
+          </View>
         </Modal>
       )}
     </View>
