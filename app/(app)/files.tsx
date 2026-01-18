@@ -10,6 +10,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
+import { BlurView } from "expo-blur";
 import { Stack } from "expo-router";
 import { Plus, Search } from "lucide-react-native";
 import { useEffect, useState } from "react";
@@ -396,6 +397,8 @@ export default function FilesScreen() {
               bottom: 0,
               zIndex: 50,
               backgroundColor: "rgba(0, 0, 0, 0.5)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
             }}
           >
             <Pressable
@@ -478,12 +481,13 @@ export default function FilesScreen() {
           animationType="fade"
           onRequestClose={() => setActionDialogOpen(false)}
         >
-          <View
+          <BlurView
+            intensity={20}
+            tint="dark"
             style={{
               flex: 1,
               justifyContent: "center",
               alignItems: "center",
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
               padding: 16,
             }}
           >
@@ -556,7 +560,7 @@ export default function FilesScreen() {
                 </Pressable>
               </View>
             </View>
-          </View>
+          </BlurView>
         </Modal>
       )}
     </View>
@@ -628,7 +632,7 @@ function FileCard({
     <Pressable
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      onLongPress={onDelete}
+      onPress={onDelete}
       {...(Platform.OS === "web" && {
         onContextMenu: handleContextMenu,
       })}
