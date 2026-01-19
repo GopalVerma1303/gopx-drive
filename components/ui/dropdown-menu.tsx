@@ -11,6 +11,7 @@ import {
 } from "lucide-react-native";
 import * as React from "react";
 import {
+  Modal,
   Platform,
   type StyleProp,
   StyleSheet,
@@ -101,6 +102,7 @@ function DropdownMenuSubContent({
   );
 }
 
+// Use FullWindowOverlay only on iOS, use Modal on Android
 const FullWindowOverlay =
   Platform.OS === "ios" ? RNFullWindowOverlay : React.Fragment;
 
@@ -116,40 +118,73 @@ function DropdownMenuContent({
     overlayClassName?: string;
     portalHost?: string;
   }) {
+  // Get the open state from the root context
+  const { open } = DropdownMenuPrimitive.useRootContext();
+  
+  const nativeOverlayStyle = Platform.select({
+    android: StyleSheet.flatten([
+      StyleSheet.absoluteFill,
+      overlayStyle,
+    ]) as ViewStyle,
+    ios: StyleSheet.flatten([
+      StyleSheet.absoluteFill,
+      overlayStyle,
+    ]) as ViewStyle,
+  });
+
+  const content = (
+    <DropdownMenuPrimitive.Overlay
+      style={Platform.select({
+        web: overlayStyle ?? undefined,
+        native: nativeOverlayStyle,
+      })}
+      className={overlayClassName}
+    >
+      <NativeOnlyAnimatedView entering={FadeIn}>
+        <TextClassContext.Provider value="text-popover-foreground">
+          <DropdownMenuPrimitive.Content
+            className={cn(
+              "bg-popover border-border min-w-[8rem] overflow-hidden rounded-md border p-1 shadow-lg shadow-black/5",
+              Platform.select({
+                web: cn(
+                  "animate-in fade-in-0 zoom-in-95 max-h-(--radix-context-menu-content-available-height) origin-(--radix-context-menu-content-transform-origin) z-50 cursor-default",
+                  props.side === "bottom" && "slide-in-from-top-2",
+                  props.side === "top" && "slide-in-from-bottom-2"
+                ),
+              }),
+              className
+            )}
+            {...props}
+          />
+        </TextClassContext.Provider>
+      </NativeOnlyAnimatedView>
+    </DropdownMenuPrimitive.Overlay>
+  );
+
+  // On Android, wrap in Modal to ensure it appears above other modals
+  if (Platform.OS === "android") {
+    return (
+      <DropdownMenuPrimitive.Portal hostName={portalHost}>
+        <Modal
+          visible={open}
+          transparent
+          animationType="none"
+          statusBarTranslucent
+          onRequestClose={() => {}}
+        >
+          <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+            {content}
+          </View>
+        </Modal>
+      </DropdownMenuPrimitive.Portal>
+    );
+  }
+
+  // On iOS and web, use the standard approach
   return (
     <DropdownMenuPrimitive.Portal hostName={portalHost}>
       <FullWindowOverlay>
-        <DropdownMenuPrimitive.Overlay
-          style={Platform.select({
-            web: overlayStyle ?? undefined,
-            native: overlayStyle
-              ? StyleSheet.flatten([
-                  StyleSheet.absoluteFill,
-                  overlayStyle as typeof StyleSheet.absoluteFill,
-                ])
-              : StyleSheet.absoluteFill,
-          })}
-          className={overlayClassName}
-        >
-          <NativeOnlyAnimatedView entering={FadeIn}>
-            <TextClassContext.Provider value="text-popover-foreground">
-              <DropdownMenuPrimitive.Content
-                className={cn(
-                  "bg-popover border-border min-w-[8rem] overflow-hidden rounded-md border p-1 shadow-lg shadow-black/5",
-                  Platform.select({
-                    web: cn(
-                      "animate-in fade-in-0 zoom-in-95 max-h-(--radix-context-menu-content-available-height) origin-(--radix-context-menu-content-transform-origin) z-50 cursor-default",
-                      props.side === "bottom" && "slide-in-from-top-2",
-                      props.side === "top" && "slide-in-from-bottom-2"
-                    ),
-                  }),
-                  className
-                )}
-                {...props}
-              />
-            </TextClassContext.Provider>
-          </NativeOnlyAnimatedView>
-        </DropdownMenuPrimitive.Overlay>
+        {content}
       </FullWindowOverlay>
     </DropdownMenuPrimitive.Portal>
   );
@@ -330,5 +365,6 @@ export {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger
 };
+
