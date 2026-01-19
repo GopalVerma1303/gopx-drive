@@ -43,6 +43,7 @@ export interface Event {
   title: string;
   description: string;
   event_date: string;
+  repeat_interval?: "once" | "daily" | "weekly" | "monthly" | "yearly" | null;
   created_at: string;
   updated_at: string;
 }

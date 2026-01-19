@@ -56,6 +56,7 @@ export const createEvent = async (input: {
   title: string;
   description: string;
   event_date: string;
+  repeat_interval?: "once" | "daily" | "weekly" | "monthly" | "yearly" | null;
 }) => {
   await wait();
   const now = new Date().toISOString();
@@ -65,6 +66,7 @@ export const createEvent = async (input: {
     title: input.title || "Untitled Event",
     description: input.description || "",
     event_date: input.event_date,
+    repeat_interval: input.repeat_interval || "once",
     created_at: now,
     updated_at: now,
   };
@@ -76,7 +78,7 @@ export const createEvent = async (input: {
 
 export const updateEvent = async (
   id: string,
-  updates: Partial<Pick<Event, "title" | "description" | "event_date">>
+  updates: Partial<Pick<Event, "title" | "description" | "event_date" | "repeat_interval">>
 ) => {
   await wait();
   let updated: Event | null = null;

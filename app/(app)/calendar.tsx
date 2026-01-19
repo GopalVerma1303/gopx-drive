@@ -1,6 +1,12 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
@@ -17,12 +23,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack } from "expo-router";
-import { Calendar as CalendarIcon, Plus, Search, X } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { ChevronDown, ChevronUp, Plus, Search, X } from "lucide-react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
+  Dimensions,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -40,6 +47,7 @@ export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -58,6 +66,8 @@ export default function CalendarScreen() {
     queryFn: () => listEvents(user?.id),
     refetchOnMount: false,
     refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (formerly cacheTime)
   });
 
   const createMutation = useMutation({
@@ -66,6 +76,7 @@ export default function CalendarScreen() {
       title: string;
       description: string;
       event_date: string;
+      repeat_interval?: "once" | "daily" | "weekly" | "monthly" | "yearly" | null;
     }) => createEvent(input),
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
@@ -86,7 +97,7 @@ export default function CalendarScreen() {
       updates,
     }: {
       id: string;
-      updates: Partial<Pick<Event, "title" | "description" | "event_date">>;
+      updates: Partial<Pick<Event, "title" | "description" | "event_date" | "repeat_interval">>;
     }) => updateEvent(id, updates),
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
@@ -199,28 +210,69 @@ export default function CalendarScreen() {
     setEventModalOpen(true);
   };
 
-  // Filter events based on search and selected date
-  const filteredEvents = events
+  // Expand events into recurring instances (memoized to prevent unnecessary recalculations)
+  const expandedEvents = useMemo(() => {
+    if (events.length === 0) return [];
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(today);
+    endDate.setFullYear(endDate.getFullYear() + 1); // Show events up to 1 year ahead
+    
+    return expandEventsIntoInstances(events, today, endDate);
+  }, [events]); // Only recalculate when events array changes
+
+  // Get the start and end of the current month being displayed (memoized)
+  const { monthStart, monthEnd, today } = useMemo(() => {
+    const todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
+    const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+    end.setHours(23, 59, 59, 999);
+    return { monthStart: start, monthEnd: end, today: todayDate };
+  }, [currentMonth]);
+
+  // Filter events based on search, selected date, and current month (memoized)
+  const filteredEvents = useMemo(() => {
+    const now = new Date(); // Current date and time
+    
+    return expandedEvents
     .filter((event) => {
       const matchesSearch =
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.description.toLowerCase().includes(searchQuery.toLowerCase());
       
       if (selectedDate) {
-        const eventDate = event.event_date.split("T")[0];
-        return matchesSearch && eventDate === selectedDate;
+        const eventDate = event.instanceDate || event.event_date.split("T")[0];
+        // For selected date, still check if time has passed
+        if (eventDate === selectedDate) {
+          // Parse the full event datetime
+          const eventDateTime = new Date(event.event_date);
+          // Only show if the event datetime is in the future
+          return matchesSearch && eventDateTime > now;
+        }
+        return false;
       }
       
-      // Show only future events if no date is selected
-      const eventDate = parseLocalDate(event.event_date.split("T")[0]);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return matchesSearch && eventDate >= today;
+      // Parse the full event datetime (date + time)
+      const eventDateTime = new Date(event.event_date);
+      
+      // Check if event is in the current month
+      const eventDate = parseLocalDate(event.instanceDate || event.event_date.split("T")[0]);
+      const eventDateObj = new Date(eventDate);
+      eventDateObj.setHours(0, 0, 0, 0);
+      const isInCurrentMonth = eventDateObj >= monthStart && eventDateObj <= monthEnd;
+      
+      // Only show events that are in the current month and datetime is in the future
+      const isUpcoming = eventDateTime > now;
+      
+      return matchesSearch && isInCurrentMonth && isUpcoming;
     })
     .sort((a, b) => {
       // Sort by date first
-      const dateA = a.event_date.split("T")[0];
-      const dateB = b.event_date.split("T")[0];
+      const dateA = a.instanceDate || a.event_date.split("T")[0];
+      const dateB = b.instanceDate || b.event_date.split("T")[0];
       if (dateA !== dateB) {
         return dateA.localeCompare(dateB);
       }
@@ -233,6 +285,7 @@ export default function CalendarScreen() {
         : "12:01";
       return timeA.localeCompare(timeB);
     });
+  }, [expandedEvents, searchQuery, selectedDate, monthStart, monthEnd, today]);
 
   const onRefresh = async () => {
     if (Platform.OS !== "web") {
@@ -339,9 +392,11 @@ export default function CalendarScreen() {
             {/* Calendar Component */}
             <View className="w-full max-w-2xl mx-auto mb-6">
               <CustomCalendar
-                events={events}
+                events={expandedEvents}
                 selectedDate={selectedDate}
                 onDateSelect={setSelectedDate}
+                currentMonth={currentMonth}
+                onMonthChange={setCurrentMonth}
               />
             </View>
 
@@ -391,12 +446,18 @@ export default function CalendarScreen() {
               </View>
             ) : (
               <View className="w-full max-w-2xl mx-auto">
-                {filteredEvents.map((event) => (
+                {filteredEvents.map((event, index) => (
                   <EventCard
-                    key={event.id}
+                    key={`${event.id}-${event.instanceDate || event.event_date.split("T")[0]}-${index}`}
                     event={event}
                     onSelectDate={setSelectedDate}
-                    onEdit={() => handleOpenEditModal(event)}
+                    onEdit={() => {
+                      // Find the original event (not the instance) for editing
+                      const originalEvent = events.find(e => e.id === event.id);
+                      if (originalEvent) {
+                        handleOpenEditModal(originalEvent);
+                      }
+                    }}
                   />
                 ))}
               </View>
@@ -634,21 +695,23 @@ export default function CalendarScreen() {
 
 // Custom Calendar Component
 interface CustomCalendarProps {
-  events: Event[];
+  events: ExpandedEvent[];
   selectedDate: string | null;
   onDateSelect: (date: string | null) => void;
+  currentMonth: Date;
+  onMonthChange: (month: Date) => void;
 }
 
 function CustomCalendar({
   events,
   selectedDate,
   onDateSelect,
+  currentMonth,
+  onMonthChange,
 }: CustomCalendarProps) {
   const { colors } = useThemeColors();
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  // const [isExpanded, setIsExpanded] = useState(false);
-  // const scrollViewRef = useRef<ScrollView>(null);
-  const isExpanded = true; // Always show full calendar
+  const [isExpanded, setIsExpanded] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -682,7 +745,10 @@ function CustomCalendar({
   const hasEventOnDate = (date: Date | null): boolean => {
     if (!date) return false;
     const dateStr = formatDateToLocalString(date);
-    return events.some((event) => event.event_date.split("T")[0] === dateStr);
+    return events.some((event) => {
+      const eventDate = event.instanceDate || event.event_date.split("T")[0];
+      return eventDate === dateStr;
+    });
   };
 
   const isSelected = (date: Date | null): boolean => {
@@ -713,15 +779,13 @@ function CustomCalendar({
   };
 
   const goToPreviousMonth = () => {
-    setCurrentMonth(
-      new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
-    );
+    const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+    onMonthChange(newMonth);
   };
 
   const goToNextMonth = () => {
-    setCurrentMonth(
-      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
-    );
+    const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+    onMonthChange(newMonth);
   };
 
   // Get all dates in the current month for collapsed view
@@ -736,251 +800,282 @@ function CustomCalendar({
     return dates;
   };
 
-  // Function to scroll to today's date and center it
-  // COMMENTED OUT - Collapsed view functionality
-  // const scrollToToday = (animated = true) => {
-  //   if (isExpanded || !scrollViewRef.current) return;
-  //   
-  //   const todayDate = new Date();
-  //   todayDate.setHours(0, 0, 0, 0);
-  //   const datesInMonth = getDatesInMonth();
-  //   
-  //   // Check if today is in the current month
-  //   const isTodayInCurrentMonth = 
-  //     todayDate.getMonth() === currentMonth.getMonth() &&
-  //     todayDate.getFullYear() === currentMonth.getFullYear();
-  //   
-  //   if (!isTodayInCurrentMonth) return;
-  //   
-  //   const todayIndex = datesInMonth.findIndex((date) => {
-  //     return (
-  //       date.getDate() === todayDate.getDate() &&
-  //       date.getMonth() === todayDate.getMonth() &&
-  //       date.getFullYear() === todayDate.getFullYear()
-  //     );
-  //   });
-  //   
-  //   if (todayIndex === -1) return;
-  //   
-  //   // Simple calculation - wait for layout then scroll
-  //   setTimeout(() => {
-  //     if (!scrollViewRef.current) return;
-  //     
-  //     // Simple item width calculation: 60px minWidth + 24px padding + 8px gap = 92px
-  //     const itemWidth = 92;
-  //     const scrollPadding = 4; // ScrollView paddingHorizontal
-  //     
-  //     // Item position in content
-  //     const itemStart = scrollPadding + (todayIndex * itemWidth);
-  //     const itemCenter = itemStart + 42; // Half of 84px (actual item width)
-  //     
-  //     // Get screen width and calculate available space
-  //     const screenWidth = Dimensions.get("window").width;
-  //     const maxWidth = 672; // max-w-2xl
-  //     const cardMargin = 16; // mx-4
-  //     const cardPadding = 32; // p-4 (16px on each side)
-  //     
-  //     // Calculate actual card width
-  //     const actualCardWidth = Math.min(screenWidth - (cardMargin * 2), maxWidth);
-  //     const availableWidth = actualCardWidth - cardPadding;
-  //     
-  //     // Scroll to center the item
-  //     const scrollX = itemCenter - (availableWidth / 2);
-  //     
-  //     // Calculate max scroll
-  //     const totalContentWidth = scrollPadding + ((datesInMonth.length - 1) * itemWidth) + 84 + scrollPadding;
-  //     const maxScroll = Math.max(0, totalContentWidth - availableWidth);
-  //     
-  //     scrollViewRef.current.scrollTo({
-  //       x: Math.max(0, Math.min(scrollX, maxScroll)),
-  //       animated,
-  //     });
-  //   }, 200);
-  // };
-
-  const goToToday = () => {
-    setCurrentMonth(new Date());
-    onDateSelect(null);
-    // COMMENTED OUT - Scroll to today in collapsed view
-    // setTimeout(() => {
-    //   scrollToToday(true);
-    // }, 150);
+  // Function to scroll to optimal position based on current date
+  const scrollToOptimalPosition = (animated = true) => {
+    if (isExpanded || !scrollViewRef.current) return;
+    
+    const datesInMonth = getDatesInMonth();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Check if today is in the current month
+    const isTodayInCurrentMonth = 
+      today.getMonth() === currentMonth.getMonth() &&
+      today.getFullYear() === currentMonth.getFullYear();
+    
+    let targetIndex = 0; // Default to day 1
+    
+    if (isTodayInCurrentMonth) {
+      const todayDate = today.getDate();
+      // If date <= 15, start from day 1, otherwise start from end
+      if (todayDate > 15) {
+        // Scroll to the last day of the month
+        targetIndex = datesInMonth.length - 1;
+      } else {
+        // Start from day 1
+        targetIndex = 0;
+      }
+    } else {
+      // For other months, default to day 1
+      targetIndex = 0;
+    }
+    
+    // Simple calculation - wait for layout then scroll
+    setTimeout(() => {
+      if (!scrollViewRef.current) return;
+      
+      // Simple item width calculation: 60px minWidth + 24px padding + 8px gap = 92px
+      const itemWidth = 92;
+      const scrollPadding = 4; // ScrollView paddingHorizontal
+      
+      // Item position in content
+      const itemStart = scrollPadding + (targetIndex * itemWidth);
+      
+      // Get screen width and calculate available space
+      const screenWidth = Dimensions.get("window").width;
+      const maxWidth = 672; // max-w-2xl
+      const cardMargin = 16; // mx-4
+      const cardPadding = 32; // p-4 (16px on each side)
+      
+      // Calculate actual card width
+      const actualCardWidth = Math.min(screenWidth - (cardMargin * 2), maxWidth);
+      const availableWidth = actualCardWidth - cardPadding;
+      
+      let scrollX: number;
+      
+      if (targetIndex === 0) {
+        // Scroll to show day 1 at the start
+        scrollX = itemStart - scrollPadding;
+      } else {
+        // Scroll to show the last day, but ensure we don't scroll past the end
+        const itemCenter = itemStart + 42; // Half of 84px (actual item width)
+        scrollX = itemCenter - (availableWidth / 2);
+        
+        // Calculate max scroll
+        const totalContentWidth = scrollPadding + ((datesInMonth.length - 1) * itemWidth) + 84 + scrollPadding;
+        const maxScroll = Math.max(0, totalContentWidth - availableWidth);
+        scrollX = Math.min(scrollX, maxScroll);
+      }
+      
+      scrollViewRef.current.scrollTo({
+        x: Math.max(0, scrollX),
+        animated,
+      });
+    }, 200);
   };
 
-  // COMMENTED OUT - Auto-scroll to today on mount and when month changes (if collapsed and showing current month)
-  // useEffect(() => {
-  //   if (!isExpanded) {
-  //     const todayDate = new Date();
-  //     const isCurrentMonth = 
-  //       currentMonth.getMonth() === todayDate.getMonth() &&
-  //       currentMonth.getFullYear() === todayDate.getFullYear();
-  //     
-  //     if (isCurrentMonth) {
-  //       // Delay to ensure layout is complete
-  //       const timer = setTimeout(() => {
-  //         scrollToToday(false); // No animation on initial load
-  //       }, 400);
-  //       return () => clearTimeout(timer);
-  //     }
-  //   }
-  // }, [isExpanded, currentMonth]);
+  const goToToday = () => {
+    const today = new Date();
+    onMonthChange(today);
+    onDateSelect(null);
+    setTimeout(() => {
+      scrollToOptimalPosition(true);
+    }, 150);
+  };
+
+  // Auto-scroll to optimal position when month changes (if collapsed)
+  useEffect(() => {
+    if (!isExpanded) {
+      // Delay to ensure layout is complete
+      const timer = setTimeout(() => {
+        scrollToOptimalPosition(false); // No animation on month change
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [isExpanded, currentMonth]);
 
   const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  // COMMENTED OUT - Toggle expand/collapse functionality
-  // const toggleExpand = () => {
-  //   if (Platform.OS !== "web") {
-  //     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  //   }
-  //   setIsExpanded(!isExpanded);
-  // };
+  // Toggle expand/collapse functionality
+  const toggleExpand = () => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setIsExpanded(!isExpanded);
+  };
 
-  // COMMENTED OUT - Collapsed view - horizontal scrolling row
-  // if (!isExpanded) {
-  //   const datesInMonth = getDatesInMonth();
-  //   
-  //   return (
-  //     <Card
-  //       className="p-4 rounded-2xl bg-muted border border-border"
-  //       style={{
-  //         backgroundColor: colors.muted,
-  //         borderColor: colors.border,
-  //         borderRadius: 16,
-  //         padding: 16,
-  //       }}
-  //     >
-  //       {/* Collapsed Header */}
-  //       <View
-  //         style={{
-  //           flexDirection: "row",
-  //           alignItems: "center",
-  //           justifyContent: "space-between",
-  //           marginBottom: 12,
-  //         }}
-  //       >
-  //         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-  //           <Text
-  //             style={{
-  //               color: colors.foreground,
-  //               fontSize: 18,
-  //               fontWeight: "600",
-  //             }}
-  //           >
-  //             {monthName}
-  //           </Text>
-  //           <Pressable
-  //             onPress={goToToday}
-  //             style={{
-  //               paddingHorizontal: 12,
-  //               paddingVertical: 6,
-  //               backgroundColor: colors.accent,
-  //               borderRadius: 6,
-  //             }}
-  //           >
-  //             <Text
-  //               style={{
-  //                 color: colors.foreground,
-  //                 fontSize: 12,
-  //                 fontWeight: "500",
-  //               }}
-  //             >
-  //               Today
-  //             </Text>
-  //           </Pressable>
-  //         </View>
-  //         <Pressable
-  //           onPress={toggleExpand}
-  //           style={{
-  //             padding: 8,
-  //           }}
-  //         >
-  //           <ChevronDown color={colors.foreground} size={20} />
-  //         </Pressable>
-  //       </View>
+  // Collapsed view - horizontal scrolling row
+  if (!isExpanded) {
+    const datesInMonth = getDatesInMonth();
+    
+    return (
+      <Card
+        className="p-4 rounded-2xl bg-muted border border-border"
+        style={{
+          backgroundColor: colors.muted,
+          borderColor: colors.border,
+          borderRadius: 16,
+          padding: 16,
+        }}
+      >
+        {/* Collapsed Header */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 12,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Pressable onPress={goToPreviousMonth}>
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontSize: 18,
+                  fontWeight: "600",
+                  padding: 8,
+                }}
+              >
+                ‹
+              </Text>
+            </Pressable>
+            <Text
+              style={{
+                color: colors.foreground,
+                fontSize: 18,
+                fontWeight: "600",
+                minWidth: 120,
+                textAlign: "center",
+              }}
+            >
+              {monthName}
+            </Text>
+            <Pressable onPress={goToNextMonth}>
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontSize: 18,
+                  fontWeight: "600",
+                  padding: 8,
+                }}
+              >
+                ›
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={goToToday}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                backgroundColor: colors.accent,
+                borderRadius: 6,
+              }}
+            >
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontSize: 12,
+                  fontWeight: "500",
+                }}
+              >
+                Today
+              </Text>
+            </Pressable>
+          </View>
+          <Pressable
+            onPress={toggleExpand}
+            style={{
+              padding: 8,
+            }}
+          >
+            <ChevronDown color={colors.foreground} size={20} />
+          </Pressable>
+        </View>
 
-  //       {/* Horizontal Scrollable Dates */}
-  //       <ScrollView
-  //         ref={scrollViewRef}
-  //         horizontal
-  //         showsHorizontalScrollIndicator={false}
-  //         contentContainerStyle={{
-  //           paddingHorizontal: 4,
-  //           gap: 8,
-  //         }}
-  //       >
-  //         {datesInMonth.map((date, index) => {
-  //           const hasEvent = hasEventOnDate(date);
-  //           const selected = isSelected(date);
-  //           const todayDate = isToday(date);
-  //           const dayName = date.toLocaleDateString("en-US", { weekday: "short" });
+        {/* Horizontal Scrollable Dates */}
+        <ScrollView
+          ref={scrollViewRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: 4,
+            gap: 8,
+          }}
+        >
+          {datesInMonth.map((date, index) => {
+            const hasEvent = hasEventOnDate(date);
+            const selected = isSelected(date);
+            const todayDate = isToday(date);
+            const dayName = date.toLocaleDateString("en-US", { weekday: "short" });
 
-  //           return (
-  //             <Pressable
-  //               key={index}
-  //               onPress={() => handleDatePress(date)}
-  //               style={{
-  //                 minWidth: 60,
-  //                 alignItems: "center",
-  //                 paddingVertical: 8,
-  //                 paddingHorizontal: 12,
-  //                 borderRadius: 8,
-  //                 backgroundColor: selected
-  //                   ? colors.primary
-  //                   : todayDate
-  //                   ? colors.accent
-  //                   : "transparent",
-  //                 borderWidth: todayDate && !selected ? 2 : 0,
-  //                 borderColor: colors.primary,
-  //               }}
-  //             >
-  //               <Text
-  //                 style={{
-  //                   color: selected
-  //                     ? colors.primaryForeground
-  //                     : todayDate
-  //                     ? colors.primary
-  //                     : colors.mutedForeground,
-  //                   fontSize: 11,
-  //                   fontWeight: "500",
-  //                   textTransform: "uppercase",
-  //                   marginBottom: 4,
-  //                 }}
-  //               >
-  //                 {dayName}
-  //               </Text>
-  //               <Text
-  //                 style={{
-  //                   color: selected
-  //                     ? colors.primaryForeground
-  //                     : todayDate
-  //                     ? colors.primary
-  //                     : colors.foreground,
-  //                   fontSize: 18,
-  //                   fontWeight: selected || todayDate ? "700" : "600",
-  //                 }}
-  //               >
-  //                 {date.getDate()}
-  //               </Text>
-  //               {hasEvent && (
-  //                 <View
-  //                   style={{
-  //                     marginTop: 4,
-  //                     width: 4,
-  //                     height: 4,
-  //                     borderRadius: 2,
-  //                     backgroundColor: selected
-  //                       ? colors.primaryForeground
-  //                       : colors.primary,
-  //                   }}
-  //                 />
-  //               )}
-  //             </Pressable>
-  //           );
-  //         })}
-  //       </ScrollView>
-  //     </Card>
-  //   );
-  // }
+            return (
+              <Pressable
+                key={index}
+                onPress={() => handleDatePress(date)}
+                style={{
+                  minWidth: 60,
+                  alignItems: "center",
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 8,
+                  backgroundColor: selected
+                    ? colors.primary
+                    : todayDate
+                    ? colors.accent
+                    : "transparent",
+                  borderWidth: todayDate && !selected ? 2 : 0,
+                  borderColor: colors.primary,
+                }}
+              >
+                <Text
+                  style={{
+                    color: selected
+                      ? colors.primaryForeground
+                      : todayDate
+                      ? colors.primary
+                      : colors.mutedForeground,
+                    fontSize: 11,
+                    fontWeight: "500",
+                    textTransform: "uppercase",
+                    marginBottom: 4,
+                  }}
+                >
+                  {dayName}
+                </Text>
+                <Text
+                  style={{
+                    color: selected
+                      ? colors.primaryForeground
+                      : todayDate
+                      ? colors.primary
+                      : colors.foreground,
+                    fontSize: 18,
+                    fontWeight: selected || todayDate ? "700" : "600",
+                  }}
+                >
+                  {date.getDate()}
+                </Text>
+                {hasEvent && (
+                  <View
+                    style={{
+                      marginTop: 4,
+                      width: 4,
+                      height: 4,
+                      borderRadius: 2,
+                      backgroundColor: selected
+                        ? colors.primaryForeground
+                        : colors.primary,
+                    }}
+                  />
+                )}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </Card>
+    );
+  }
 
   // Expanded view - full calendar
   return (
@@ -1163,8 +1258,8 @@ function CustomCalendar({
         })}
       </View>
 
-      {/* COMMENTED OUT - Collapse Button - Bottom Middle */}
-      {/* <View
+      {/* Collapse Button - Bottom Middle */}
+      <View
         style={{
           alignItems: "center",
           marginTop: 16,
@@ -1178,14 +1273,14 @@ function CustomCalendar({
         >
           <ChevronUp color={colors.foreground} size={20} />
         </Pressable>
-      </View> */}
+      </View>
     </Card>
   );
 }
 
 // Event Card Component
 interface EventCardProps {
-  event: Event;
+  event: ExpandedEvent;
   onSelectDate: (date: string) => void;
   onEdit: () => void;
 }
@@ -1210,7 +1305,8 @@ function EventCard({ event, onSelectDate, onEdit }: EventCardProps) {
   };
 
   // Parse event date as local date to avoid timezone issues
-  const eventDate = parseLocalDate(event.event_date.split("T")[0]);
+  const eventDateStr = event.instanceDate || event.event_date.split("T")[0];
+  const eventDate = parseLocalDate(eventDateStr);
   const dayName = eventDate.toLocaleDateString("en-US", { weekday: "short" });
   const dayNumber = eventDate.getDate();
   const monthName = eventDate.toLocaleDateString("en-US", { month: "short" });
@@ -1231,7 +1327,7 @@ function EventCard({ event, onSelectDate, onEdit }: EventCardProps) {
 
   const handlePress = () => {
     // Extract date from event and select it
-    const eventDateStr = event.event_date.split("T")[0];
+    const eventDateStr = event.instanceDate || event.event_date.split("T")[0];
     onSelectDate(eventDateStr);
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -1332,18 +1428,14 @@ function EventCard({ event, onSelectDate, onEdit }: EventCardProps) {
                   gap: 8,
                 }}
               >
-                <CalendarIcon
-                  color={colors.mutedForeground}
-                  size={14}
-                  strokeWidth={2}
-                />
                 <Text
                   style={{
                     fontSize: 12,
                     color: colors.mutedForeground,
+                    textTransform: "capitalize",
                   }}
                 >
-                  {formatDateDisplay(event.event_date)}
+                  {event.repeat_interval || "once"}
                 </Text>
                 <Text
                   style={{
@@ -1373,10 +1465,11 @@ interface EventModalProps {
     title: string;
     description: string;
     event_date: string;
+    repeat_interval?: "once" | "daily" | "weekly" | "monthly" | "yearly" | null;
   }) => void;
   onUpdate: (params: {
     id: string;
-    updates: Partial<Pick<Event, "title" | "description" | "event_date">>;
+    updates: Partial<Pick<Event, "title" | "description" | "event_date" | "repeat_interval">>;
   }) => void;
   onDelete: (id: string) => void;
   userId: string;
@@ -1398,6 +1491,7 @@ function EventModal({
     formatDateToLocalString(new Date())
   );
   const [eventTime, setEventTime] = useState("12:01 AM");
+  const [repeatInterval, setRepeatInterval] = useState<"once" | "daily" | "weekly" | "monthly" | "yearly">("once");
   const [dateError, setDateError] = useState("");
   const [timeError, setTimeError] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -1426,11 +1520,13 @@ function EventModal({
         } else {
           setEventTime("12:01 AM");
         }
+        setRepeatInterval(event.repeat_interval || "once");
       } else {
         setTitle("");
         setDescription("");
         setEventDate(formatDateToLocalString(new Date()));
         setEventTime("12:01 AM");
+        setRepeatInterval("once");
       }
       setDateError("");
       setTimeError("");
@@ -1528,6 +1624,7 @@ function EventModal({
           title: title.trim(),
           description: description.trim(),
           event_date: eventDateTime,
+          repeat_interval: repeatInterval,
         },
       });
     } else {
@@ -1536,6 +1633,7 @@ function EventModal({
         title: title.trim(),
         description: description.trim(),
         event_date: eventDateTime,
+        repeat_interval: repeatInterval,
       });
     }
   };
@@ -1730,6 +1828,53 @@ function EventModal({
               {timeError}
             </Text>
           ) : null}
+        </View>
+
+        <View style={{ marginBottom: 24 }}>
+          <Text
+            style={{
+              color: colors.foreground,
+              fontSize: 14,
+              fontWeight: "500",
+              marginBottom: 8,
+            }}
+          >
+            Repeat
+          </Text>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Pressable
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  backgroundColor: colors.background,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 6,
+                }}
+              >
+                <Text style={{ color: colors.foreground, fontSize: 14 }}>
+                  {repeatInterval.charAt(0).toUpperCase() + repeatInterval.slice(1)}
+                </Text>
+                <ChevronDown color={colors.mutedForeground} size={16} />
+              </Pressable>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {(["once", "daily", "weekly", "monthly", "yearly"] as const).map((interval) => (
+                <DropdownMenuItem
+                  key={interval}
+                  onPress={() => setRepeatInterval(interval)}
+                >
+                  <Text style={{ color: colors.foreground }}>
+                    {interval.charAt(0).toUpperCase() + interval.slice(1)}
+                  </Text>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </View>
 
         <View
@@ -1969,6 +2114,53 @@ function EventModal({
                     {timeError}
                   </Text>
                 ) : null}
+              </View>
+
+              <View style={{ marginBottom: 24 }}>
+                <Text
+                  style={{
+                    color: colors.foreground,
+                    fontSize: 14,
+                    fontWeight: "500",
+                    marginBottom: 8,
+                  }}
+                >
+                  Repeat
+                </Text>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Pressable
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        backgroundColor: colors.background,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        borderRadius: 6,
+                      }}
+                    >
+                      <Text style={{ color: colors.foreground, fontSize: 14 }}>
+                        {repeatInterval.charAt(0).toUpperCase() + repeatInterval.slice(1)}
+                      </Text>
+                      <ChevronDown color={colors.mutedForeground} size={16} />
+                    </Pressable>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {(["once", "daily", "weekly", "monthly", "yearly"] as const).map((interval) => (
+                      <DropdownMenuItem
+                        key={interval}
+                        onPress={() => setRepeatInterval(interval)}
+                      >
+                        <Text style={{ color: colors.foreground }}>
+                          {interval.charAt(0).toUpperCase() + interval.slice(1)}
+                        </Text>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </View>
 
               <View
@@ -2245,4 +2437,127 @@ function formatDateDisplay(dateString: string): string {
     month: "long",
     day: "numeric",
   });
+}
+
+// Generate recurring event instances
+interface ExpandedEvent extends Event {
+  instanceDate: string; // The date this instance occurs on
+  isRecurring: boolean; // Whether this is a recurring instance
+}
+
+function generateRecurringInstances(
+  event: Event,
+  startDate: Date,
+  endDate: Date
+): ExpandedEvent[] {
+  const instances: ExpandedEvent[] = [];
+  const repeatInterval = event.repeat_interval || "once";
+  
+  // If it's a one-time event, just return the original event
+  if (repeatInterval === "once") {
+    const eventDate = parseLocalDate(event.event_date.split("T")[0]);
+    if (eventDate >= startDate && eventDate <= endDate) {
+      instances.push({
+        ...event,
+        instanceDate: event.event_date.split("T")[0],
+        isRecurring: false,
+      });
+    }
+    return instances;
+  }
+
+  // Parse the original event date
+  const originalDate = parseLocalDate(event.event_date.split("T")[0]);
+  const timePart = event.event_date.includes("T") ? event.event_date.split("T")[1] : "00:00:00";
+  
+  // Generate instances based on repeat interval
+  let currentDate = new Date(originalDate);
+  
+  // For past events, start from today or the original date (whichever is later)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (currentDate < today) {
+    // Calculate how many intervals have passed
+    if (repeatInterval === "daily") {
+      const daysDiff = Math.floor((today.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
+      currentDate = new Date(originalDate);
+      currentDate.setDate(currentDate.getDate() + daysDiff);
+    } else if (repeatInterval === "weekly") {
+      const weeksDiff = Math.floor((today.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24 * 7));
+      currentDate = new Date(originalDate);
+      currentDate.setDate(currentDate.getDate() + (weeksDiff * 7));
+    } else if (repeatInterval === "monthly") {
+      const monthsDiff = (today.getFullYear() - currentDate.getFullYear()) * 12 + (today.getMonth() - currentDate.getMonth());
+      currentDate = new Date(originalDate);
+      currentDate.setMonth(currentDate.getMonth() + monthsDiff);
+    } else if (repeatInterval === "yearly") {
+      const yearsDiff = today.getFullYear() - currentDate.getFullYear();
+      currentDate = new Date(originalDate);
+      currentDate.setFullYear(currentDate.getFullYear() + yearsDiff);
+    }
+    
+    // Make sure we're at or after today
+    while (currentDate < today) {
+      if (repeatInterval === "daily") {
+        currentDate.setDate(currentDate.getDate() + 1);
+      } else if (repeatInterval === "weekly") {
+        currentDate.setDate(currentDate.getDate() + 7);
+      } else if (repeatInterval === "monthly") {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      } else if (repeatInterval === "yearly") {
+        currentDate.setFullYear(currentDate.getFullYear() + 1);
+      }
+    }
+  }
+
+  // Generate instances up to endDate (or 1 year ahead, whichever is smaller)
+  const maxEndDate = new Date(today);
+  maxEndDate.setFullYear(maxEndDate.getFullYear() + 1);
+  const actualEndDate = endDate < maxEndDate ? endDate : maxEndDate;
+  
+  let instanceCount = 0;
+  const maxInstances = 500; // Safety limit to prevent infinite loops
+  
+  while (currentDate <= actualEndDate && instanceCount < maxInstances) {
+    const dateStr = formatDateToLocalString(currentDate);
+    const instanceDateTime = `${dateStr}T${timePart}`;
+    
+    instances.push({
+      ...event,
+      event_date: instanceDateTime,
+      instanceDate: dateStr,
+      isRecurring: true,
+    });
+    
+    // Move to next occurrence
+    if (repeatInterval === "daily") {
+      currentDate.setDate(currentDate.getDate() + 1);
+    } else if (repeatInterval === "weekly") {
+      currentDate.setDate(currentDate.getDate() + 7);
+    } else if (repeatInterval === "monthly") {
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    } else if (repeatInterval === "yearly") {
+      currentDate.setFullYear(currentDate.getFullYear() + 1);
+    }
+    
+    instanceCount++;
+  }
+  
+  return instances;
+}
+
+// Expand events into recurring instances for a given date range
+function expandEventsIntoInstances(
+  events: Event[],
+  startDate: Date,
+  endDate: Date
+): ExpandedEvent[] {
+  const expandedEvents: ExpandedEvent[] = [];
+  
+  for (const event of events) {
+    const instances = generateRecurringInstances(event, startDate, endDate);
+    expandedEvents.push(...instances);
+  }
+  
+  return expandedEvents;
 }

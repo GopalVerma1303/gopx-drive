@@ -23,6 +23,7 @@ export const createEvent = async (input: {
   title: string;
   description: string;
   event_date: string;
+  repeat_interval?: "once" | "daily" | "weekly" | "monthly" | "yearly" | null;
 }): Promise<Event> => {
   if (UI_DEV) {
     return mockEvents.createEvent(input);
@@ -32,7 +33,7 @@ export const createEvent = async (input: {
 
 export const updateEvent = async (
   id: string,
-  updates: Partial<Pick<Event, "title" | "description" | "event_date">>
+  updates: Partial<Pick<Event, "title" | "description" | "event_date" | "repeat_interval">>
 ): Promise<Event | null> => {
   if (UI_DEV) {
     return mockEvents.updateEvent(id, updates);
