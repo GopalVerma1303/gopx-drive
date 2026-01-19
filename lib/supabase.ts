@@ -47,3 +47,23 @@ export interface Event {
   created_at: string;
   updated_at: string;
 }
+
+export interface Checklist {
+  id: string;
+  user_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Task {
+  id: string;
+  checklist_id: string;
+  title: string;
+  completed: boolean;
+  order: number;
+  type: "task" | "date";
+  date_value?: string; // ISO date string for date type tasks
+  created_at: string;
+  updated_at: string;
+}

@@ -41,16 +41,18 @@ function AppLayoutContent() {
   const isMd = screenWidth >= 768 && screenWidth < 1024;
   const isLg = screenWidth >= 1024;
   const isNoteDetail = pathname?.includes("/note/") && pathname !== "/(app)/notes";
+  const isChecklistDetail = pathname?.includes("/checklist/") && pathname !== "/(app)/checklists";
+  const isDetailPage = isNoteDetail || isChecklistDetail;
 
   // On small screens: bottom bar (absolute positioned)
   if (isSm) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         {/* Navigation component handles its own absolute positioning on sm */}
-        {!isNoteDetail && <Navigation isOpen={isOpen} onClose={close} />}
+        {!isDetailPage && <Navigation isOpen={isOpen} onClose={close} />}
         <View style={{ 
           flex: 1,
-          paddingBottom: isNoteDetail ? 0 : 70, // Add padding for bottom bar on small screens only when navbar is visible
+          paddingBottom: isDetailPage ? 0 : 70, // Add padding for bottom bar on small screens only when navbar is visible
         }}>
           <Stack
             screenOptions={{
@@ -67,7 +69,7 @@ function AppLayoutContent() {
 
   // On medium and large screens: use flex row layout with sidebar when navbar is visible
   // When navbar is hidden, content should take full width
-  if (isNoteDetail) {
+  if (isDetailPage) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <Stack
