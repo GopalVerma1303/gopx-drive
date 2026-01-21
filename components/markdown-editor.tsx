@@ -272,12 +272,12 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       bullet_list: {
         marginTop: 8,
         marginBottom: 8,
-        paddingLeft: 20,
+        paddingLeft: 8,
       },
       ordered_list: {
         marginTop: 8,
         marginBottom: 8,
-        paddingLeft: 20,
+        paddingLeft: 8,
       },
       list_item: {
         color: colors.foreground,
@@ -407,6 +407,19 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         .replace(/[^\w\s]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
+    };
+
+    // Helper function to ensure children have keys when they're arrays
+    const ensureChildrenKeys = (children: any): any => {
+      if (Array.isArray(children)) {
+        return children.map((child, index) => {
+          if (React.isValidElement(child) && !child.key) {
+            return React.cloneElement(child, { key: `child-${index}` });
+          }
+          return child;
+        });
+      }
+      return children;
     };
 
     // Helper function to remove checkbox markdown syntax from children
@@ -720,13 +733,15 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               cleanedChildren = <Text style={styles.body}>{restText}</Text>;
             }
 
+            const childrenToRender = cleanedChildren || children;
+            const childrenWithKeys = ensureChildrenKeys(childrenToRender);
             return (
-              <View key={node.key} style={[styles.list_item, { flexDirection: 'row', alignItems: 'center' }]}>
+              <View key={node.key} style={[styles.list_item, { flexDirection: 'row', alignItems: 'flex-start' }]}>
                 <Pressable
                   onPress={() => {
                     toggleCheckbox(lineIndex);
                   }}
-                  style={{ marginRight: 8 }}
+                  style={{ marginRight: 8, marginTop: 5 }}
                 >
                   <Checkbox
                     checked={isChecked}
@@ -736,7 +751,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                   />
                 </Pressable>
                 <View style={{ flex: 1 }}>
-                  {cleanedChildren || children}
+                  {childrenWithKeys}
                 </View>
               </View>
             );
@@ -749,23 +764,27 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           const rendered = defaultRenderer(node, children, parent, styles);
           // Ensure the rendered component has flexDirection: row
           if (rendered && React.isValidElement(rendered)) {
-            const element = rendered as React.ReactElement<{ style?: any }>;
+            const element = rendered as React.ReactElement<{ style?: any; children?: any }>;
             const existingStyle = Array.isArray(element.props.style)
               ? element.props.style
               : element.props.style ? [element.props.style] : [];
+            // Ensure children have keys if they're arrays
+            const childrenWithKeys = element.props.children ? ensureChildrenKeys(element.props.children) : element.props.children;
             return React.cloneElement(element, {
               style: [
                 ...existingStyle,
                 { flexDirection: 'row', alignItems: 'flex-start' }
-              ]
+              ],
+              children: childrenWithKeys,
             });
           }
           return rendered;
         }
         // Fallback to default rendering with row layout
+        const childrenWithKeys = ensureChildrenKeys(children);
         return (
           <View key={node.key} style={[styles.list_item, { flexDirection: 'row', alignItems: 'flex-start' }]}>
-            {children}
+            {childrenWithKeys}
           </View>
         );
       },
