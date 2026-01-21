@@ -285,6 +285,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         lineHeight: 24,
         marginTop: 4,
         marginBottom: 4,
+        flexDirection: "row" as const,
+        alignItems: "flex-start" as const,
         // fontFamily: "monospace",
       },
       link: {
@@ -741,15 +743,126 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           }
         }
 
-        // Default list item rendering - use default renderer for non-checkbox items
+        // Default list item rendering - ensure proper row layout for regular list items
         const defaultRenderer = renderRules?.list_item;
         if (defaultRenderer) {
-          return defaultRenderer(node, children, parent, styles);
+          const rendered = defaultRenderer(node, children, parent, styles);
+          // Ensure the rendered component has flexDirection: row
+          if (rendered && React.isValidElement(rendered)) {
+            const element = rendered as React.ReactElement<{ style?: any }>;
+            const existingStyle = Array.isArray(element.props.style)
+              ? element.props.style
+              : element.props.style ? [element.props.style] : [];
+            return React.cloneElement(element, {
+              style: [
+                ...existingStyle,
+                { flexDirection: 'row', alignItems: 'flex-start' }
+              ]
+            });
+          }
+          return rendered;
         }
-        // Fallback to default rendering
+        // Fallback to default rendering with row layout
         return (
-          <View key={node.key} style={styles.list_item}>
+          <View key={node.key} style={[styles.list_item, { flexDirection: 'row', alignItems: 'flex-start' }]}>
             {children}
+          </View>
+        );
+      },
+      bullet_list: (node: any, children: any, parent: any, styles: any) => {
+        return (
+          <View key={node.key} style={styles.bullet_list}>
+            {children}
+          </View>
+        );
+      },
+      ordered_list: (node: any, children: any, parent: any, styles: any) => {
+        return (
+          <View key={node.key} style={styles.ordered_list}>
+            {children}
+          </View>
+        );
+      },
+      table: (node: any, children: any, parent: any, styles: any) => {
+        return (
+          <View key={node.key} style={styles.table}>
+            {children}
+          </View>
+        );
+      },
+      thead: (node: any, children: any, parent: any, styles: any) => {
+        return (
+          <View key={node.key} style={styles.thead}>
+            {children}
+          </View>
+        );
+      },
+      tbody: (node: any, children: any, parent: any, styles: any) => {
+        return (
+          <View key={node.key} style={styles.tbody}>
+            {children}
+          </View>
+        );
+      },
+      tr: (node: any, children: any, parent: any, styles: any) => {
+        // Ensure children is an array for proper rendering
+        const rowChildren = Array.isArray(children) ? children : [children];
+        return (
+          <View
+            key={node.key}
+            style={[
+              styles.tr,
+              {
+                flexDirection: 'row',
+                borderBottomWidth: 1,
+                borderBottomColor: colors.ring,
+              }
+            ]}
+          >
+            {rowChildren}
+          </View>
+        );
+      },
+      th: (node: any, children: any, parent: any, styles: any) => {
+        return (
+          <View
+            key={node.key}
+            style={[
+              styles.th,
+              {
+                flex: 1,
+                borderWidth: 1,
+                borderColor: colors.ring,
+                padding: 8,
+                backgroundColor: colors.muted,
+                minWidth: 0, // Allow flex shrinking
+              }
+            ]}
+          >
+            <Text style={{ fontWeight: 'bold', color: colors.foreground, fontSize: 14 }}>
+              {children}
+            </Text>
+          </View>
+        );
+      },
+      td: (node: any, children: any, parent: any, styles: any) => {
+        return (
+          <View
+            key={node.key}
+            style={[
+              styles.td,
+              {
+                flex: 1,
+                borderWidth: 1,
+                borderColor: colors.ring,
+                padding: 8,
+                minWidth: 0, // Allow flex shrinking
+              }
+            ]}
+          >
+            <Text style={{ color: colors.foreground, fontSize: 14 }}>
+              {children}
+            </Text>
           </View>
         );
       },
