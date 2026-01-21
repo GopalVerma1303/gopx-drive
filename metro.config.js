@@ -1,0 +1,25 @@
+// Learn more https://docs.expo.io/guides/customizing-metro
+const { getDefaultConfig } = require("@expo/metro-config");
+const { withNativeWind } = require("nativewind/metro");
+
+// Extend @expo/metro-config as required by EAS
+/** @type {import('expo/metro-config').MetroConfig} */
+const config = getDefaultConfig(__dirname);
+
+// Configure path aliases
+config.resolver = {
+  ...config.resolver,
+  alias: {
+    "@": __dirname,
+  },
+  extraNodeModules: {
+    "@": __dirname,
+  },
+};
+
+// Export config wrapped with NativeWind transformer
+// This extends @expo/metro-config via getDefaultConfig above
+module.exports = withNativeWind(config, {
+  input: "./global.css",
+  inlineRem: 16,
+});

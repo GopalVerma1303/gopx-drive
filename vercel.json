@@ -1,0 +1,59 @@
+{
+  "buildCommand": "expo export -p web && mkdir -p dist/server/_expo && cp -r dist/client/_expo/static dist/server/_expo/static && cp dist/client/favicon.ico dist/server/favicon.ico 2>/dev/null || true",
+  "outputDirectory": "dist/server",
+  "devCommand": "expo",
+  "cleanUrls": true,
+  "framework": null,
+  "redirects": [
+    {
+      "source": "/notes",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/files",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/settings",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/calendar",
+      "destination": "/",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/login",
+      "destination": "/login.html"
+    },
+    {
+      "source": "/notes",
+      "destination": "/notes.html"
+    },
+    {
+      "source": "/files",
+      "destination": "/files.html"
+    },
+    {
+      "source": "/calendar",
+      "destination": "/calendar.html"
+    },
+    {
+      "source": "/settings",
+      "destination": "/settings.html"
+    },
+    {
+      "source": "/note/([^/]+)",
+      "destination": "/note/$1.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
