@@ -24,6 +24,11 @@
       "source": "/calendar",
       "destination": "/",
       "permanent": false
+    },
+    {
+      "source": "/note/([^/]+)",
+      "destination": "/",
+      "permanent": false
     }
   ],
   "rewrites": [

@@ -7,7 +7,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import * as Haptics from "expo-haptics";
 import { Stack } from "expo-router";
-import { LogOut, Mail } from "lucide-react-native";
+import { LogOut } from "lucide-react-native";
 import { Alert, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -107,22 +107,15 @@ export default function SettingsScreen() {
           <View className="bg-muted border border-border rounded-2xl overflow-hidden">
             <View
               style={{
-                flexDirection: "row",
-                alignItems: "center",
                 padding: 16,
-                gap: 12,
               }}
             >
-              <Mail
-                color={colors.mutedForeground}
-                size={20}
-                strokeWidth={2.5}
-              />
               <View style={{ flex: 1 }}>
                 <Text
                   style={{
-                    fontSize: 12,
-                    color: colors.mutedForeground,
+                    fontSize: 16,
+                    color: colors.foreground,
+                    fontWeight: "500",
                     marginBottom: 4,
                   }}
                 >
@@ -130,9 +123,8 @@ export default function SettingsScreen() {
                 </Text>
                 <Text
                   style={{
-                    fontSize: 16,
-                    color: colors.foreground,
-                    fontWeight: "500",
+                    fontSize: 14,
+                    color: colors.mutedForeground,
                   }}
                 >
                   {user?.email || "Not available"}

@@ -4,21 +4,22 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
-import { stripMarkdown } from "@/lib/markdown-utils";
 import { deleteNote, listNotes } from "@/lib/notes";
 import type { Note } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Plus, Search } from "lucide-react-native";
-import { useState } from "react";
+import { LayoutGrid, Plus, Rows2, Search } from "lucide-react-native";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
+  Dimensions,
   Modal,
   Platform,
   Pressable,
@@ -28,6 +29,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+const NOTES_VIEW_MODE_STORAGE_KEY = "@notes_view_mode";
+
 export default function NotesScreen() {
   const { user } = useAuth();
   const router = useRouter();
@@ -35,6 +38,68 @@ export default function NotesScreen() {
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const [isViewModeLoaded, setIsViewModeLoaded] = useState(false);
+  const [screenWidth, setScreenWidth] = useState(() => {
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined") {
+        return window.innerWidth;
+      }
+    }
+    return Dimensions.get("window").width;
+  });
+
+  // Load saved view mode preference on mount
+  useEffect(() => {
+    const loadViewMode = async () => {
+      try {
+        const savedViewMode = await AsyncStorage.getItem(NOTES_VIEW_MODE_STORAGE_KEY);
+        if (savedViewMode && (savedViewMode === "grid" || savedViewMode === "list")) {
+          setViewMode(savedViewMode);
+        }
+      } catch (error) {
+        console.error("Failed to load view mode:", error);
+      } finally {
+        setIsViewModeLoaded(true);
+      }
+    };
+    loadViewMode();
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      const handleResize = () => {
+        if (typeof window !== "undefined") {
+          setScreenWidth(window.innerWidth);
+        }
+      };
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    } else {
+      const subscription = Dimensions.addEventListener("change", ({ window }) => {
+        setScreenWidth(window.width);
+      });
+
+      return () => subscription?.remove();
+    }
+  }, []);
+
+  // Save view mode preference whenever it changes
+  useEffect(() => {
+    if (isViewModeLoaded) {
+      const saveViewMode = async () => {
+        try {
+          await AsyncStorage.setItem(NOTES_VIEW_MODE_STORAGE_KEY, viewMode);
+        } catch (error) {
+          console.error("Failed to save view mode:", error);
+        }
+      };
+      saveViewMode();
+    }
+  }, [viewMode, isViewModeLoaded]);
+
+  // Always use 2 columns for all devices
+  const columns = 2;
 
   const {
     data: notes = [],
@@ -158,6 +223,22 @@ export default function NotesScreen() {
           >
             <Pressable
               onPress={() => {
+                if (Platform.OS !== "web") {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                }
+                const newViewMode = viewMode === "grid" ? "list" : "grid";
+                setViewMode(newViewMode);
+              }}
+              style={{ padding: 8 }}
+            >
+              {viewMode === "grid" ? (
+                <Rows2 color={colors.foreground} size={22} strokeWidth={2.5} />
+              ) : (
+                <LayoutGrid color={colors.foreground} size={22} strokeWidth={2.5} />
+              )}
+            </Pressable>
+            <Pressable
+              onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 router.push("/(app)/note/new");
               }}
@@ -216,21 +297,126 @@ export default function NotesScreen() {
                     : "Tap the + button to create your first note"}
                 </Text>
               </View>
+            ) : viewMode === "grid" ? (
+              <View className="w-full max-w-2xl mx-auto">
+                {(() => {
+                  // Calculate card width
+                  const maxWidth = 672; // max-w-2xl
+                  const containerPadding = 16; // p-4 = 16px
+                  const gap = 16; // gap between cards and columns
+                  const availableWidth = Math.min(screenWidth, maxWidth) - containerPadding * 2;
+                  // Calculate card width accounting for gap between columns
+                  const cardWidth = (availableWidth - gap * (columns - 1)) / columns;
+
+                  // Distribute notes into columns for masonry layout
+                  const columnHeights = new Array(columns).fill(0);
+                  const columnsData: Note[][] = new Array(columns).fill(null).map(() => []);
+
+                  filteredNotes.forEach((note) => {
+                    // Find the shortest column
+                    const shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
+                    columnsData[shortestColumnIndex].push(note);
+                    // Estimate height based on content length (matching NoteCard calculation)
+                    const contentLength = note.content?.length || 0;
+                    const titleHeight = 24;
+                    const dateHeight = 14;
+                    const padding = 16 * 2; // top and bottom
+                    const minContentHeight = 40;
+                    const maxContentHeight = 120;
+                    const lines = Math.ceil(contentLength / 50);
+                    const contentHeight = Math.min(
+                      Math.max(minContentHeight, lines * 18),
+                      maxContentHeight
+                    );
+                    // A4 paper aspect ratio: height/width = 297/210 ≈ 1.414
+                    const a4MaxHeight = cardWidth * 1.414;
+                    const calculatedHeight = titleHeight + contentHeight + dateHeight + padding + 8;
+                    const estimatedHeight = Math.min(calculatedHeight, a4MaxHeight) + gap;
+                    columnHeights[shortestColumnIndex] += estimatedHeight;
+                  });
+
+                  // Calculate total width needed for columns
+                  const totalWidth = cardWidth * columns + gap * (columns - 1);
+
+                  return (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "flex-start",
+                        width: totalWidth,
+                        alignSelf: "center",
+                      }}
+                    >
+                      {columnsData.map((columnNotes, columnIndex) => (
+                        <View
+                          key={columnIndex}
+                          style={{
+                            width: cardWidth,
+                            marginRight: columnIndex < columns - 1 ? gap : 0,
+                          }}
+                        >
+                          {columnNotes.map((note, noteIndex) => (
+                            <View
+                              key={note.id}
+                              style={{
+                                marginBottom: noteIndex < columnNotes.length - 1 ? gap : 0,
+                              }}
+                            >
+                              <NoteCard
+                                note={note}
+                                cardWidth={cardWidth}
+                                onPress={() => router.push(`/(app)/note/${note.id}`)}
+                                onDelete={() => handleRightClickDelete(note.id, note.title)}
+                                onRightClickDelete={
+                                  Platform.OS === "web"
+                                    ? () => handleRightClickDelete(note.id, note.title)
+                                    : undefined
+                                }
+                              />
+                            </View>
+                          ))}
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })()}
+              </View>
             ) : (
-              filteredNotes.map((note) => (
-                <View key={note.id} className="w-full max-w-2xl mx-auto">
-                  <NoteCard
-                    note={note}
-                    onPress={() => router.push(`/(app)/note/${note.id}`)}
-                    onDelete={() => handleRightClickDelete(note.id, note.title)}
-                    onRightClickDelete={
-                      Platform.OS === "web"
-                        ? () => handleRightClickDelete(note.id, note.title)
-                        : undefined
-                    }
-                  />
-                </View>
-              ))
+              <View className="w-full max-w-2xl mx-auto">
+                {(() => {
+                  // List view: full width cards
+                  const maxWidth = 672; // max-w-2xl
+                  const containerPadding = 16; // p-4 = 16px
+                  const gap = 16; // gap between cards
+                  const availableWidth = Math.min(screenWidth, maxWidth) - containerPadding * 2;
+                  const cardWidth = availableWidth;
+
+                  return (
+                    <View style={{ width: cardWidth, alignSelf: "center" }}>
+                      {filteredNotes.map((note, noteIndex) => (
+                        <View
+                          key={note.id}
+                          style={{
+                            marginBottom: noteIndex < filteredNotes.length - 1 ? gap : 0,
+                          }}
+                        >
+                          <NoteCard
+                            note={note}
+                            cardWidth={cardWidth}
+                            onPress={() => router.push(`/(app)/note/${note.id}`)}
+                            onDelete={() => handleRightClickDelete(note.id, note.title)}
+                            onRightClickDelete={
+                              Platform.OS === "web"
+                                ? () => handleRightClickDelete(note.id, note.title)
+                                : undefined
+                            }
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })()}
+              </View>
             )}
           </ScrollView>
         )}
@@ -360,73 +546,73 @@ export default function NotesScreen() {
                 }}
                 onPress={() => setDeleteDialogOpen(false)}
               />
-            <View
-              style={{
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                borderRadius: 8,
-                borderWidth: 1,
-                padding: 24,
-                width: "100%",
-                maxWidth: 400,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-                elevation: 5,
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.foreground,
-                  fontSize: 18,
-                  fontWeight: "600",
-                  marginBottom: 8,
-                }}
-              >
-                Delete Note
-              </Text>
-              <Text
-                style={{
-                  color: colors.mutedForeground,
-                  fontSize: 14,
-                  marginBottom: 24,
-                }}
-              >
-                Are you sure you want to delete "{noteToDelete?.title}"? This
-                action cannot be undone.
-              </Text>
               <View
                 style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  gap: 12,
+                  backgroundColor: colors.muted,
+                  borderColor: colors.border,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  padding: 24,
+                  width: "100%",
+                  maxWidth: 400,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  elevation: 5,
                 }}
               >
-                <Pressable
+                <Text
                   style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
+                    color: colors.foreground,
+                    fontSize: 18,
+                    fontWeight: "600",
+                    marginBottom: 8,
                   }}
-                  onPress={() => setDeleteDialogOpen(false)}
                 >
-                  <Text style={{ color: colors.foreground }}>Cancel</Text>
-                </Pressable>
-                <Pressable
+                  Delete Note
+                </Text>
+                <Text
                   style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 6,
+                    color: colors.mutedForeground,
+                    fontSize: 14,
+                    marginBottom: 24,
                   }}
-                  onPress={handleDeleteConfirm}
                 >
-                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>
-                    Delete
-                  </Text>
-                </Pressable>
+                  Are you sure you want to delete "{noteToDelete?.title}"? This
+                  action cannot be undone.
+                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "flex-end",
+                    gap: 12,
+                  }}
+                >
+                  <Pressable
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                    }}
+                    onPress={() => setDeleteDialogOpen(false)}
+                  >
+                    <Text style={{ color: colors.foreground }}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      borderRadius: 6,
+                    }}
+                    onPress={handleDeleteConfirm}
+                  >
+                    <Text style={{ color: "#ef4444", fontWeight: "600" }}>
+                      Delete
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
-            </View>
-          </BlurView>
+            </BlurView>
           </View>
         </Modal>
       )}
@@ -436,6 +622,7 @@ export default function NotesScreen() {
 
 interface NoteCardProps {
   note: Note;
+  cardWidth: number;
   onPress: () => void;
   onDelete: () => void;
   onRightClickDelete?: () => void;
@@ -443,6 +630,7 @@ interface NoteCardProps {
 
 function NoteCard({
   note,
+  cardWidth,
   onPress,
   onDelete,
   onRightClickDelete,
@@ -486,6 +674,27 @@ function NoteCard({
     return date.toLocaleDateString();
   };
 
+  // Calculate variable card height based on content length for masonry effect
+  const padding = 16; // p-4 = 16px
+  const contentLength = note.content?.length || 0;
+  const titleHeight = 24; // Approximate title height
+  const dateHeight = 14; // Approximate date height
+  const minContentHeight = 40;
+  const maxContentHeight = 120;
+
+  // Calculate content height based on text length (rough estimate)
+  // Each character is roughly 6px wide, with line breaks every ~50 chars
+  const lines = Math.ceil((contentLength || 0) / 50);
+  const contentHeight = Math.min(
+    Math.max(minContentHeight, lines * 18),
+    maxContentHeight
+  );
+
+  // A4 paper aspect ratio: height/width = 297/210 ≈ 1.414
+  const a4MaxHeight = cardWidth * 1.414;
+  const calculatedHeight = titleHeight + contentHeight + dateHeight + padding * 2 + 8; // +8 for spacing
+  const cardHeight = Math.min(calculatedHeight, a4MaxHeight);
+
   return (
     <Pressable
       onPress={onPress}
@@ -497,20 +706,31 @@ function NoteCard({
       })}
     >
       <Animated.View style={{ transform: [{ scale }] }}>
-        <Card className="p-4 mb-3 rounded-2xl bg-muted border border-border">
+        <Card
+          className="rounded-2xl bg-muted border border-border"
+          style={{
+            width: cardWidth,
+            minHeight: cardHeight,
+            maxHeight: a4MaxHeight,
+            padding: padding,
+          }}
+        >
           <Text
-            className="text-xl font-semibold text-foreground"
+            className="text-base font-semibold text-foreground"
             numberOfLines={1}
           >
             {note.title || "Untitled"}
           </Text>
           <Text
-            className="text-sm text-muted-foreground leading-5"
-            numberOfLines={2}
+            className="text-xs text-muted-foreground leading-4"
+            numberOfLines={contentLength > 200 ? 8 : 6}
           >
-            {note.content ? stripMarkdown(note.content) : "No content"}
+            {note.content ? note.content : "No content"}
           </Text>
-          <Text className="text-xs text-muted-foreground/70">
+          <Text
+            className="text-[10px] text-muted-foreground/70"
+            style={{ marginTop: 8 }}
+          >
             {formatDate(note.updated_at)}
           </Text>
         </Card>
