@@ -5,6 +5,15 @@ const wait = (ms = 250) => new Promise((resolve) => setTimeout(resolve, ms));
 // In-memory notes used while building UI without a real database
 let notes: Note[] = [
   {
+    id: "note-0",
+    user_id: "demo-user",
+    title: "Welcome to Gopx Drive",
+    content:"aionoi `code` ononaocno",
+  
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+    updated_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+  },
+  {
     id: "note-1",
     user_id: "demo-user",
     title: "Welcome to Gopx Drive",

@@ -221,12 +221,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         // fontFamily: "monospace",
       },
       code_inline: {
-        backgroundColor: colors.muted,
+        backgroundColor: colors.foreground + "20",
         color: colors.foreground,
         fontSize: 14,
-        paddingHorizontal: 4,
-        paddingVertical: 2,
-        borderRadius: 4,
         fontFamily: "monospace",
       },
       code_block: {
@@ -579,6 +576,18 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           >
             <SyntaxHighlighter code={code.trim()} />
           </View>
+        );
+      },
+      code_inline: (node: any, children: any, parent: any, styles: any) => {
+        // Extract text content from inline code
+        const codeText = node.content || extractTextFromChildren(children) || '';
+
+        // Add space characters at start and end to simulate padding
+        // since padding doesn't work on Text components in React Native
+        return (
+          <Text key={node.key} style={styles.code_inline}>
+            {' '}{codeText}{' '}
+          </Text>
         );
       },
       list_item: (node: any, children: any, parent: any, styles: any) => {
