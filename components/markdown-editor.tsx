@@ -6,7 +6,7 @@ import { Text } from "@/components/ui/text";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { Platform, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Platform, Pressable, Text as RNText, ScrollView, TextInput, View } from "react-native";
 import Markdown, { renderRules } from "react-native-markdown-display";
 
 interface MarkdownEditorProps {
@@ -221,8 +221,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         // fontFamily: "monospace",
       },
       code_inline: {
-        backgroundColor: colors.foreground + "20",
-        color: colors.foreground,
+        color: "#FF69B4",
         fontSize: 14,
         fontFamily: "monospace",
       },
@@ -431,11 +430,21 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
       if (typeof children === 'string') {
         let cleaned = children;
+        let patternMatched = false;
         // Try all patterns
         for (const pattern of checkboxPatterns) {
-          cleaned = cleaned.replace(pattern, '').trim();
+          if (pattern.test(cleaned)) {
+            cleaned = cleaned.replace(pattern, '').trim();
+            patternMatched = true;
+          }
         }
-        return cleaned.length > 0 ? cleaned : null;
+        // Only trim if a pattern was matched, otherwise preserve the string as-is
+        // This is important for preserving spaces in code_inline elements
+        if (patternMatched) {
+          return cleaned.length > 0 ? cleaned : null;
+        }
+        // No pattern matched, return string as-is (preserves spaces)
+        return cleaned;
       }
 
       if (Array.isArray(children)) {
@@ -470,6 +479,29 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         // Handle React elements
         if ('type' in children && 'props' in children) {
           const childProps = children.props as any;
+
+          // Preserve code_inline elements as-is to maintain their spacing
+          // Check if this is a code_inline element by checking its style characteristics
+          if (childProps.style) {
+            const elementStyle = Array.isArray(childProps.style)
+              ? Object.assign({}, ...childProps.style)
+              : childProps.style;
+
+            // code_inline elements have:
+            // - monospace fontFamily
+            // - backgroundColor (for highlighting)
+            // - fontSize of 14
+            const isCodeInline =
+              elementStyle.fontFamily === 'monospace' &&
+              elementStyle.backgroundColor !== undefined &&
+              (elementStyle.fontSize === 14 || elementStyle.fontSize === undefined);
+
+            if (isCodeInline) {
+              // This is a code_inline element, preserve it as-is to maintain spacing
+              return children;
+            }
+          }
+
           if (childProps.children) {
             const processedChildren = removeCheckboxFromChildren(childProps.children);
             // Use React.cloneElement to properly clone the element
@@ -584,10 +616,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
         // Add space characters at start and end to simulate padding
         // since padding doesn't work on Text components in React Native
+        // Use RNText directly to ensure style prop (especially color) is properly applied on web
         return (
-          <Text key={node.key} style={styles.code_inline}>
+          <RNText key={node.key} style={styles.code_inline}>
             {' '}{codeText}{' '}
-          </Text>
+          </RNText>
         );
       },
       list_item: (node: any, children: any, parent: any, styles: any) => {
