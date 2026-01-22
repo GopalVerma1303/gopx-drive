@@ -323,6 +323,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         color: colors.foreground,
         fontSize: 14,
       },
+      hr: {
+        backgroundColor: colors.ring,
+        height: 1,
+        marginTop: 16,
+        marginBottom: 16,
+        borderWidth: 0,
+      },
     };
 
     // Helper function to toggle checkbox using the helper from markdown-toolbar
@@ -925,6 +932,23 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               {children}
             </Text>
           </View>
+        );
+      },
+      hr: (node: any, children: any, parent: any, styles: any) => {
+        return (
+          <View
+            key={node.key}
+            style={[
+              styles.hr,
+              {
+                backgroundColor: colors.ring,
+                height: 1,
+                marginTop: 16,
+                marginBottom: 16,
+                width: "100%",
+              },
+            ]}
+          />
         );
       },
     };

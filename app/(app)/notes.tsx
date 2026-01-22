@@ -716,19 +716,19 @@ function NoteCard({
           }}
         >
           <Text
-            className="text-base font-semibold text-foreground"
+            className="text-lg font-semibold text-foreground"
             numberOfLines={1}
           >
             {note.title || "Untitled"}
           </Text>
           <Text
-            className="text-xs text-muted-foreground leading-4"
+            className="text-sm text-muted-foreground leading-4"
             numberOfLines={contentLength > 200 ? 8 : 6}
           >
             {note.content ? note.content : "No content"}
           </Text>
           <Text
-            className="text-[10px] text-muted-foreground/70"
+            className="text-xs text-muted-foreground/70"
             style={{ marginTop: 8 }}
           >
             {formatDate(note.updated_at)}

@@ -754,6 +754,36 @@ function CustomCalendar({
     });
   };
 
+  const isWeekend = (date: Date | null): boolean => {
+    if (!date) return false;
+    const dayOfWeek = date.getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6; // Sunday (0) or Saturday (6)
+  };
+
+  const hasHolidayOrLeaveEvent = (date: Date | null): boolean => {
+    if (!date) return false;
+    const dateStr = formatDateToLocalString(date);
+    return events.some((event) => {
+      const eventDate = event.instanceDate || event.event_date.split("T")[0];
+      if (eventDate === dateStr) {
+        const titleLower = event.title.toLowerCase();
+        const descriptionLower = (event.description || "").toLowerCase();
+        return (
+          titleLower.includes("holiday") ||
+          titleLower.includes("leave") ||
+          descriptionLower.includes("holiday") ||
+          descriptionLower.includes("leave")
+        );
+      }
+      return false;
+    });
+  };
+
+  const shouldShowRedText = (date: Date | null): boolean => {
+    if (!date) return false;
+    return isWeekend(date) || hasHolidayOrLeaveEvent(date);
+  };
+
   const isSelected = (date: Date | null): boolean => {
     if (!date || !selectedDate) return false;
     return formatDateToLocalString(date) === selectedDate;
@@ -1067,6 +1097,7 @@ function CustomCalendar({
             const selected = isSelected(date);
             const todayDate = isToday(date);
             const dayName = date.toLocaleDateString("en-US", { weekday: "short" });
+            const showRed = shouldShowRedText(date);
 
             return (
               <Pressable
@@ -1095,9 +1126,11 @@ function CustomCalendar({
                   style={{
                     color: selected
                       ? colors.primaryForeground
-                      : todayDate
-                        ? colors.primary
-                        : colors.mutedForeground,
+                      : showRed
+                        ? "#ef4444"
+                        : todayDate
+                          ? colors.primary
+                          : colors.mutedForeground,
                     fontSize: 11,
                     fontWeight: "500",
                     textTransform: "uppercase",
@@ -1110,9 +1143,11 @@ function CustomCalendar({
                   style={{
                     color: selected
                       ? colors.primaryForeground
-                      : todayDate
-                        ? colors.primary
-                        : colors.foreground,
+                      : showRed
+                        ? "#ef4444"
+                        : todayDate
+                          ? colors.primary
+                          : colors.foreground,
                     fontSize: 18,
                     fontWeight: selected || todayDate ? "700" : "600",
                   }}
@@ -1223,25 +1258,28 @@ function CustomCalendar({
           marginBottom: 8,
         }}
       >
-        {weekDays.map((day) => (
-          <View
-            key={day}
-            style={{
-              flex: 1,
-              alignItems: "center",
-            }}
-          >
-            <Text
+        {weekDays.map((day) => {
+          const isWeekendDay = day === "Sat" || day === "Sun";
+          return (
+            <View
+              key={day}
               style={{
-                color: colors.mutedForeground,
-                fontSize: 12,
-                fontWeight: "500",
+                flex: 1,
+                alignItems: "center",
               }}
             >
-              {day}
-            </Text>
-          </View>
-        ))}
+              <Text
+                style={{
+                  color: isWeekendDay ? "#ef4444" : colors.mutedForeground,
+                  fontSize: 12,
+                  fontWeight: "500",
+                }}
+              >
+                {day}
+              </Text>
+            </View>
+          );
+        })}
       </View>
 
       {/* Calendar Grid */}
@@ -1255,6 +1293,7 @@ function CustomCalendar({
           const hasEvent = hasEventOnDate(date);
           const selected = isSelected(date);
           const todayDate = isToday(date);
+          const showRed = shouldShowRedText(date);
 
           return (
             <Pressable
@@ -1289,9 +1328,11 @@ function CustomCalendar({
                     style={{
                       color: selected
                         ? colors.primaryForeground
-                        : todayDate
-                          ? colors.primary
-                          : colors.foreground,
+                        : showRed
+                          ? "#ef4444"
+                          : todayDate
+                            ? colors.primary
+                            : colors.foreground,
                       fontSize: 14,
                       fontWeight: selected || todayDate ? "600" : "400",
                     }}
@@ -1373,6 +1414,11 @@ function EventCard({ event, onSelectDate, onEdit }: EventCardProps) {
   const dayNumber = eventDate.getDate();
   const monthName = eventDate.toLocaleDateString("en-US", { month: "short" });
 
+  // Check if should show red text (weekend or holiday/leave event)
+  const isWeekend = eventDate.getDay() === 0 || eventDate.getDay() === 6; // Sunday (0) or Saturday (6)
+  const hasHolidayOrLeave = event.title.toLowerCase().includes("holiday") || event.title.toLowerCase().includes("leave") || event.description.toLowerCase().includes("holiday") || event.description.toLowerCase().includes("leave");
+  const showRed = isWeekend || hasHolidayOrLeave;
+
   // Extract time from event_date, default to 12:01 AM if not present
   let eventTime = "12:01 AM";
   if (event.event_date.includes("T") && event.event_date.split("T")[1]) {
@@ -1429,7 +1475,7 @@ function EventCard({ event, onSelectDate, onEdit }: EventCardProps) {
             >
               <Text
                 style={{
-                  color: colors.primary,
+                  color: showRed ? "#ef4444" : colors.primary,
                   fontSize: 24,
                   fontWeight: "700",
                 }}
@@ -1438,7 +1484,7 @@ function EventCard({ event, onSelectDate, onEdit }: EventCardProps) {
               </Text>
               <Text
                 style={{
-                  color: colors.mutedForeground,
+                  color: showRed ? "#ef4444" : colors.mutedForeground,
                   fontSize: 12,
                   fontWeight: "500",
                   textTransform: "uppercase",
