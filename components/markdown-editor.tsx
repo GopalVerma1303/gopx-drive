@@ -750,7 +750,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                   onPress={() => {
                     toggleCheckbox(lineIndex);
                   }}
-                  style={{ marginRight: 8, marginTop: 5 }}
+                  style={{ marginRight: 8, marginTop: 4.5 }}
                 >
                   <Checkbox
                     checked={isChecked}
