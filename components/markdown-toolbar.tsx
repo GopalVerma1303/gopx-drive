@@ -2,6 +2,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
 import * as Haptics from "expo-haptics";
 import {
+  ArrowRightToLine,
   Bold,
   Code,
   Code2,
@@ -15,7 +16,7 @@ import {
   Minus,
   Quote,
   Strikethrough,
-  Table,
+  Table
 } from "lucide-react-native";
 import * as React from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
@@ -100,6 +101,7 @@ export function MarkdownToolbar({
   isPreview = false,
 }: MarkdownToolbarProps) {
   const { colors } = useThemeColors();
+  const TAB_SPACES = "   ";
 
   if (isPreview) {
     return null;
@@ -187,6 +189,11 @@ export function MarkdownToolbar({
     onInsertText("\n---\n", 5);
   };
 
+  const handleTab = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onInsertText(TAB_SPACES, TAB_SPACES.length);
+  };
+
 
   const iconSize = 20;
   const iconColor = colors.foreground;
@@ -226,7 +233,7 @@ export function MarkdownToolbar({
 
   return (
     <View
-      className="absolute bottom-0 left-0 right-0 rounded-full bg-background border border-border"
+      className="absolute bottom-0 left-0 right-0 rounded-full bg-background border border-border w-full"
       style={{
         position: "absolute",
         bottom: 0,
@@ -260,6 +267,7 @@ export function MarkdownToolbar({
           <ToolbarButton onPress={handleStrikethrough} ariaLabel="Strikethrough" IconComponent={Strikethrough} />
           <ToolbarButton onPress={handleHeading} ariaLabel="Heading" IconComponent={Hash} />
           <ToolbarButton onPress={handleInlineCode} ariaLabel="Inline Code" IconComponent={Code} />
+          <ToolbarButton onPress={handleTab} ariaLabel="Tab (3 spaces)" IconComponent={ArrowRightToLine} />
           <ToolbarButton onPress={handleQuote} ariaLabel="Quote" IconComponent={Quote} />
           <ToolbarButton onPress={handleLink} ariaLabel="Link" IconComponent={Link} />
           <ToolbarButton onPress={handleImage} ariaLabel="Image" IconComponent={Image} />
