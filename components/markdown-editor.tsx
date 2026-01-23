@@ -960,7 +960,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           <ScrollView
             className="flex-1"
             contentContainerStyle={{
-              paddingHorizontal: 12,
+              paddingHorizontal: 24,
               paddingTop: 20,
               paddingBottom: 80,
             }}
@@ -997,7 +997,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             blurOnSubmit={false}
             textAlignVertical="top"
             style={{
-              paddingHorizontal: 12,
+              paddingHorizontal: 24,
               paddingTop: 30,
               paddingBottom: 65,
               fontFamily: "monospace",

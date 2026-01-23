@@ -182,7 +182,7 @@ export default function NoteEditorScreen() {
       />
       {Platform.OS === "web" ? (
         <View className="flex-1 bg-background" style={{ flex: 1, height: "100%" }}>
-          <View className="flex-1 px-5 w-full max-w-2xl mx-auto bg-muted" style={{ minHeight: "100%" }}>
+          <View className="flex-1 w-full max-w-2xl mx-auto bg-muted" style={{ minHeight: "100%" }}>
             {!isPreview && (
               <MarkdownToolbar
                 onInsertText={(text, cursorOffset) => {
