@@ -960,7 +960,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           <ScrollView
             className="flex-1"
             contentContainerStyle={{
-              paddingHorizontal: 24,
+              paddingHorizontal: 32,
               paddingTop: 20,
               paddingBottom: 80,
             }}
@@ -981,7 +981,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         ) : (
           <Input
             ref={inputRef}
-            className="flex-1 border-0 shadow-none bg-transparent text-base leading-6 font-mono px-6"
+            className="flex-1 border-0 shadow-none bg-transparent text-base leading-6 font-mono px-8"
             placeholder={placeholder}
             placeholderTextColor={colors.mutedForeground}
             value={value}
@@ -997,7 +997,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             blurOnSubmit={false}
             textAlignVertical="top"
             style={{
-              paddingHorizontal: 24,
+              paddingHorizontal: 32,
               paddingTop: 30,
               paddingBottom: 65,
               fontFamily: "monospace",
