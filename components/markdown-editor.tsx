@@ -38,6 +38,246 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     const { colors } = useThemeColors();
     const inputRef = useRef<TextInput>(null);
     const [selection, setSelection] = useState({ start: 0, end: 0 });
+    const previousValueRef = useRef<string>(value);
+    const isProcessingListRef = useRef<boolean>(false);
+
+    // Helper function to detect list patterns and get next list marker
+    const getListInfo = (text: string, cursorPosition: number): {
+      isList: boolean;
+      indent: string;
+      marker: string;
+      markerType: 'ordered' | 'unordered' | 'checkbox' | null;
+      nextMarker: string;
+      currentLine: string;
+      lineIndex: number;
+    } | null => {
+      const lines = text.split('\n');
+      const beforeCursor = text.substring(0, cursorPosition);
+      const lineIndex = beforeCursor.split('\n').length - 1;
+      const currentLine = lines[lineIndex] || '';
+
+      // Match checkbox list FIRST (before unordered) since they share the same prefix: "- [ ] ", "* [ ] ", "+ [ ] " (with optional indentation)
+      const checkboxMatch = currentLine.match(/^(\s*)([-*+])\s+\[([\s*xX*])\]\s*(.*)$/);
+      if (checkboxMatch) {
+        const [, indent, marker, checkboxState, content] = checkboxMatch;
+        return {
+          isList: true,
+          indent,
+          marker: `${marker} [${checkboxState}] `,
+          markerType: 'checkbox',
+          nextMarker: `${marker} [ ] `,
+          currentLine,
+          lineIndex,
+        };
+      }
+
+      // Match ordered list: "1. ", "2. ", etc. (with optional indentation)
+      const orderedMatch = currentLine.match(/^(\s*)(\d+)\.\s+(.*)$/);
+      if (orderedMatch) {
+        const [, indent, number, content] = orderedMatch;
+        const nextNumber = parseInt(number, 10) + 1;
+        return {
+          isList: true,
+          indent,
+          marker: `${number}. `,
+          markerType: 'ordered',
+          nextMarker: `${nextNumber}. `,
+          currentLine,
+          lineIndex,
+        };
+      }
+
+      // Match unordered list: "- ", "* ", "+ " (with optional indentation)
+      // This must come AFTER checkbox check to avoid false matches
+      const unorderedMatch = currentLine.match(/^(\s*)([-*+])\s+(.*)$/);
+      if (unorderedMatch) {
+        const [, indent, marker, content] = unorderedMatch;
+        return {
+          isList: true,
+          indent,
+          marker: `${marker} `,
+          markerType: 'unordered',
+          nextMarker: `${marker} `,
+          currentLine,
+          lineIndex,
+        };
+      }
+
+      return null;
+    };
+
+    // Handle text changes to detect and process list continuations
+    const handleTextChange = (newText: string) => {
+      // Skip processing if we're already processing a list change (avoid infinite loops)
+      if (isProcessingListRef.current) {
+        previousValueRef.current = newText;
+        onChangeText(newText);
+        return;
+      }
+
+      const oldText = previousValueRef.current;
+      const oldLines = oldText.split('\n');
+      const newLines = newText.split('\n');
+
+      // Check if a newline was just added (text increased by exactly one line)
+      if (newLines.length === oldLines.length + 1) {
+        // Find which line was split by comparing line by line
+        let splitLineIndex = -1;
+        let splitPositionInLine = -1;
+
+        for (let i = 0; i < oldLines.length; i++) {
+          const oldLine = oldLines[i];
+          const newLine = newLines[i];
+
+          // If lines are different, the split happened here
+          if (oldLine !== newLine) {
+            splitLineIndex = i;
+            // Find where in the line the split occurred
+            // The new line should be a prefix of the old line (or vice versa if cursor was at start)
+            if (newLine.length < oldLine.length) {
+              // Split happened in the middle or end of oldLine
+              splitPositionInLine = newLine.length;
+            } else {
+              // This shouldn't happen, but handle it
+              splitPositionInLine = oldLine.length;
+            }
+            break;
+          }
+        }
+
+        // If no difference found in existing lines, the split happened at the end of the last line
+        if (splitLineIndex === -1) {
+          splitLineIndex = oldLines.length - 1;
+          const lastOldLine = oldLines[splitLineIndex] || '';
+          splitPositionInLine = lastOldLine.length;
+        }
+
+        const oldLine = oldLines[splitLineIndex] || '';
+        const newLineAfterSplit = newLines[splitLineIndex + 1] || '';
+
+        // Calculate cursor position before the split
+        // If splitPositionInLine is at the end of the line, cursor was at the end
+        // Otherwise, we need to check if cursor was actually at the end
+        const isAtEndOfLine = splitPositionInLine >= oldLine.length;
+
+        // Only process if cursor was at the end of the line (typical use case)
+        if (!isAtEndOfLine) {
+          // Cursor was in the middle, let default behavior happen
+          previousValueRef.current = newText;
+          onChangeText(newText);
+          return;
+        }
+
+        // Calculate cursor position before the split (end of the old line)
+        let cursorBeforeSplit = 0;
+        for (let i = 0; i < splitLineIndex; i++) {
+          cursorBeforeSplit += oldLines[i].length + 1; // +1 for newline
+        }
+        cursorBeforeSplit += oldLine.length;
+
+        // Check if we're in a list context at the cursor position before split
+        const listInfo = getListInfo(oldText, cursorBeforeSplit);
+
+        if (listInfo) {
+          const { indent, nextMarker, currentLine } = listInfo;
+
+          // Check if the old line (before split) was empty (only marker, no content)
+          const oldLineContent = currentLine.replace(/^\s*[-*+]\s*\[[\s*xX*]\]\s*/, '') // Remove checkbox
+            .replace(/^\s*\d+\.\s+/, '') // Remove ordered marker
+            .replace(/^\s*[-*+]\s+/, '') // Remove unordered marker
+            .trim();
+
+          if (oldLineContent === '' && newLineAfterSplit.trim() === '') {
+            // Empty list item - remove it and keep just the newline
+            isProcessingListRef.current = true;
+            const updatedLines = [...newLines];
+            updatedLines.splice(splitLineIndex, 1);
+            const updatedText = updatedLines.join('\n');
+
+            // Calculate new cursor position (at the start of what was the next line)
+            let newCursorPosition = 0;
+            for (let i = 0; i < splitLineIndex; i++) {
+              newCursorPosition += (updatedLines[i]?.length || 0) + 1;
+            }
+
+            previousValueRef.current = updatedText;
+            onChangeText(updatedText);
+
+            requestAnimationFrame(() => {
+              setTimeout(() => {
+                setSelection({ start: newCursorPosition, end: newCursorPosition });
+                if (Platform.OS === "web") {
+                  const input = inputRef.current as any;
+                  if (input && input.setSelectionRange) {
+                    input.setSelectionRange(newCursorPosition, newCursorPosition);
+                  }
+                } else {
+                  const input = inputRef.current as any;
+                  if (input && typeof input.setNativeProps === "function") {
+                    input.setNativeProps({
+                      selection: { start: newCursorPosition, end: newCursorPosition },
+                    });
+                  }
+                }
+                inputRef.current?.focus();
+                isProcessingListRef.current = false;
+              }, Platform.OS === "web" ? 0 : 100);
+            });
+            return;
+          } else if (oldLineContent !== '') {
+            // Non-empty list item - add next marker to the new line
+            isProcessingListRef.current = true;
+            const updatedLines = [...newLines];
+            // Remove any existing content from the new line and add the marker
+            updatedLines[splitLineIndex + 1] = indent + nextMarker + newLineAfterSplit;
+            const updatedText = updatedLines.join('\n');
+
+            // Calculate new cursor position (after the marker on the new line)
+            let newCursorPosition = 0;
+            for (let i = 0; i <= splitLineIndex; i++) {
+              newCursorPosition += (updatedLines[i]?.length || 0) + 1;
+            }
+            newCursorPosition += indent.length + nextMarker.length;
+
+            previousValueRef.current = updatedText;
+            onChangeText(updatedText);
+
+            requestAnimationFrame(() => {
+              setTimeout(() => {
+                setSelection({ start: newCursorPosition, end: newCursorPosition });
+                if (Platform.OS === "web") {
+                  const input = inputRef.current as any;
+                  if (input && input.setSelectionRange) {
+                    input.setSelectionRange(newCursorPosition, newCursorPosition);
+                  }
+                } else {
+                  const input = inputRef.current as any;
+                  if (input && typeof input.setNativeProps === "function") {
+                    input.setNativeProps({
+                      selection: { start: newCursorPosition, end: newCursorPosition },
+                    });
+                  }
+                }
+                inputRef.current?.focus();
+                isProcessingListRef.current = false;
+              }, Platform.OS === "web" ? 0 : 100);
+            });
+            return;
+          }
+        }
+      }
+
+      // Update previous value and call original onChangeText
+      previousValueRef.current = newText;
+      onChangeText(newText);
+    };
+
+    // Update previousValueRef when value changes externally
+    useEffect(() => {
+      if (!isProcessingListRef.current) {
+        previousValueRef.current = value;
+      }
+    }, [value]);
 
     useImperativeHandle(ref, () => ({
       insertText: (text: string, cursorOffset?: number) => {
@@ -985,7 +1225,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             placeholder={placeholder}
             placeholderTextColor={colors.mutedForeground}
             value={value}
-            onChangeText={onChangeText}
+            onChangeText={handleTextChange}
             selection={selection}
             onSelectionChange={(e) => {
               setSelection({
