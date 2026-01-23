@@ -38,8 +38,21 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     const { colors } = useThemeColors();
     const inputRef = useRef<TextInput>(null);
     const [selection, setSelection] = useState({ start: 0, end: 0 });
+    // Keep a synchronous selection/value snapshot for toolbar actions.
+    // Relying on React state alone can be stale (especially when tapping the toolbar blurs the input).
+    const selectionRef = useRef(selection);
+    const lastFocusedSelectionRef = useRef(selection);
+    const isFocusedRef = useRef(false);
+    const valueRef = useRef<string>(value);
     const previousValueRef = useRef<string>(value);
     const isProcessingListRef = useRef<boolean>(false);
+
+    const commitSelection = (next: { start: number; end: number }) => {
+      selectionRef.current = next;
+      // Even if we're temporarily blurred (e.g. user taps toolbar), we want to remember the last caret.
+      lastFocusedSelectionRef.current = next;
+      setSelection(next);
+    };
 
     // Helper function to detect list patterns and get next list marker
     const getListInfo = (text: string, cursorPosition: number): {
@@ -110,6 +123,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     const handleTextChange = (newText: string) => {
       // Skip processing if we're already processing a list change (avoid infinite loops)
       if (isProcessingListRef.current) {
+        valueRef.current = newText;
         previousValueRef.current = newText;
         onChangeText(newText);
         return;
@@ -200,12 +214,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               newCursorPosition += (updatedLines[i]?.length || 0) + 1;
             }
 
+            valueRef.current = updatedText;
             previousValueRef.current = updatedText;
             onChangeText(updatedText);
 
             requestAnimationFrame(() => {
               setTimeout(() => {
-                setSelection({ start: newCursorPosition, end: newCursorPosition });
+                commitSelection({ start: newCursorPosition, end: newCursorPosition });
                 if (Platform.OS === "web") {
                   const input = inputRef.current as any;
                   if (input && input.setSelectionRange) {
@@ -239,12 +254,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             }
             newCursorPosition += indent.length + nextMarker.length;
 
+            valueRef.current = updatedText;
             previousValueRef.current = updatedText;
             onChangeText(updatedText);
 
             requestAnimationFrame(() => {
               setTimeout(() => {
-                setSelection({ start: newCursorPosition, end: newCursorPosition });
+                commitSelection({ start: newCursorPosition, end: newCursorPosition });
                 if (Platform.OS === "web") {
                   const input = inputRef.current as any;
                   if (input && input.setSelectionRange) {
@@ -268,6 +284,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       }
 
       // Update previous value and call original onChangeText
+      valueRef.current = newText;
       previousValueRef.current = newText;
       onChangeText(newText);
     };
@@ -275,7 +292,22 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     // Update previousValueRef when value changes externally
     useEffect(() => {
       if (!isProcessingListRef.current) {
+        valueRef.current = value;
         previousValueRef.current = value;
+      }
+    }, [value]);
+
+    // Keep selection inside bounds when value changes externally.
+    useEffect(() => {
+      if (isProcessingListRef.current) return;
+      const len = value.length;
+      const cur = selectionRef.current;
+      const next = {
+        start: Math.max(0, Math.min(cur.start, len)),
+        end: Math.max(0, Math.min(cur.end, len)),
+      };
+      if (next.start !== cur.start || next.end !== cur.end) {
+        commitSelection(next);
       }
     }, [value]);
 
@@ -283,16 +315,20 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       insertText: (text: string, cursorOffset?: number) => {
         if (isPreview || !inputRef.current) return;
 
-        const start = selection.start;
-        const end = selection.end;
-        const beforeText = value.substring(0, start);
-        const afterText = value.substring(end);
+        const currentValue = valueRef.current;
+        const activeSelection = isFocusedRef.current ? selectionRef.current : lastFocusedSelectionRef.current;
+        const start = Math.max(0, Math.min(activeSelection.start, currentValue.length));
+        const end = Math.max(0, Math.min(activeSelection.end, currentValue.length));
+        const beforeText = currentValue.substring(0, start);
+        const afterText = currentValue.substring(end);
         const newText = beforeText + text + afterText;
         const newCursorPosition = start + (cursorOffset ?? text.length);
 
         // Update state immediately - the controlled selection prop will handle cursor positioning
-        setSelection({ start: newCursorPosition, end: newCursorPosition });
+        commitSelection({ start: newCursorPosition, end: newCursorPosition });
 
+        valueRef.current = newText;
+        previousValueRef.current = newText;
         onChangeText(newText);
 
         // Ensure input maintains focus
@@ -310,7 +346,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               input.selectionStart = newCursorPosition;
               input.selectionEnd = newCursorPosition;
             }
-            setSelection({ start: newCursorPosition, end: newCursorPosition });
+            commitSelection({ start: newCursorPosition, end: newCursorPosition });
           } else {
             // For native, use setNativeProps as fallback (controlled selection prop is primary)
             const input = inputRef.current as any;
@@ -320,7 +356,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               });
             }
             // State already updated above, but ensure it's set again after text update
-            setSelection({ start: newCursorPosition, end: newCursorPosition });
+            commitSelection({ start: newCursorPosition, end: newCursorPosition });
             inputRef.current?.focus();
           }
         };
@@ -333,9 +369,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       wrapSelection: (before: string, after: string, cursorOffset?: number) => {
         if (isPreview || !inputRef.current) return;
 
-        const start = selection.start;
-        const end = selection.end;
-        const selectedText = value.substring(start, end);
+        const currentValue = valueRef.current;
+        const activeSelection = isFocusedRef.current ? selectionRef.current : lastFocusedSelectionRef.current;
+        const start = Math.max(0, Math.min(activeSelection.start, currentValue.length));
+        const end = Math.max(0, Math.min(activeSelection.end, currentValue.length));
+        const selectedText = currentValue.substring(start, end);
 
         // If there's selected text, wrap it; otherwise insert the formatting markers
         let newText: string;
@@ -343,19 +381,21 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
         if (selectedText.length > 0) {
           // Wrap selected text - place cursor at the end of the wrapped text
-          newText = value.substring(0, start) + before + selectedText + after + value.substring(end);
+          newText = currentValue.substring(0, start) + before + selectedText + after + currentValue.substring(end);
           newCursorPosition = start + before.length + selectedText.length + after.length;
         } else {
           // No selection, insert formatting markers with cursor positioned according to cursorOffset
-          newText = value.substring(0, start) + before + after + value.substring(end);
+          newText = currentValue.substring(0, start) + before + after + currentValue.substring(end);
           // cursorOffset should position cursor between before and after markers
           // e.g., for "**" + "**" with offset 2, cursor should be at start + 2 (after first "**")
           newCursorPosition = start + (cursorOffset ?? before.length);
         }
 
         // Update state immediately - the controlled selection prop will handle cursor positioning
-        setSelection({ start: newCursorPosition, end: newCursorPosition });
+        commitSelection({ start: newCursorPosition, end: newCursorPosition });
 
+        valueRef.current = newText;
+        previousValueRef.current = newText;
         onChangeText(newText);
 
         // Ensure input maintains focus
@@ -373,7 +413,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               input.selectionStart = newCursorPosition;
               input.selectionEnd = newCursorPosition;
             }
-            setSelection({ start: newCursorPosition, end: newCursorPosition });
+            commitSelection({ start: newCursorPosition, end: newCursorPosition });
           } else {
             // For native, use setNativeProps as fallback (controlled selection prop is primary)
             const input = inputRef.current as any;
@@ -383,7 +423,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               });
             }
             // State already updated above, but ensure it's set again after text update
-            setSelection({ start: newCursorPosition, end: newCursorPosition });
+            commitSelection({ start: newCursorPosition, end: newCursorPosition });
             inputRef.current?.focus();
           }
         };
@@ -396,7 +436,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       focus: () => {
         inputRef.current?.focus();
       },
-      getSelection: () => selection,
+      getSelection: () => selectionRef.current,
     }));
 
     const markdownStyles = {
@@ -1227,11 +1267,45 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             value={value}
             onChangeText={handleTextChange}
             selection={selection}
+            onFocus={() => {
+              isFocusedRef.current = true;
+              // When refocusing (e.g. after tapping the toolbar), restore the last known caret.
+              const len = valueRef.current.length;
+              const last = lastFocusedSelectionRef.current;
+              const next = {
+                start: Math.max(0, Math.min(last.start, len)),
+                end: Math.max(0, Math.min(last.end, len)),
+              };
+              requestAnimationFrame(() => {
+                setTimeout(() => {
+                  commitSelection(next);
+                  if (Platform.OS === "web") {
+                    const input = inputRef.current as any;
+                    if (input && input.setSelectionRange) {
+                      input.setSelectionRange(next.start, next.end);
+                    }
+                  } else {
+                    const input = inputRef.current as any;
+                    if (input && typeof input.setNativeProps === "function") {
+                      input.setNativeProps({ selection: next });
+                    }
+                  }
+                }, Platform.OS === "web" ? 0 : 50);
+              });
+            }}
+            onBlur={() => {
+              isFocusedRef.current = false;
+            }}
             onSelectionChange={(e) => {
-              setSelection({
+              // Avoid overwriting our last known caret with blur-induced selection resets.
+              if (!isFocusedRef.current) return;
+              const next = {
                 start: e.nativeEvent.selection.start,
                 end: e.nativeEvent.selection.end,
-              });
+              };
+              selectionRef.current = next;
+              lastFocusedSelectionRef.current = next;
+              setSelection(next);
             }}
             multiline
             blurOnSubmit={false}

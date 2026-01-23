@@ -1,8 +1,9 @@
 "use client";
 
 import { NoteDetailHeader } from "@/components/headers/note-detail-header";
-import { MarkdownEditor, MarkdownEditorRef } from "@/components/markdown-editor";
 import { MarkdownToolbar } from "@/components/markdown-toolbar";
+import { RichTextEditor } from "@/components/rich-text-editor";
+import type { RichTextEditorRef } from "@/components/rich-text-editor.types";
 import { useAuth } from "@/contexts/auth-context";
 import { createNote, getNoteById, updateNote } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -34,7 +35,7 @@ export default function NoteEditorScreen() {
   const [lastSavedTitle, setLastSavedTitle] = useState("");
   const [lastSavedContent, setLastSavedContent] = useState("");
   const [isPreview, setIsPreview] = useState(!isNewNote);
-  const editorRef = useRef<MarkdownEditorRef>(null);
+  const editorRef = useRef<RichTextEditorRef>(null);
 
   const containerAnimatedStyle = useAnimatedStyle(() => {
     // Only apply keyboard avoidance on native platforms
@@ -198,8 +199,8 @@ export default function NoteEditorScreen() {
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              <MarkdownEditor
-                ref={editorRef}
+              <RichTextEditor
+                ref={!isPreview ? editorRef : undefined}
                 value={content}
                 onChangeText={setContent}
                 placeholder="Start writing in markdown..."
@@ -230,8 +231,8 @@ export default function NoteEditorScreen() {
                 showsVerticalScrollIndicator={false}
                 keyboardDismissMode="interactive"
               >
-                <MarkdownEditor
-                  ref={editorRef}
+                <RichTextEditor
+                  ref={!isPreview ? editorRef : undefined}
                   value={content}
                   onChangeText={setContent}
                   placeholder="Start writing in markdown..."

@@ -131,7 +131,8 @@ export function MarkdownToolbar({
 
   const handleHeading = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onInsertText("#", 1);
+    // Most markdown parsers expect a space after the hash.
+    onInsertText("# ", 2);
   };
 
   const handleInlineCode = () => {
