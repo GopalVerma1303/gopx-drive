@@ -40,6 +40,21 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     const [selection, setSelection] = useState({ start: 0, end: 0 });
     const previousValueRef = useRef<string>(value);
     const isProcessingListRef = useRef<boolean>(false);
+    const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null);
+    const suppressSelectionUpdatesRef = useRef<number>(0);
+
+    const beginProgrammaticSelection = (nextSelection: { start: number; end: number }) => {
+      pendingSelectionRef.current = nextSelection;
+      suppressSelectionUpdatesRef.current += 1;
+      setSelection(nextSelection);
+    };
+
+    const endProgrammaticSelection = () => {
+      suppressSelectionUpdatesRef.current = Math.max(0, suppressSelectionUpdatesRef.current - 1);
+      if (suppressSelectionUpdatesRef.current === 0) {
+        pendingSelectionRef.current = null;
+      }
+    };
 
     // Helper function to detect list patterns and get next list marker
     const getListInfo = (text: string, cursorPosition: number): {
@@ -200,12 +215,17 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               newCursorPosition += (updatedLines[i]?.length || 0) + 1;
             }
 
+            // Establish the cursor position early so RN doesn't briefly reset it (e.g., to 0)
+            beginProgrammaticSelection({
+              start: newCursorPosition,
+              end: newCursorPosition,
+            });
+
             previousValueRef.current = updatedText;
             onChangeText(updatedText);
 
             requestAnimationFrame(() => {
               setTimeout(() => {
-                setSelection({ start: newCursorPosition, end: newCursorPosition });
                 if (Platform.OS === "web") {
                   const input = inputRef.current as any;
                   if (input && input.setSelectionRange) {
@@ -221,7 +241,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                 }
                 inputRef.current?.focus();
                 isProcessingListRef.current = false;
-              }, Platform.OS === "web" ? 0 : 100);
+                endProgrammaticSelection();
+              }, Platform.OS === "android" ? 16 : 0);
             });
             return;
           } else if (oldLineContent !== '') {
@@ -239,12 +260,17 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             }
             newCursorPosition += indent.length + nextMarker.length;
 
+            // Establish the cursor position early so RN doesn't briefly reset it (e.g., to 0)
+            beginProgrammaticSelection({
+              start: newCursorPosition,
+              end: newCursorPosition,
+            });
+
             previousValueRef.current = updatedText;
             onChangeText(updatedText);
 
             requestAnimationFrame(() => {
               setTimeout(() => {
-                setSelection({ start: newCursorPosition, end: newCursorPosition });
                 if (Platform.OS === "web") {
                   const input = inputRef.current as any;
                   if (input && input.setSelectionRange) {
@@ -260,7 +286,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                 }
                 inputRef.current?.focus();
                 isProcessingListRef.current = false;
-              }, Platform.OS === "web" ? 0 : 100);
+                endProgrammaticSelection();
+              }, Platform.OS === "android" ? 16 : 0);
             });
             return;
           }
@@ -291,7 +318,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         const newCursorPosition = start + (cursorOffset ?? text.length);
 
         // Update state immediately - the controlled selection prop will handle cursor positioning
-        setSelection({ start: newCursorPosition, end: newCursorPosition });
+        beginProgrammaticSelection({ start: newCursorPosition, end: newCursorPosition });
 
         onChangeText(newText);
 
@@ -310,7 +337,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               input.selectionStart = newCursorPosition;
               input.selectionEnd = newCursorPosition;
             }
-            setSelection({ start: newCursorPosition, end: newCursorPosition });
           } else {
             // For native, use setNativeProps as fallback (controlled selection prop is primary)
             const input = inputRef.current as any;
@@ -319,15 +345,14 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                 selection: { start: newCursorPosition, end: newCursorPosition },
               });
             }
-            // State already updated above, but ensure it's set again after text update
-            setSelection({ start: newCursorPosition, end: newCursorPosition });
             inputRef.current?.focus();
           }
+          endProgrammaticSelection();
         };
 
         // Use requestAnimationFrame + timeout to ensure text has been updated
         requestAnimationFrame(() => {
-          setTimeout(setCursorPosition, Platform.OS === "web" ? 0 : 100);
+          setTimeout(setCursorPosition, Platform.OS === "android" ? 16 : 0);
         });
       },
       wrapSelection: (before: string, after: string, cursorOffset?: number) => {
@@ -354,7 +379,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         }
 
         // Update state immediately - the controlled selection prop will handle cursor positioning
-        setSelection({ start: newCursorPosition, end: newCursorPosition });
+        beginProgrammaticSelection({ start: newCursorPosition, end: newCursorPosition });
 
         onChangeText(newText);
 
@@ -373,7 +398,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               input.selectionStart = newCursorPosition;
               input.selectionEnd = newCursorPosition;
             }
-            setSelection({ start: newCursorPosition, end: newCursorPosition });
           } else {
             // For native, use setNativeProps as fallback (controlled selection prop is primary)
             const input = inputRef.current as any;
@@ -382,15 +406,14 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                 selection: { start: newCursorPosition, end: newCursorPosition },
               });
             }
-            // State already updated above, but ensure it's set again after text update
-            setSelection({ start: newCursorPosition, end: newCursorPosition });
             inputRef.current?.focus();
           }
+          endProgrammaticSelection();
         };
 
         // Use requestAnimationFrame + timeout to ensure text has been updated
         requestAnimationFrame(() => {
-          setTimeout(setCursorPosition, Platform.OS === "web" ? 0 : 100);
+          setTimeout(setCursorPosition, Platform.OS === "android" ? 16 : 0);
         });
       },
       focus: () => {
@@ -1228,10 +1251,17 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             onChangeText={handleTextChange}
             selection={selection}
             onSelectionChange={(e) => {
-              setSelection({
-                start: e.nativeEvent.selection.start,
-                end: e.nativeEvent.selection.end,
-              });
+              const next = e.nativeEvent.selection;
+              const pending = pendingSelectionRef.current;
+
+              // During programmatic updates, ignore transient selection events (often {0,0} on Android)
+              if (isProcessingListRef.current || suppressSelectionUpdatesRef.current > 0) {
+                if (!pending || pending.start !== next.start || pending.end !== next.end) {
+                  return;
+                }
+              }
+
+              setSelection({ start: next.start, end: next.end });
             }}
             multiline
             blurOnSubmit={false}
