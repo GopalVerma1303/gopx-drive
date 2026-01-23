@@ -9,7 +9,6 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -162,7 +161,6 @@ export default function NoteEditorScreen() {
 
   return (
     <>
-      <StatusBar style={colors.foreground === "#000000" ? "dark" : "light"} />
       <Stack.Screen
         options={{
           headerShown: false,
@@ -213,7 +211,7 @@ export default function NoteEditorScreen() {
       ) : (
         <Animated.View className="flex-1" style={containerAnimatedStyle}>
           <View className="flex-1 bg-background">
-            <View className="flex-1 px-5 w-full max-w-2xl mx-auto bg-muted">
+            <View className="flex-1 px-0 w-full max-w-2xl mx-auto bg-muted">
               {!isPreview && (
                 <MarkdownToolbar
                   onInsertText={(text, cursorOffset) => {

@@ -981,7 +981,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         ) : (
           <Input
             ref={inputRef}
-            className="flex-1 border-0 shadow-none bg-transparent text-base leading-6 text-foreground font-mono"
+            className="flex-1 border-0 shadow-none bg-transparent text-base leading-6 font-mono px-6"
             placeholder={placeholder}
             placeholderTextColor={colors.mutedForeground}
             value={value}

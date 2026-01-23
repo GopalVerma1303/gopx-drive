@@ -1,7 +1,7 @@
 "use client";
 
 import { AuthProvider } from "@/contexts/auth-context";
-import { ThemeProvider } from "@/contexts/theme-context";
+import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import "@/global.css";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -10,6 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as Linking from "expo-linking";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { Alert, Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -33,6 +34,7 @@ const queryClient = new QueryClient({
 
 function RootLayoutNav() {
   const { colors } = useThemeColors();
+  const { resolvedTheme } = useTheme();
   const router = useRouter();
   const segments = useSegments();
 
@@ -127,6 +129,11 @@ function RootLayoutNav() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar
+        style={resolvedTheme === "dark" ? "light" : "dark"}
+        backgroundColor={colors.background}
+        translucent={false}
+      />
       <Stack
         screenOptions={{
           headerBackTitle: "Back",
