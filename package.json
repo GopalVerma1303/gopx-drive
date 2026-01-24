@@ -8,10 +8,12 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:web": "expo export --platform web",
-    "deploy:web": "npm run build:web && eas deploy",
-    "deploy:web:prod": "npm run build:web && eas deploy --prod",
+    "deploy:web:local": "npm run build:web && eas deploy",
+    "deploy:web:prod:local": "npm run build:web && eas deploy --prod",
     "deploy:web:easenv:preview": "eas env:exec --environment preview -- npm run build:web && eas deploy --environment preview",
-    "deploy:web:easenv:prod": "eas env:exec --environment production -- npm run build:web && eas deploy --prod --environment production"
+    "deploy:web:easenv:prod": "eas env:exec --environment production -- npm run build:web && eas deploy --prod --environment production",
+    "deploy:web": "npm run deploy:web:easenv:preview",
+    "deploy:web:prod": "npm run deploy:web:easenv:prod"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
