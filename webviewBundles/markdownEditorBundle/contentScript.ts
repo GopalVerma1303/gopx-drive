@@ -2,7 +2,21 @@ import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap, placeholder as placeholderExtension, ViewUpdate } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { markdown, markdownKeymap } from '@codemirror/lang-markdown';
-import { languages } from '@codemirror/language-data';
+import { javascript } from '@codemirror/lang-javascript';
+import { syntaxHighlighting, defaultHighlightStyle, HighlightStyle } from '@codemirror/language';
+import { tags, classHighlighter } from '@lezer/highlight';
+import markdownDecorations from './markdownDecorations';
+
+// Newer versions of CodeMirror may enable Chrome's EditContext API by default.
+// This causes major issues on Android WebView. Joplin disables it; we do the same.
+// See:
+// - https://github.com/codemirror/dev/issues/1450
+// - https://github.com/codemirror/dev/issues/1451
+try {
+	(EditorView as any).EDIT_CONTEXT = false;
+} catch {
+	// no-op
+}
 
 type Theme = {
 	dark?: boolean;
@@ -89,6 +103,20 @@ const setThemeVars = (theme: Theme | null | undefined) => {
 	setPx('--pad-bottom', theme.padBottom);
 	setPx('--font-size', theme.fontSize);
 	setPx('--line-height', theme.lineHeight);
+
+	// Joplin-like syntax token palette (used by HighlightStyle below).
+	// These are intentionally "opinionated" and match Joplin's defaults closely.
+	const isDark = !!theme.dark;
+	root.style.setProperty('--cm-urlColor', isDark ? '#5da8ff' : '#0066cc');
+	root.style.setProperty('--cm-mathColor', isDark ? '#9fa' : '#276');
+	root.style.setProperty('--cm-kw', isDark ? '#ff7' : '#740');
+	root.style.setProperty('--cm-op', isDark ? '#f7f' : '#805');
+	root.style.setProperty('--cm-lit', isDark ? '#aaf' : '#037');
+	root.style.setProperty('--cm-tn', isDark ? '#7ff' : '#a00');
+	root.style.setProperty('--cm-ins', isDark ? '#7f7' : '#471');
+	root.style.setProperty('--cm-del', isDark ? '#f96' : '#a21');
+	root.style.setProperty('--cm-prop', isDark ? '#d96' : '#940');
+	root.style.setProperty('--cm-class', isDark ? '#d8a' : '#904');
 };
 
 const createCmTheme = (dark: boolean) => {
@@ -97,14 +125,17 @@ const createCmTheme = (dark: boolean) => {
 			'&': {
 				color: 'var(--fg)',
 				backgroundColor: 'var(--bg)',
-				height: '100%',
+				minHeight: '100vh',
+			},
+			'& div, & span, & a': {
+				fontFamily: 'inherit',
 			},
 			'.cm-editor': {
-				height: '100%',
+				minHeight: '100vh',
 			},
 			'.cm-scroller': {
-				overflow: 'auto',
-				height: '100%',
+				// Joplin-style: allow external (page) scrolling by not forcing an internal scroller.
+				overflow: 'visible',
 				backgroundColor: 'var(--bg)',
 				WebkitOverflowScrolling: 'touch',
 				overscrollBehavior: 'contain',
@@ -119,6 +150,10 @@ const createCmTheme = (dark: boolean) => {
 				fontSize: 'var(--font-size)',
 				lineHeight: 'var(--line-height)',
 			},
+			'.cm-dropCursor': {
+				backgroundColor: dark ? 'white' : 'black',
+				width: '1px',
+			},
 			'.cm-gutters': {
 				backgroundColor: 'var(--bg)',
 				color: 'var(--gutter-fg)',
@@ -131,9 +166,103 @@ const createCmTheme = (dark: boolean) => {
 				backgroundColor: 'var(--selection) !important',
 			},
 			'.cm-placeholder': { color: 'var(--placeholder)' },
+
+			// Joplin-like markdown block styling (driven by markdownDecorations).
+			'.cm-blockQuote': {
+				borderLeft: `4px solid var(--gutter-fg)`,
+				opacity: dark ? '0.9' : '0.85',
+				paddingLeft: '4px',
+			},
+			'.cm-codeBlock': {
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: 'rgba(100, 100, 100, 0.35)',
+				backgroundColor: 'rgba(155, 155, 155, 0.1)',
+				fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+			},
+			'.cm-codeBlock.cm-regionFirstLine, .cm-codeBlock.cm-regionLastLine': {
+				borderRadius: '3px',
+			},
+			'.cm-codeBlock:not(.cm-regionFirstLine)': {
+				borderTop: 'none',
+				borderTopLeftRadius: '0',
+				borderTopRightRadius: '0',
+			},
+			'.cm-codeBlock:not(.cm-regionLastLine)': {
+				borderBottom: 'none',
+				borderBottomLeftRadius: '0',
+				borderBottomRightRadius: '0',
+			},
+			'.cm-inlineCode': {
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: dark ? 'rgba(200, 200, 200, 0.5)' : 'rgba(100, 100, 100, 0.5)',
+				borderRadius: '4px',
+				fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+			},
+			'.cm-mathBlock, .cm-inlineMath': {
+				color: 'var(--cm-mathColor)',
+			},
+			'.cm-tableHeader, .cm-tableRow, .cm-tableDelimiter': {
+				fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+			},
+			'.cm-taskMarker': {
+				fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+			},
+			'.cm-strike': {
+				textDecoration: 'line-through',
+			},
+			'.cm-h1': { fontWeight: 'bold', fontSize: '1.5em', paddingBottom: '0.2em' },
+			'.cm-h2': { fontWeight: 'bold', fontSize: '1.4em', paddingBottom: '0.2em' },
+			'.cm-h3': { fontWeight: 'bold', fontSize: '1.3em', paddingBottom: '0.2em' },
+			'.cm-h4': { fontWeight: 'bold', fontSize: '1.2em', paddingBottom: '0.2em' },
+			'.cm-h5': { fontWeight: 'bold', fontSize: '1.1em', paddingBottom: '0.2em' },
+			'.cm-h6': { fontWeight: 'bold', fontSize: '1.0em', paddingBottom: '0.2em' },
+
+			// Default URL style when URL is within a link.
+			'.tok-url.tok-link, .tok-link.tok-meta, .tok-link.tok-string': {
+				opacity: '0.661',
+			},
 		},
 		{ dark },
 	);
+};
+
+const joplinLikeHighlightStyle = HighlightStyle.define([
+	{ tag: tags.strong, fontWeight: 'bold' },
+	{ tag: tags.emphasis, fontStyle: 'italic' },
+	{ tag: tags.list, fontFamily: 'inherit' },
+	{ tag: tags.comment, opacity: '0.9', fontStyle: 'italic' },
+	{ tag: tags.link, color: 'var(--cm-urlColor)' },
+
+	// Code block content palette (matches Joplin defaults).
+	{ tag: tags.keyword, color: 'var(--cm-kw)' },
+	{ tag: tags.operator, color: 'var(--cm-op)' },
+	{ tag: tags.literal, color: 'var(--cm-lit)' },
+	{ tag: tags.typeName, color: 'var(--cm-tn)' },
+	{ tag: tags.inserted, color: 'var(--cm-ins)' },
+	{ tag: tags.deleted, color: 'var(--cm-del)' },
+	{ tag: tags.propertyName, color: 'var(--cm-prop)' },
+	{ tag: tags.className, color: 'var(--cm-class)' },
+]);
+
+// IMPORTANT:
+// Using `@codemirror/language-data` causes lazy language loading via dynamic import and "skipping parsers".
+// In Android WebView this can lead to Lezer TreeBuffer class identity mismatches and crashes when typing
+// in fenced code blocks (e.g. ```js).
+//
+// To match Joplin's stability, keep code fence languages synchronous and bundled.
+const codeLanguageFromInfo = (info: string) => {
+	const name = (info || '').trim().split(/\s+/)[0]?.toLowerCase() ?? '';
+	if (!name) return null;
+
+	// JavaScript / TypeScript family
+	if (name === 'js' || name === 'javascript') return javascript({ jsx: false, typescript: false }).language;
+	if (name === 'jsx') return javascript({ jsx: true, typescript: false }).language;
+	if (name === 'ts' || name === 'typescript') return javascript({ jsx: false, typescript: true }).language;
+	if (name === 'tsx') return javascript({ jsx: true, typescript: true }).language;
+
+	return null;
 };
 
 let view: EditorView | null = null;
@@ -205,8 +334,15 @@ const ensureEditor = (args: InitArgs) => {
 		doc: typeof args.value === 'string' ? args.value : '',
 		extensions: [
 			history(),
-			markdown({ codeLanguages: languages }),
+			markdown({ codeLanguages: codeLanguageFromInfo }),
 			keymap.of([...defaultKeymap, ...historyKeymap, ...markdownKeymap, indentWithTab]),
+			EditorView.lineWrapping,
+			markdownDecorations,
+			// Add stable token classes (tok-*) for CSS selectors (like Joplin).
+			syntaxHighlighting(classHighlighter),
+			syntaxHighlighting(joplinLikeHighlightStyle),
+			// If we haven't defined a tag mapping, fall back to default highlighting.
+			syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
 			updateListener,
 			themeCompartment.of(cmTheme),
 			placeholderCompartment.of(placeholderExtension(typeof args.placeholder === 'string' ? args.placeholder : '')),
@@ -214,6 +350,26 @@ const ensureEditor = (args: InitArgs) => {
 	});
 
 	view = new EditorView({ state, parent });
+
+	// Focusing behavior: tapping the editor container should focus the editor,
+	// even if the tap target isn't the contentDOM (matches Joplin's behavior).
+	parent.addEventListener('click', (event) => {
+		const activeElement = document.querySelector(':focus');
+		if (!parent.contains(activeElement) && event.target === parent) {
+			view?.focus();
+		}
+	});
+
+	// Keyboard + rotation: keep the selection visible after a resize.
+	window.onresize = () => {
+		try {
+			if (!view) return;
+			const pos = view.state.selection.main.head;
+			view.dispatch({ effects: EditorView.scrollIntoView(pos, { y: 'center' }) });
+		} catch {
+			// no-op
+		}
+	};
 
 	if (args.selection) {
 		const next = clampSelection(view.state.doc.length, args.selection);

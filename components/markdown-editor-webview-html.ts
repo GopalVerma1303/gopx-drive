@@ -14,6 +14,7 @@ export function getMarkdownEditorWebViewHtml() {
     />
     <style>
       :root {
+        /* Defaults chosen to match Joplin's mobile editor feel. */
         --bg: transparent;
         --fg: #111827;
         --caret: #111827;
@@ -21,12 +22,15 @@ export function getMarkdownEditorWebViewHtml() {
         --gutter-fg: rgba(17, 24, 39, 0.45);
         --line-highlight: rgba(0, 0, 0, 0.04);
         --placeholder: rgba(17, 24, 39, 0.35);
-        --font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-          "Courier New", monospace;
-        --pad-x: 32px;
-        --pad-top: 30px;
-        --pad-bottom: 65px;
-        --font-size: 16px;
+        --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+        /* Joplin uses very small horizontal padding and a top inset. */
+        --pad-x: 1px;
+        --pad-top: 10px;
+        --pad-bottom: 1px;
+
+        /* Joplin uses 13pt. Use a close px default (can be overridden by RN). */
+        --font-size: 17px;
         --line-height: 24px;
       }
       @media (max-width: 420px) {
@@ -62,7 +66,7 @@ export function getMarkdownEditorWebViewHtml() {
         background: var(--bg);
       }
       body {
-        overflow: hidden;
+        overflow: auto;
         -webkit-text-size-adjust: 100%;
       }
       #root {
@@ -72,6 +76,38 @@ export function getMarkdownEditorWebViewHtml() {
       .gopx-editor {
         flex: 1;
         min-height: 100%;
+      }
+
+      /* Scrollbar styling (matches Joplin's approach). */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(100, 100, 100, 0.7) rgba(0, 0, 0, 0.1);
+      }
+      @supports selector(::-webkit-scrollbar) {
+        *::-webkit-scrollbar {
+          width: 7px;
+          height: 7px;
+        }
+        *::-webkit-scrollbar-corner {
+          background: none;
+        }
+        *::-webkit-scrollbar-track {
+          border: none;
+        }
+        *::-webkit-scrollbar-thumb {
+          background: rgba(100, 100, 100, 0.3);
+          border-radius: 5px;
+        }
+        *::-webkit-scrollbar-track:hover {
+          background: rgba(0, 0, 0, 0.1);
+        }
+        *::-webkit-scrollbar-thumb:hover {
+          background: rgba(100, 100, 100, 0.7);
+        }
+        * {
+          scrollbar-width: unset;
+          scrollbar-color: unset;
+        }
       }
     </style>
   </head>

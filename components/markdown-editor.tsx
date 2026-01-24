@@ -4,6 +4,7 @@ import { SyntaxHighlighter } from "@/components/syntax-highlighter";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import ExtendedWebView from "@/components/extended-webview";
 import RNToWebViewMessenger from "@/lib/ipc/RNToWebViewMessenger";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
@@ -11,7 +12,6 @@ import { markdownEditorBundleJs } from "@/webviewBundles/generated/markdownEdito
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, Text as RNText, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
 import Markdown, { renderRules } from "react-native-markdown-display";
-import WebView from "react-native-webview";
 
 interface MarkdownEditorProps {
   value: string;
@@ -97,9 +97,17 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
     const editorTheme = useMemo(() => {
       const selectionColor = isDark ? "rgba(250,250,250,0.18)" : "rgba(10,10,10,0.12)";
+
+      // Joplin-like defaults for native WebView editor.
+      const isNative = Platform.OS !== "web";
+      const padX = isNative ? 1 : editorLayout.padX;
+      const padTop = isNative ? 10 : editorLayout.padTop;
+      const padBottom = isNative ? 1 : editorLayout.padBottom;
+      const fontSize = isNative ? 17 : editorLayout.fontSize; // ~13pt
+      const lineHeight = isNative ? 24 : editorLayout.lineHeight;
+
       return {
         dark: isDark,
-        // Match the note editor container (`bg-muted`) so the editor surface is always dark in dark mode.
         background: colors.muted,
         foreground: colors.foreground,
         caret: colors.foreground,
@@ -107,11 +115,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         gutterForeground: colors.mutedForeground,
         lineHighlight: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)",
         placeholder: colors.mutedForeground,
-        padX: editorLayout.padX,
-        padTop: editorLayout.padTop,
-        padBottom: editorLayout.padBottom,
-        fontSize: editorLayout.fontSize,
-        lineHeight: editorLayout.lineHeight,
+        padX,
+        padTop,
+        padBottom,
+        fontSize,
+        lineHeight,
       };
     }, [colors, editorLayout, isDark]);
 
@@ -130,7 +138,17 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
     // Joplin-style: inject a locally bundled editor bundle (offline).
     const injectedJavaScript = useMemo(() => {
-      return `${markdownEditorBundleJs}\ntrue;`;
+      // On Android, `injectedJavaScript` can run more than once per page load.
+      // If the bundle is evaluated multiple times, it can create class-identity mismatches
+      // inside Lezer/CodeMirror (e.g. TreeBuffer instanceof checks), leading to crashes.
+      // Guard the *entire* bundle evaluation.
+      return `
+        if (!window.__GOPX_MARKDOWN_EDITOR_BUNDLE_EVAL__) {
+          window.__GOPX_MARKDOWN_EDITOR_BUNDLE_EVAL__ = true;
+          ${markdownEditorBundleJs}
+        }
+        true;
+      `;
     }, []);
 
     const messengerRef = useRef<RNToWebViewMessenger | null>(null);
@@ -225,11 +243,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       if (isPreview) return;
       if (webViewReady) return;
 
+      // On slower devices, injecting the editor bundle can take a while.
+      // Joplin doesn't aggressively fall back; it waits. We'll only reload after a longer delay.
       const timeout = setTimeout(() => {
         if (!webViewReady) {
           setWebViewReloadCounter((c) => c + 1);
         }
-      }, 3000);
+      }, 12000);
 
       return () => clearTimeout(timeout);
     }, [isPreview, webViewReady]);
@@ -1732,31 +1752,19 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                 />
               </View>
             ) : Platform.OS !== "web" ? (
-              <WebView
+              <ExtendedWebView
                 key={`md-webview-${webViewReloadCounter}`}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ref={webViewRef as any}
-                originWhitelist={["*"]}
-                source={{ html: webViewHtml }}
+                webviewInstanceId={`MarkdownEditor-${webViewReloadCounter}`}
+                html={webViewHtml}
                 injectedJavaScript={injectedJavaScript}
-                onMessage={handleWebViewMessage}
+                onMessage={handleWebViewMessage as any}
                 onLoadEnd={onWebViewLoadEnd}
                 onError={() => {
                   setWebViewReady(false);
                   setWebViewReloadCounter((c) => c + 1);
                 }}
-                onContentProcessDidTerminate={() => {
-                  setWebViewReady(false);
-                  setWebViewReloadCounter((c) => c + 1);
-                }}
-                onRenderProcessGone={() => {
-                  setWebViewReady(false);
-                  setWebViewReloadCounter((c) => c + 1);
-                }}
-                javaScriptEnabled
-                domStorageEnabled
-                keyboardDisplayRequiresUserAction={false}
-                setSupportMultipleWindows={false}
                 style={{ flex: 1, backgroundColor: editorTheme.background }}
               />
             ) : (
