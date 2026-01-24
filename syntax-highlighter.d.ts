@@ -25,7 +25,8 @@ declare module "react-syntax-highlighter/styles/hljs" {
   export const vs2015: any;
   export const solarizedDark: any;
   export const xcode: any;
-  [key: string]: any;
+  const styles: Record<string, any>;
+  export default styles;
 }
 
 declare module "react-syntax-highlighter/dist/esm/styles/hljs" {
@@ -36,7 +37,8 @@ declare module "react-syntax-highlighter/dist/esm/styles/hljs" {
   export const vs2015: any;
   export const solarizedDark: any;
   export const xcode: any;
-  [key: string]: any;
+  const styles: Record<string, any>;
+  export default styles;
 }
 
 declare module "react-syntax-highlighter/dist/cjs/styles/hljs" {
@@ -47,5 +49,6 @@ declare module "react-syntax-highlighter/dist/cjs/styles/hljs" {
   export const vs2015: any;
   export const solarizedDark: any;
   export const xcode: any;
-  [key: string]: any;
+  const styles: Record<string, any>;
+  export default styles;
 }

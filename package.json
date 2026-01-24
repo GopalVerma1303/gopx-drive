@@ -7,7 +7,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build:web": "expo export --platform web"
+    "build:web": "expo export --platform web",
+    "build:webview-bundles": "node scripts/build-webview-bundles.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.1",
@@ -80,6 +81,7 @@
     "@expo/metro-config": "^54.0.13",
     "@expo/ngrok": "^4.1.0",
     "@types/react": "~19.1.10",
+    "esbuild": "^0.25.11",
     "eslint": "^9.31.0",
     "eslint-config-expo": "~10.0.0",
     "prettier-plugin-tailwindcss": "^0.5.11",

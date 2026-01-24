@@ -1,11 +1,13 @@
+import { getMarkdownEditorWebViewHtml } from "@/components/markdown-editor-webview-html";
 import { detectCheckboxInLine, toggleCheckboxInMarkdown } from "@/components/markdown-toolbar";
 import { SyntaxHighlighter } from "@/components/syntax-highlighter";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
-import { getMarkdownEditorWebViewHtml } from "@/components/markdown-editor-webview-html";
+import RNToWebViewMessenger from "@/lib/ipc/RNToWebViewMessenger";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
+import { markdownEditorBundleJs } from "@/webviewBundles/generated/markdownEditorBundle.generated";
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, Text as RNText, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
 import Markdown, { renderRules } from "react-native-markdown-display";
@@ -54,8 +56,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     const webViewRef = useRef<any>(null);
     const webViewSelectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
     const [webViewReady, setWebViewReady] = useState(false);
-    const [forcePlainEditor, setForcePlainEditor] = useState(false);
     const lastKnownEditorValueRef = useRef<string>(value);
+    const [webViewReloadCounter, setWebViewReloadCounter] = useState(0);
 
     const editorLayout = useMemo(() => {
       // Responsive defaults that match the existing look on larger screens,
@@ -124,85 +126,113 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       onChangeTextRef.current = onChangeText;
     }, [onChangeText]);
 
-    const postToWebView = useCallback((message: any) => {
-      try {
-        webViewRef.current?.postMessage(JSON.stringify(message));
-      } catch {
-        // no-op
-      }
-    }, []);
-
     const webViewHtml = useMemo(() => getMarkdownEditorWebViewHtml(), []);
 
-    const handleWebViewMessage = useCallback(
-      (event: any) => {
-        const raw = event?.nativeEvent?.data;
-        if (typeof raw !== "string") return;
+    // Joplin-style: inject a locally bundled editor bundle (offline).
+    const injectedJavaScript = useMemo(() => {
+      return `${markdownEditorBundleJs}\ntrue;`;
+    }, []);
 
-        let msg: any = null;
-        try {
-          msg = JSON.parse(raw);
-        } catch {
-          return;
-        }
-        if (!msg || typeof msg !== "object") return;
+    const messengerRef = useRef<RNToWebViewMessenger | null>(null);
+    if (!messengerRef.current) {
+      messengerRef.current = new RNToWebViewMessenger(webViewRef);
+    }
 
-        if (msg.type === "ready") {
-          setWebViewReady(true);
-          postToWebView({
-            type: "init",
-            value: latestValueRef.current,
-            placeholder,
-            theme: editorTheme,
-          });
-          return;
-        }
+    // Keep latest values in refs to avoid stale closures for events and load callbacks.
+    const latestPlaceholderRef = useRef(placeholder);
+    useEffect(() => {
+      latestPlaceholderRef.current = placeholder;
+    }, [placeholder]);
 
-        if (msg.type === "error") {
-          setForcePlainEditor(true);
-          return;
-        }
+    const latestThemeRef = useRef(editorTheme);
+    useEffect(() => {
+      latestThemeRef.current = editorTheme;
+    }, [editorTheme]);
 
-        if (msg.type === "selection" && msg.selection) {
-          const start = typeof msg.selection.start === "number" ? msg.selection.start : 0;
-          const end = typeof msg.selection.end === "number" ? msg.selection.end : start;
-          webViewSelectionRef.current = { start, end };
-          return;
-        }
+    useEffect(() => {
+      if (Platform.OS === "web") return;
+      const messenger = messengerRef.current!;
 
-        if (msg.type === "change") {
-          const nextValue = typeof msg.value === "string" ? msg.value : "";
-          lastKnownEditorValueRef.current = nextValue;
-
-          if (msg.selection) {
-            const start = typeof msg.selection.start === "number" ? msg.selection.start : 0;
-            const end = typeof msg.selection.end === "number" ? msg.selection.end : start;
+      messenger.setOnEvent((event) => {
+        switch (event.type) {
+          case "ready": {
+            setWebViewReady(true);
+            return;
+          }
+          case "error": {
+            // Joplin-style: keep using WebView; reload instead of falling back to TextInput.
+            setWebViewReady(false);
+            setWebViewReloadCounter((c) => c + 1);
+            return;
+          }
+          case "selection": {
+            const payload: any = event.payload;
+            const start = typeof payload?.start === "number" ? payload.start : 0;
+            const end = typeof payload?.end === "number" ? payload.end : start;
             webViewSelectionRef.current = { start, end };
+            return;
           }
+          case "change": {
+            const payload: any = event.payload;
+            const nextValue = typeof payload?.value === "string" ? payload.value : "";
+            lastKnownEditorValueRef.current = nextValue;
 
-          if (nextValue !== latestValueRef.current) {
-            onChangeTextRef.current(nextValue);
+            const selectionPayload = payload?.selection;
+            if (selectionPayload) {
+              const start = typeof selectionPayload.start === "number" ? selectionPayload.start : 0;
+              const end = typeof selectionPayload.end === "number" ? selectionPayload.end : start;
+              webViewSelectionRef.current = { start, end };
+            }
+
+            if (nextValue !== latestValueRef.current) {
+              onChangeTextRef.current(nextValue);
+            }
+            return;
           }
+          default:
+            return;
         }
-      },
-      [editorTheme, placeholder, postToWebView]
-    );
+      });
 
-    // If the WebView editor doesn't boot (e.g. network blocked), fall back to plain text editor.
+      return () => messenger.setOnEvent(null);
+    }, [editorTheme, placeholder]);
+
+    const onWebViewLoadEnd = useCallback(() => {
+      const messenger = messengerRef.current;
+      if (!messenger) return;
+
+      messenger.onWebViewLoaded();
+
+      void messenger
+        .call("init", {
+          value: latestValueRef.current,
+          placeholder: latestPlaceholderRef.current,
+          theme: latestThemeRef.current,
+        })
+        .catch(() => {
+          setWebViewReady(false);
+          setWebViewReloadCounter((c) => c + 1);
+        });
+    }, []);
+
+    const handleWebViewMessage = useCallback((event: any) => {
+      messengerRef.current?.onWebViewMessage(event);
+    }, []);
+
+    // If the WebView editor doesn't boot, reload it (WebView-only).
     useEffect(() => {
       if (Platform.OS === "web") return;
       if (isPreview) return;
-      if (forcePlainEditor) return;
       if (webViewReady) return;
 
       const timeout = setTimeout(() => {
         if (!webViewReady) {
-          setForcePlainEditor(true);
+          setWebViewReloadCounter((c) => c + 1);
         }
       }, 3000);
 
       return () => clearTimeout(timeout);
-    }, [forcePlainEditor, isPreview, webViewReady]);
+    }, [isPreview, webViewReady]);
 
     // When switching to preview, ensure the WebView editor re-initializes on next edit.
     useEffect(() => {
@@ -216,25 +246,32 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     useEffect(() => {
       if (Platform.OS === "web") return;
       if (isPreview) return;
-      if (forcePlainEditor) return;
       if (!webViewReady) return;
 
       if (value !== lastKnownEditorValueRef.current) {
         lastKnownEditorValueRef.current = value;
-        postToWebView({ type: "setValue", value });
+        void messengerRef.current?.call("setValue", value).catch(() => {
+          setWebViewReady(false);
+          setWebViewReloadCounter((c) => c + 1);
+        });
       }
-    }, [forcePlainEditor, isPreview, postToWebView, value, webViewReady]);
+    }, [isPreview, value, webViewReady]);
 
     // Push theme/placeholder updates into the WebView editor.
     useEffect(() => {
       if (Platform.OS === "web") return;
       if (isPreview) return;
-      if (forcePlainEditor) return;
       if (!webViewReady) return;
 
-      postToWebView({ type: "setTheme", theme: editorTheme });
-      postToWebView({ type: "setPlaceholder", placeholder });
-    }, [editorTheme, forcePlainEditor, isPreview, placeholder, postToWebView, webViewReady]);
+      void messengerRef.current?.call("setTheme", editorTheme).catch(() => {
+        setWebViewReady(false);
+        setWebViewReloadCounter((c) => c + 1);
+      });
+      void messengerRef.current?.call("setPlaceholder", placeholder).catch(() => {
+        setWebViewReady(false);
+        setWebViewReloadCounter((c) => c + 1);
+      });
+    }, [editorTheme, isPreview, placeholder, webViewReady]);
 
     const beginProgrammaticSelection = (nextSelection: { start: number; end: number }) => {
       pendingSelectionRef.current = nextSelection;
@@ -522,8 +559,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         }
 
         // Native: WebView editor
-        if (Platform.OS !== "web" && !forcePlainEditor && webViewReady) {
-          postToWebView({ type: "insertText", text, cursorOffset });
+        if (Platform.OS !== "web" && webViewReady) {
+          void messengerRef.current?.call("insertText", text, cursorOffset).catch(() => {
+            setWebViewReady(false);
+            setWebViewReloadCounter((c) => c + 1);
+          });
           return;
         }
 
@@ -610,8 +650,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         }
 
         // Native: WebView editor
-        if (Platform.OS !== "web" && !forcePlainEditor && webViewReady) {
-          postToWebView({ type: "wrapSelection", before, after, cursorOffset });
+        if (Platform.OS !== "web" && webViewReady) {
+          void messengerRef.current?.call("wrapSelection", before, after, cursorOffset).catch(() => {
+            setWebViewReady(false);
+            setWebViewReloadCounter((c) => c + 1);
+          });
           return;
         }
 
@@ -681,8 +724,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           webCmViewRef.current.focus();
           return;
         }
-        if (Platform.OS !== "web" && !forcePlainEditor && webViewReady) {
-          postToWebView({ type: "focus" });
+        if (Platform.OS !== "web" && webViewReady) {
+          void messengerRef.current?.call("focus").catch(() => {
+            setWebViewReady(false);
+            setWebViewReloadCounter((c) => c + 1);
+          });
           return;
         }
         inputRef.current?.focus();
@@ -691,7 +737,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         if (Platform.OS === "web" && webCmViewRef.current) {
           return webCmSelectionRef.current;
         }
-        if (Platform.OS !== "web" && !forcePlainEditor && webViewReady) {
+        if (Platform.OS !== "web" && webViewReady) {
           return webViewSelectionRef.current;
         }
         return selection;
@@ -1685,14 +1731,28 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                   }}
                 />
               </View>
-            ) : Platform.OS !== "web" && !forcePlainEditor ? (
+            ) : Platform.OS !== "web" ? (
               <WebView
+                key={`md-webview-${webViewReloadCounter}`}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ref={webViewRef as any}
                 originWhitelist={["*"]}
                 source={{ html: webViewHtml }}
+                injectedJavaScript={injectedJavaScript}
                 onMessage={handleWebViewMessage}
-                onError={() => setForcePlainEditor(true)}
+                onLoadEnd={onWebViewLoadEnd}
+                onError={() => {
+                  setWebViewReady(false);
+                  setWebViewReloadCounter((c) => c + 1);
+                }}
+                onContentProcessDidTerminate={() => {
+                  setWebViewReady(false);
+                  setWebViewReloadCounter((c) => c + 1);
+                }}
+                onRenderProcessGone={() => {
+                  setWebViewReady(false);
+                  setWebViewReloadCounter((c) => c + 1);
+                }}
                 javaScriptEnabled
                 domStorageEnabled
                 keyboardDisplayRequiresUserAction={false}
