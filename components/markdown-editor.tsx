@@ -797,6 +797,50 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       return `markdown-${hash}-${isPreview}`;
     }, [value, isPreview]);
 
+    // NOTE (web): Strikethrough is "propagated" to nested inline elements.
+    // If `~~` wraps inline code, the line color can come from the *parent* text color (often black),
+    // even when the inline code text is pink. To make the code segment's strike match its color,
+    // we render strikethrough by applying `textDecorationLine` to each child segment instead of
+    // relying on a single parent decoration.
+    const withLineThrough = (style: any) => {
+      const strike = { textDecorationLine: "line-through" as const };
+      if (!style) return strike;
+      return Array.isArray(style) ? [...style, strike] : [style, strike];
+    };
+
+    const renderStrikeThrough = (node: any, children: any) => {
+      const parts = Array.isArray(children) ? children : [children];
+      return (
+        <RNText key={node.key}>
+          {parts.map((child, index) => {
+            if (child === null || child === undefined || child === false) return null;
+
+            if (typeof child === "string" || typeof child === "number") {
+              return (
+                <RNText key={`${node.key}-del-${index}`} style={{ textDecorationLine: "line-through" as const }}>
+                  {child}
+                </RNText>
+              );
+            }
+
+            if (React.isValidElement(child)) {
+              const element = child as React.ReactElement<any>;
+              const childProps: any = element.props ?? {};
+              if ("style" in childProps) {
+                return React.cloneElement(element, {
+                  key: `${node.key}-del-${index}`,
+                  style: withLineThrough(childProps.style),
+                });
+              }
+              return React.cloneElement(element, { key: `${node.key}-del-${index}` });
+            }
+
+            return null;
+          })}
+        </RNText>
+      );
+    };
+
     // Custom renderer for checkboxes in task lists and code blocks
     const markdownRules = {
       fence: (node: any, children: any, parent: any, styles: any) => {
@@ -893,6 +937,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           </RNText>
         );
       },
+      // `~~strike~~` (remark AST uses `del` for strikethrough; some configs use `s`)
+      del: (node: any, children: any) => renderStrikeThrough(node, children),
+      s: (node: any, children: any) => renderStrikeThrough(node, children),
       list_item: (node: any, children: any, parent: any, styles: any) => {
         // Extract text content from children, removing checkbox syntax for matching
         let childrenText = normalizeText(extractTextFromChildren(children));
