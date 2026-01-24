@@ -15,7 +15,6 @@ import {
   BackHandler,
   Platform,
   Alert as RNAlert,
-  ScrollView,
   View,
 } from "react-native";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
@@ -210,12 +209,7 @@ export default function NoteEditorScreen() {
                 isPreview={isPreview}
               />
             )}
-            <ScrollView
-              className="flex-1"
-              contentContainerStyle={{ flexGrow: 1, minHeight: "100%" }}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
+            <View className="flex-1">
               <MarkdownEditor
                 ref={editorRef}
                 value={content}
@@ -223,7 +217,7 @@ export default function NoteEditorScreen() {
                 placeholder="Start writing in markdown..."
                 isPreview={isPreview}
               />
-            </ScrollView>
+            </View>
           </View>
         </View>
       ) : (
@@ -241,13 +235,7 @@ export default function NoteEditorScreen() {
                   isPreview={isPreview}
                 />
               )}
-              <ScrollView
-                className="flex-1"
-                contentContainerStyle={{ flexGrow: 1 }}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-                keyboardDismissMode="interactive"
-              >
+              <View className="flex-1">
                 <MarkdownEditor
                   ref={editorRef}
                   value={content}
@@ -255,7 +243,7 @@ export default function NoteEditorScreen() {
                   placeholder="Start writing in markdown..."
                   isPreview={isPreview}
                 />
-              </ScrollView>
+              </View>
             </View>
           </View>
         </Animated.View>

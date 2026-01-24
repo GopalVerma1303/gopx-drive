@@ -3,11 +3,13 @@ import { SyntaxHighlighter } from "@/components/syntax-highlighter";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { getMarkdownEditorWebViewHtml } from "@/components/markdown-editor-webview-html";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { Platform, Pressable, Text as RNText, ScrollView, TextInput, View } from "react-native";
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { Platform, Pressable, Text as RNText, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
 import Markdown, { renderRules } from "react-native-markdown-display";
+import WebView from "react-native-webview";
 
 interface MarkdownEditorProps {
   value: string;
@@ -35,13 +37,204 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     },
     ref
   ) {
-    const { colors } = useThemeColors();
+    const { colors, isDark } = useThemeColors();
+    const { width: windowWidth } = useWindowDimensions();
     const inputRef = useRef<TextInput>(null);
     const [selection, setSelection] = useState({ start: 0, end: 0 });
     const previousValueRef = useRef<string>(value);
     const isProcessingListRef = useRef<boolean>(false);
     const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null);
     const suppressSelectionUpdatesRef = useRef<number>(0);
+
+    // CodeMirror (web) state
+    const webCmViewRef = useRef<any>(null);
+    const webCmSelectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
+
+    // WebView-based editor (native) state
+    const webViewRef = useRef<any>(null);
+    const webViewSelectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
+    const [webViewReady, setWebViewReady] = useState(false);
+    const [forcePlainEditor, setForcePlainEditor] = useState(false);
+    const lastKnownEditorValueRef = useRef<string>(value);
+
+    const editorLayout = useMemo(() => {
+      // Responsive defaults that match the existing look on larger screens,
+      // but reduce padding/font size on phones.
+      if (windowWidth <= 420) {
+        return {
+          padX: 16,
+          padTop: 22,
+          padBottom: 60,
+          fontSize: 15,
+          lineHeight: 22,
+          previewPadTop: 16,
+          previewPadBottom: 72,
+        };
+      }
+      if (windowWidth <= 768) {
+        return {
+          padX: 24,
+          padTop: 26,
+          padBottom: 65,
+          fontSize: 16,
+          lineHeight: 24,
+          previewPadTop: 18,
+          previewPadBottom: 76,
+        };
+      }
+      return {
+        padX: 32,
+        padTop: 30,
+        padBottom: 65,
+        fontSize: 16,
+        lineHeight: 24,
+        previewPadTop: 20,
+        previewPadBottom: 80,
+      };
+    }, [windowWidth]);
+
+    const editorTheme = useMemo(() => {
+      const selectionColor = isDark ? "rgba(250,250,250,0.18)" : "rgba(10,10,10,0.12)";
+      return {
+        dark: isDark,
+        // Match the note editor container (`bg-muted`) so the editor surface is always dark in dark mode.
+        background: colors.muted,
+        foreground: colors.foreground,
+        caret: colors.foreground,
+        selection: selectionColor,
+        gutterForeground: colors.mutedForeground,
+        lineHighlight: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)",
+        placeholder: colors.mutedForeground,
+        padX: editorLayout.padX,
+        padTop: editorLayout.padTop,
+        padBottom: editorLayout.padBottom,
+        fontSize: editorLayout.fontSize,
+        lineHeight: editorLayout.lineHeight,
+      };
+    }, [colors, editorLayout, isDark]);
+
+    // Keep a ref of the latest `value` prop to avoid stale closures in message handlers.
+    const latestValueRef = useRef(value);
+    useEffect(() => {
+      latestValueRef.current = value;
+    }, [value]);
+
+    const onChangeTextRef = useRef(onChangeText);
+    useEffect(() => {
+      onChangeTextRef.current = onChangeText;
+    }, [onChangeText]);
+
+    const postToWebView = useCallback((message: any) => {
+      try {
+        webViewRef.current?.postMessage(JSON.stringify(message));
+      } catch {
+        // no-op
+      }
+    }, []);
+
+    const webViewHtml = useMemo(() => getMarkdownEditorWebViewHtml(), []);
+
+    const handleWebViewMessage = useCallback(
+      (event: any) => {
+        const raw = event?.nativeEvent?.data;
+        if (typeof raw !== "string") return;
+
+        let msg: any = null;
+        try {
+          msg = JSON.parse(raw);
+        } catch {
+          return;
+        }
+        if (!msg || typeof msg !== "object") return;
+
+        if (msg.type === "ready") {
+          setWebViewReady(true);
+          postToWebView({
+            type: "init",
+            value: latestValueRef.current,
+            placeholder,
+            theme: editorTheme,
+          });
+          return;
+        }
+
+        if (msg.type === "error") {
+          setForcePlainEditor(true);
+          return;
+        }
+
+        if (msg.type === "selection" && msg.selection) {
+          const start = typeof msg.selection.start === "number" ? msg.selection.start : 0;
+          const end = typeof msg.selection.end === "number" ? msg.selection.end : start;
+          webViewSelectionRef.current = { start, end };
+          return;
+        }
+
+        if (msg.type === "change") {
+          const nextValue = typeof msg.value === "string" ? msg.value : "";
+          lastKnownEditorValueRef.current = nextValue;
+
+          if (msg.selection) {
+            const start = typeof msg.selection.start === "number" ? msg.selection.start : 0;
+            const end = typeof msg.selection.end === "number" ? msg.selection.end : start;
+            webViewSelectionRef.current = { start, end };
+          }
+
+          if (nextValue !== latestValueRef.current) {
+            onChangeTextRef.current(nextValue);
+          }
+        }
+      },
+      [editorTheme, placeholder, postToWebView]
+    );
+
+    // If the WebView editor doesn't boot (e.g. network blocked), fall back to plain text editor.
+    useEffect(() => {
+      if (Platform.OS === "web") return;
+      if (isPreview) return;
+      if (forcePlainEditor) return;
+      if (webViewReady) return;
+
+      const timeout = setTimeout(() => {
+        if (!webViewReady) {
+          setForcePlainEditor(true);
+        }
+      }, 3000);
+
+      return () => clearTimeout(timeout);
+    }, [forcePlainEditor, isPreview, webViewReady]);
+
+    // When switching to preview, ensure the WebView editor re-initializes on next edit.
+    useEffect(() => {
+      if (Platform.OS === "web") return;
+      if (isPreview) {
+        setWebViewReady(false);
+      }
+    }, [isPreview]);
+
+    // Keep the WebView editor in sync when `value` changes externally (e.g., note refresh).
+    useEffect(() => {
+      if (Platform.OS === "web") return;
+      if (isPreview) return;
+      if (forcePlainEditor) return;
+      if (!webViewReady) return;
+
+      if (value !== lastKnownEditorValueRef.current) {
+        lastKnownEditorValueRef.current = value;
+        postToWebView({ type: "setValue", value });
+      }
+    }, [forcePlainEditor, isPreview, postToWebView, value, webViewReady]);
+
+    // Push theme/placeholder updates into the WebView editor.
+    useEffect(() => {
+      if (Platform.OS === "web") return;
+      if (isPreview) return;
+      if (forcePlainEditor) return;
+      if (!webViewReady) return;
+
+      postToWebView({ type: "setTheme", theme: editorTheme });
+      postToWebView({ type: "setPlaceholder", placeholder });
+    }, [editorTheme, forcePlainEditor, isPreview, placeholder, postToWebView, webViewReady]);
 
     const beginProgrammaticSelection = (nextSelection: { start: number; end: number }) => {
       pendingSelectionRef.current = nextSelection;
@@ -308,7 +501,34 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
     useImperativeHandle(ref, () => ({
       insertText: (text: string, cursorOffset?: number) => {
-        if (isPreview || !inputRef.current) return;
+        if (isPreview) return;
+
+        // Web: CodeMirror editor
+        if (Platform.OS === "web" && webCmViewRef.current) {
+          const view = webCmViewRef.current;
+          const sel = view.state.selection.main;
+          const from = sel.from;
+          const to = sel.to;
+          const offset = cursorOffset ?? text.length;
+
+          view.dispatch({
+            changes: { from, to, insert: text },
+            selection: { anchor: from + offset },
+            scrollIntoView: true,
+          });
+          view.focus();
+          webCmSelectionRef.current = { start: from + offset, end: from + offset };
+          return;
+        }
+
+        // Native: WebView editor
+        if (Platform.OS !== "web" && !forcePlainEditor && webViewReady) {
+          postToWebView({ type: "insertText", text, cursorOffset });
+          return;
+        }
+
+        // Fallback: plain RN TextInput editor
+        if (!inputRef.current) return;
 
         const start = selection.start;
         const end = selection.end;
@@ -356,7 +576,47 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         });
       },
       wrapSelection: (before: string, after: string, cursorOffset?: number) => {
-        if (isPreview || !inputRef.current) return;
+        if (isPreview) return;
+
+        // Web: CodeMirror editor
+        if (Platform.OS === "web" && webCmViewRef.current) {
+          const view = webCmViewRef.current;
+          const sel = view.state.selection.main;
+          const from = sel.from;
+          const to = sel.to;
+          const selectedText = view.state.doc.sliceString(from, to);
+
+          if (selectedText.length > 0) {
+            const insert = before + selectedText + after;
+            view.dispatch({
+              changes: { from, to, insert },
+              selection: { anchor: from + insert.length },
+              scrollIntoView: true,
+            });
+            view.focus();
+            webCmSelectionRef.current = { start: from + insert.length, end: from + insert.length };
+          } else {
+            const insert = before + after;
+            const offset = cursorOffset ?? before.length;
+            view.dispatch({
+              changes: { from, to, insert },
+              selection: { anchor: from + offset },
+              scrollIntoView: true,
+            });
+            view.focus();
+            webCmSelectionRef.current = { start: from + offset, end: from + offset };
+          }
+          return;
+        }
+
+        // Native: WebView editor
+        if (Platform.OS !== "web" && !forcePlainEditor && webViewReady) {
+          postToWebView({ type: "wrapSelection", before, after, cursorOffset });
+          return;
+        }
+
+        // Fallback: plain RN TextInput editor
+        if (!inputRef.current) return;
 
         const start = selection.start;
         const end = selection.end;
@@ -417,10 +677,96 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         });
       },
       focus: () => {
+        if (Platform.OS === "web" && webCmViewRef.current) {
+          webCmViewRef.current.focus();
+          return;
+        }
+        if (Platform.OS !== "web" && !forcePlainEditor && webViewReady) {
+          postToWebView({ type: "focus" });
+          return;
+        }
         inputRef.current?.focus();
       },
-      getSelection: () => selection,
+      getSelection: () => {
+        if (Platform.OS === "web" && webCmViewRef.current) {
+          return webCmSelectionRef.current;
+        }
+        if (Platform.OS !== "web" && !forcePlainEditor && webViewReady) {
+          return webViewSelectionRef.current;
+        }
+        return selection;
+      },
     }));
+
+    const WebCodeMirror = useMemo(() => {
+      if (Platform.OS !== "web") return null;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        return require("@uiw/react-codemirror").default as any;
+      } catch {
+        return null;
+      }
+    }, []);
+
+    const webCmExtensions = useMemo(() => {
+      if (Platform.OS !== "web") return [];
+
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { keymap, EditorView } = require("@codemirror/view");
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { markdown, markdownKeymap } = require("@codemirror/lang-markdown");
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { languages } = require("@codemirror/language-data");
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { defaultKeymap, history, historyKeymap, indentWithTab } = require("@codemirror/commands");
+
+        const themeExt = EditorView.theme(
+          {
+            "&": {
+              backgroundColor: editorTheme.background,
+              color: editorTheme.foreground,
+              height: "100%",
+            },
+            ".cm-editor": { height: "100%" },
+            ".cm-scroller": {
+              overflow: "auto",
+              height: "100%",
+              fontFamily: "monospace",
+              backgroundColor: editorTheme.background,
+            },
+            ".cm-content": {
+              paddingLeft: `${editorTheme.padX}px`,
+              paddingRight: `${editorTheme.padX}px`,
+              paddingTop: `${editorTheme.padTop}px`,
+              paddingBottom: `${editorTheme.padBottom}px`,
+              caretColor: editorTheme.caret,
+              fontSize: `${editorTheme.fontSize}px`,
+              lineHeight: `${editorTheme.lineHeight}px`,
+            },
+            ".cm-gutters": {
+              backgroundColor: editorTheme.background,
+              color: editorTheme.gutterForeground,
+              border: "none",
+            },
+            ".cm-activeLine": { backgroundColor: editorTheme.lineHighlight },
+            ".cm-selectionBackground, ::selection": { backgroundColor: editorTheme.selection + " !important" },
+            ".cm-placeholder": { color: editorTheme.placeholder },
+          },
+          { dark: editorTheme.dark }
+        );
+
+        // NOTE: `markdownKeymap` includes Enter behavior (continue list markup) similar to Joplin.
+        return [
+          history(),
+          markdown({ codeLanguages: languages }),
+          keymap.of([...defaultKeymap, ...historyKeymap, ...markdownKeymap, indentWithTab]),
+          themeExt,
+        ];
+      } catch {
+        return [];
+      }
+    }, [editorTheme]);
 
     const markdownStyles = {
       body: {
@@ -1270,9 +1616,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           <ScrollView
             className="flex-1"
             contentContainerStyle={{
-              paddingHorizontal: 32,
-              paddingTop: 20,
-              paddingBottom: 80,
+              paddingHorizontal: editorLayout.padX,
+              paddingTop: editorLayout.previewPadTop,
+              paddingBottom: editorLayout.previewPadBottom,
             }}
           >
             {value ? (
@@ -1289,38 +1635,107 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             )}
           </ScrollView>
         ) : (
-          <Input
-            ref={inputRef}
-            className="flex-1 border-0 shadow-none bg-transparent text-base leading-6 font-mono px-8"
-            placeholder={placeholder}
-            placeholderTextColor={colors.mutedForeground}
-            value={value}
-            onChangeText={handleTextChange}
-            selection={selection}
-            onSelectionChange={(e) => {
-              const next = e.nativeEvent.selection;
-              const pending = pendingSelectionRef.current;
+          <>
+            {Platform.OS === "web" && WebCodeMirror ? (
+              <View style={{ flex: 1 }}>
+                <WebCodeMirror
+                  value={value}
+                  height="100%"
+                  basicSetup={{
+                    lineNumbers: false,
+                    foldGutter: false,
+                    highlightActiveLineGutter: false,
+                    highlightSpecialChars: true,
+                    history: true,
+                    drawSelection: true,
+                    dropCursor: true,
+                    allowMultipleSelections: true,
+                    indentOnInput: true,
+                    syntaxHighlighting: true,
+                    bracketMatching: true,
+                    closeBrackets: true,
+                    autocompletion: false,
+                    rectangularSelection: true,
+                    crosshairCursor: false,
+                    highlightActiveLine: true,
+                    highlightSelectionMatches: false,
+                    closeBracketsKeymap: true,
+                    defaultKeymap: true,
+                    searchKeymap: true,
+                    historyKeymap: true,
+                    foldKeymap: false,
+                    completionKeymap: false,
+                    lintKeymap: false,
+                  }}
+                  extensions={webCmExtensions}
+                  onCreateEditor={(view: any) => {
+                    webCmViewRef.current = view;
+                    const sel = view.state.selection.main;
+                    webCmSelectionRef.current = { start: sel.from, end: sel.to };
+                  }}
+                  onUpdate={(vu: any) => {
+                    const sel = vu.state.selection.main;
+                    webCmSelectionRef.current = { start: sel.from, end: sel.to };
+                  }}
+                  onChange={(nextValue: string) => {
+                    lastKnownEditorValueRef.current = nextValue;
+                    if (nextValue !== latestValueRef.current) {
+                      onChangeTextRef.current(nextValue);
+                    }
+                  }}
+                />
+              </View>
+            ) : Platform.OS !== "web" && !forcePlainEditor ? (
+              <WebView
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ref={webViewRef as any}
+                originWhitelist={["*"]}
+                source={{ html: webViewHtml }}
+                onMessage={handleWebViewMessage}
+                onError={() => setForcePlainEditor(true)}
+                javaScriptEnabled
+                domStorageEnabled
+                keyboardDisplayRequiresUserAction={false}
+                setSupportMultipleWindows={false}
+                style={{ flex: 1, backgroundColor: editorTheme.background }}
+              />
+            ) : (
+              <Input
+                ref={inputRef}
+                className="flex-1 border-0 shadow-none bg-transparent text-base leading-6 font-mono px-8"
+                placeholder={placeholder}
+                placeholderTextColor={colors.mutedForeground}
+                value={value}
+                onChangeText={handleTextChange}
+                selection={selection}
+                onSelectionChange={(e) => {
+                  const next = e.nativeEvent.selection;
+                  const pending = pendingSelectionRef.current;
 
-              // During programmatic updates, ignore transient selection events (often {0,0} on Android)
-              if (isProcessingListRef.current || suppressSelectionUpdatesRef.current > 0) {
-                if (!pending || pending.start !== next.start || pending.end !== next.end) {
-                  return;
-                }
-              }
+                  // During programmatic updates, ignore transient selection events (often {0,0} on Android)
+                  if (isProcessingListRef.current || suppressSelectionUpdatesRef.current > 0) {
+                    if (!pending || pending.start !== next.start || pending.end !== next.end) {
+                      return;
+                    }
+                  }
 
-              setSelection({ start: next.start, end: next.end });
-            }}
-            multiline
-            blurOnSubmit={false}
-            textAlignVertical="top"
-            style={{
-              paddingHorizontal: 32,
-              paddingTop: 30,
-              paddingBottom: 65,
-              fontFamily: "monospace",
-              flex: 1,
-            }}
-          />
+                  setSelection({ start: next.start, end: next.end });
+                }}
+                multiline
+                blurOnSubmit={false}
+                textAlignVertical="top"
+                style={{
+                  paddingHorizontal: editorLayout.padX,
+                  paddingTop: editorLayout.padTop,
+                  paddingBottom: editorLayout.padBottom,
+                  fontFamily: "monospace",
+                  fontSize: editorLayout.fontSize,
+                  lineHeight: editorLayout.lineHeight,
+                  flex: 1,
+                }}
+              />
+            )}
+          </>
         )}
       </View>
     );
