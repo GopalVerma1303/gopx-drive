@@ -473,6 +473,7 @@ export default function CalendarScreen() {
           setEditingEvent(null);
         }}
         event={editingEvent}
+        prefillDate={selectedDate}
         onCreate={createMutation.mutate}
         onUpdate={updateMutation.mutate}
         onDelete={deleteMutation.mutate}
@@ -1568,6 +1569,7 @@ interface EventModalProps {
   open: boolean;
   onClose: () => void;
   event: Event | null;
+  prefillDate?: string | null;
   onCreate: (input: {
     user_id: string;
     title: string;
@@ -1587,6 +1589,7 @@ function EventModal({
   open,
   onClose,
   event,
+  prefillDate,
   onCreate,
   onUpdate,
   onDelete,
@@ -1632,14 +1635,14 @@ function EventModal({
       } else {
         setTitle("");
         setDescription("");
-        setEventDate(formatDateToLocalString(new Date()));
+        setEventDate(prefillDate || formatDateToLocalString(new Date()));
         setEventTime("12:01 AM");
         setRepeatInterval("once");
       }
       setDateError("");
       setTimeError("");
     }
-  }, [open, event]);
+  }, [open, event, prefillDate]);
 
   const validateDate = (dateString: string): boolean => {
     // Check if the date string matches YYYY-MM-DD format
