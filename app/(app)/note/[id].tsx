@@ -12,6 +12,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  BackHandler,
   Platform,
   Alert as RNAlert,
   ScrollView,
@@ -72,6 +73,23 @@ export default function NoteEditorScreen() {
       setLastSavedContent(note.content);
     }
   }, [note]);
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      // After a full reload / deep-link, this screen can be the root of the navigator.
+      // In that case, GO_BACK has no route to pop to, so we explicitly fall back to /notes.
+      if (router.canGoBack?.()) {
+        router.back();
+      } else {
+        router.replace("/notes");
+      }
+      return true;
+    });
+
+    return () => subscription.remove();
+  }, [router]);
 
   const isDirty = title !== lastSavedTitle || content !== lastSavedContent;
 

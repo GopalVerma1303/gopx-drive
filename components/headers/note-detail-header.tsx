@@ -82,7 +82,11 @@ export function NoteDetailHeader({
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.back();
+              if (router.canGoBack?.()) {
+                router.back();
+              } else {
+                router.replace("/notes");
+              }
             }}
             style={{ padding: 8 }}
           >
