@@ -42,6 +42,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     const isProcessingListRef = useRef<boolean>(false);
     const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null);
     const suppressSelectionUpdatesRef = useRef<number>(0);
+    const TAB_SPACES = "   ";
 
     const beginProgrammaticSelection = (nextSelection: { start: number; end: number }) => {
       pendingSelectionRef.current = nextSelection;
@@ -306,54 +307,167 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       }
     }, [value]);
 
+    const applyTextAndSelection = (nextText: string, nextSelection: { start: number; end: number }) => {
+      if (isPreview || !inputRef.current) return;
+
+      beginProgrammaticSelection(nextSelection);
+      onChangeText(nextText);
+      inputRef.current?.focus();
+
+      const setCursorPosition = () => {
+        if (Platform.OS === "web") {
+          const input = inputRef.current as any;
+          if (input && input.setSelectionRange) {
+            input.setSelectionRange(nextSelection.start, nextSelection.end);
+          } else if (input && input.selectionStart !== undefined) {
+            input.selectionStart = nextSelection.start;
+            input.selectionEnd = nextSelection.end;
+          }
+        } else {
+          const input = inputRef.current as any;
+          if (input && typeof input.setNativeProps === "function") {
+            input.setNativeProps({
+              selection: { start: nextSelection.start, end: nextSelection.end },
+            });
+          }
+          inputRef.current?.focus();
+        }
+        endProgrammaticSelection();
+      };
+
+      requestAnimationFrame(() => {
+        setTimeout(setCursorPosition, Platform.OS === "android" ? 16 : 0);
+      });
+    };
+
+    const insertTextAtSelection = (text: string, cursorOffset?: number) => {
+      if (isPreview || !inputRef.current) return;
+
+      const start = selection.start;
+      const end = selection.end;
+      const beforeText = value.substring(0, start);
+      const afterText = value.substring(end);
+      const newText = beforeText + text + afterText;
+      const newCursorPosition = start + (cursorOffset ?? text.length);
+
+      applyTextAndSelection(newText, { start: newCursorPosition, end: newCursorPosition });
+    };
+
+    const unindentAtSelection = () => {
+      if (isPreview || !inputRef.current) return;
+
+      const start = selection.start;
+      const end = selection.end;
+
+      // No selection: remove one indent level immediately before cursor if present
+      if (start === end) {
+        if (start >= TAB_SPACES.length && value.substring(start - TAB_SPACES.length, start) === TAB_SPACES) {
+          const nextText = value.substring(0, start - TAB_SPACES.length) + value.substring(end);
+          const nextPos = start - TAB_SPACES.length;
+          applyTextAndSelection(nextText, { start: nextPos, end: nextPos });
+        }
+        return;
+      }
+
+      // Selection: unindent each line touched by the selection (remove leading TAB_SPACES)
+      const blockStart = value.lastIndexOf("\n", start - 1) + 1;
+      let blockEnd = value.indexOf("\n", end);
+      if (blockEnd === -1) blockEnd = value.length;
+
+      const block = value.slice(blockStart, blockEnd);
+      const lines = block.split("\n");
+
+      const removalStarts: number[] = [];
+      let runningIndex = blockStart;
+      const nextLines = lines.map((line) => {
+        const didRemove = line.startsWith(TAB_SPACES);
+        if (didRemove) {
+          removalStarts.push(runningIndex);
+        }
+        // advance using ORIGINAL line length (+ newline)
+        runningIndex += line.length + 1;
+        return didRemove ? line.slice(TAB_SPACES.length) : line;
+      });
+
+      // If nothing to unindent, keep selection as-is
+      if (removalStarts.length === 0) return;
+
+      const nextBlock = nextLines.join("\n");
+      const nextText = value.slice(0, blockStart) + nextBlock + value.slice(blockEnd);
+
+      const adjustPos = (pos: number) => {
+        let nextPos = pos;
+        for (const p of removalStarts) {
+          if (pos <= p) continue;
+          const delta = pos - p;
+          nextPos -= delta < TAB_SPACES.length ? delta : TAB_SPACES.length;
+        }
+        return nextPos;
+      };
+
+      applyTextAndSelection(nextText, { start: adjustPos(start), end: adjustPos(end) });
+    };
+
+    const getWebInputElement = (): any => {
+      const refAny = inputRef.current as any;
+      if (!refAny) return null;
+
+      // In some react-native-web setups, the ref is the DOM element already.
+      if (typeof refAny.addEventListener === "function") return refAny;
+
+      // Try common helpers/fields across RNW versions.
+      if (typeof refAny.getNode === "function") return refAny.getNode();
+      if (typeof refAny.getNativeRef === "function") return refAny.getNativeRef();
+      if (typeof refAny.getInputNode === "function") return refAny.getInputNode();
+
+      if (refAny._node && typeof refAny._node.addEventListener === "function") return refAny._node;
+      if (refAny._inputRef && typeof refAny._inputRef.addEventListener === "function") return refAny._inputRef;
+      if (refAny._inputElement && typeof refAny._inputElement.addEventListener === "function") return refAny._inputElement;
+
+      return null;
+    };
+
+    const handleTabKey = (e: any) => {
+      const key = e?.key ?? e?.nativeEvent?.key;
+      if (key !== "Tab") return;
+
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      e?.stopImmediatePropagation?.();
+
+      // Shift+Tab: unindent; Tab: indent
+      if (e?.shiftKey) {
+        unindentAtSelection();
+      } else {
+        insertTextAtSelection(TAB_SPACES, TAB_SPACES.length);
+      }
+    };
+
+    // Web: ensure Tab doesn't move focus away (RNW doesn't always forward onKeyDown for Tab).
+    useEffect(() => {
+      if (Platform.OS !== "web") return;
+      if (typeof document === "undefined") return;
+
+      const handleDocumentKeyDownCapture = (e: any) => {
+        if (e?.key !== "Tab") return;
+
+        const el = getWebInputElement();
+        const active = document.activeElement as any;
+        const isEditorFocused = !!el && !!active && (active === el || (typeof el.contains === "function" && el.contains(active)));
+        if (!isEditorFocused) return;
+
+        handleTabKey(e);
+      };
+
+      document.addEventListener("keydown", handleDocumentKeyDownCapture, true);
+      return () => {
+        document.removeEventListener("keydown", handleDocumentKeyDownCapture, true);
+      };
+    }, [insertTextAtSelection]);
+
     useImperativeHandle(ref, () => ({
       insertText: (text: string, cursorOffset?: number) => {
-        if (isPreview || !inputRef.current) return;
-
-        const start = selection.start;
-        const end = selection.end;
-        const beforeText = value.substring(0, start);
-        const afterText = value.substring(end);
-        const newText = beforeText + text + afterText;
-        const newCursorPosition = start + (cursorOffset ?? text.length);
-
-        // Update state immediately - the controlled selection prop will handle cursor positioning
-        beginProgrammaticSelection({ start: newCursorPosition, end: newCursorPosition });
-
-        onChangeText(newText);
-
-        // Ensure input maintains focus
-        inputRef.current?.focus();
-
-        // Set cursor position - use different methods for web vs native
-        // Use requestAnimationFrame + timeout to ensure text has been updated
-        const setCursorPosition = () => {
-          if (Platform.OS === "web") {
-            // For web, use DOM API directly
-            const input = inputRef.current as any;
-            if (input && input.setSelectionRange) {
-              input.setSelectionRange(newCursorPosition, newCursorPosition);
-            } else if (input && input.selectionStart !== undefined) {
-              input.selectionStart = newCursorPosition;
-              input.selectionEnd = newCursorPosition;
-            }
-          } else {
-            // For native, use setNativeProps as fallback (controlled selection prop is primary)
-            const input = inputRef.current as any;
-            if (input && typeof input.setNativeProps === "function") {
-              input.setNativeProps({
-                selection: { start: newCursorPosition, end: newCursorPosition },
-              });
-            }
-            inputRef.current?.focus();
-          }
-          endProgrammaticSelection();
-        };
-
-        // Use requestAnimationFrame + timeout to ensure text has been updated
-        requestAnimationFrame(() => {
-          setTimeout(setCursorPosition, Platform.OS === "android" ? 16 : 0);
-        });
+        insertTextAtSelection(text, cursorOffset);
       },
       wrapSelection: (before: string, after: string, cursorOffset?: number) => {
         if (isPreview || !inputRef.current) return;
@@ -1263,6 +1377,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       },
     };
 
+    const handleWebKeyDown = (e: any) => {
+      // On web, `Tab` defaults to moving focus. Instead, insert spaces (same as toolbar "Tab").
+      handleTabKey(e);
+    };
+
     return (
       <View className={cn("flex-1", className)}>
         {/* Editor or Preview */}
@@ -1297,6 +1416,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             value={value}
             onChangeText={handleTextChange}
             selection={selection}
+            {...(Platform.OS === "web" ? ({ onKeyDown: handleWebKeyDown } as any) : {})}
             onSelectionChange={(e) => {
               const next = e.nativeEvent.selection;
               const pending = pendingSelectionRef.current;
