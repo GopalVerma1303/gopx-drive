@@ -3,11 +3,295 @@ import { SyntaxHighlighter } from "@/components/syntax-highlighter";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { MARKDOWN_EDITOR_SYNTAX_COLORS, type MarkdownEditorSyntaxPalette, type MarkdownEditorSyntaxToken } from "@/lib/markdown-editor-syntax";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, Text as RNText, ScrollView, TextInput, View } from "react-native";
 import Markdown, { renderRules } from "react-native-markdown-display";
+
+type SyntaxSegment = {
+  text: string;
+  token: MarkdownEditorSyntaxToken;
+  bgToken?: MarkdownEditorSyntaxToken;
+};
+
+const INLINE_MARKDOWN_RE =
+  /(`[^`]*`)|(!?\[[^\]]*\]\([^)]+\))|(~~[^~]+~~)|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*]+\*)|(_[^_]+_)/g;
+
+const isHorizontalRule = (line: string) => /^\s*(?:---|\*\*\*|___)\s*$/.test(line);
+const fenceStartOrEnd = (line: string) => /^\s*```/.test(line) || /^\s*~~~/.test(line);
+
+const mkSeg = (text: string, token: MarkdownEditorSyntaxToken, bgToken?: MarkdownEditorSyntaxToken): SyntaxSegment => ({
+  text,
+  token,
+  ...(bgToken ? { bgToken } : {}),
+});
+
+function highlightInlineMarkdown(text: string): SyntaxSegment[] {
+  const segments: SyntaxSegment[] = [];
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(INLINE_MARKDOWN_RE)) {
+    const m = match[0] ?? "";
+    const index = match.index ?? 0;
+    if (index > lastIndex) {
+      segments.push(mkSeg(text.slice(lastIndex, index), "text"));
+    }
+
+    // Inline code: `code`
+    if (m.startsWith("`")) {
+      const inner = m.slice(1, -1);
+      segments.push(mkSeg("`", "inlineCode.marker", "inlineCode.bg"));
+      if (inner.length > 0) segments.push(mkSeg(inner, "inlineCode.text", "inlineCode.bg"));
+      segments.push(mkSeg("`", "inlineCode.marker", "inlineCode.bg"));
+      lastIndex = index + m.length;
+      continue;
+    }
+
+    // Links / images: [text](url) or ![alt](url)
+    if (m.startsWith("[") || m.startsWith("![")) {
+      const isImage = m.startsWith("![");
+      const mm = m.match(/^!?\[([^\]]*)\]\(([^)]+)\)$/);
+      if (mm) {
+        const label = mm[1] ?? "";
+        const url = mm[2] ?? "";
+        segments.push(mkSeg(isImage ? "![" : "[", isImage ? "image.brackets" : "link.brackets"));
+        if (label) segments.push(mkSeg(label, isImage ? "image.alt" : "link.text"));
+        segments.push(mkSeg("](", isImage ? "image.brackets" : "link.brackets"));
+        if (url) segments.push(mkSeg(url, isImage ? "image.url" : "link.url"));
+        segments.push(mkSeg(")", isImage ? "image.brackets" : "link.brackets"));
+      } else {
+        segments.push(mkSeg(m, "punctuation"));
+      }
+      lastIndex = index + m.length;
+      continue;
+    }
+
+    // Emphasis / strike (we mostly color the markers so the *content* stays readable)
+    const wrap = (marker: string, markerToken: MarkdownEditorSyntaxToken, content: string) => {
+      segments.push(mkSeg(marker, markerToken));
+      if (content) segments.push(mkSeg(content, "emphasis.text"));
+      segments.push(mkSeg(marker, markerToken));
+    };
+
+    if (m.startsWith("~~") && m.endsWith("~~")) {
+      wrap("~~", "emphasis.marker", m.slice(2, -2));
+      lastIndex = index + m.length;
+      continue;
+    }
+    if (m.startsWith("**") && m.endsWith("**")) {
+      segments.push(mkSeg("**", "emphasis.marker"));
+      if (m.length > 4) segments.push(mkSeg(m.slice(2, -2), "emphasis.text"));
+      segments.push(mkSeg("**", "emphasis.marker"));
+      lastIndex = index + m.length;
+      continue;
+    }
+    if (m.startsWith("__") && m.endsWith("__")) {
+      segments.push(mkSeg("__", "emphasis.marker"));
+      if (m.length > 4) segments.push(mkSeg(m.slice(2, -2), "emphasis.text"));
+      segments.push(mkSeg("__", "emphasis.marker"));
+      lastIndex = index + m.length;
+      continue;
+    }
+    if (m.startsWith("*") && m.endsWith("*") && m.length >= 2) {
+      wrap("*", "emphasis.marker", m.slice(1, -1));
+      lastIndex = index + m.length;
+      continue;
+    }
+    if (m.startsWith("_") && m.endsWith("_") && m.length >= 2) {
+      wrap("_", "emphasis.marker", m.slice(1, -1));
+      lastIndex = index + m.length;
+      continue;
+    }
+
+    // Fallback
+    segments.push(mkSeg(m, "punctuation"));
+    lastIndex = index + m.length;
+  }
+
+  if (lastIndex < text.length) {
+    segments.push(mkSeg(text.slice(lastIndex), "text"));
+  }
+
+  return segments;
+}
+
+const JS_KEYWORDS_RE =
+  /\b(?:import|from|export|default|const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|try|catch|finally|throw|new|class|extends|implements|interface|type|public|private|protected|async|await|yield|this|super|in|of|instanceof)\b/g;
+const BUILTINS_RE = /\b(?:true|false|null|undefined|NaN|Infinity)\b/g;
+const NUMBER_RE = /\b\d+(?:\.\d+)?\b/g;
+const STRING_RE = /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`/g;
+
+function highlightPlainCodeChunk(chunk: string): SyntaxSegment[] {
+  const segments: SyntaxSegment[] = [];
+  const matches: Array<{ start: number; end: number; token: MarkdownEditorSyntaxToken }> = [];
+
+  for (const m of chunk.matchAll(JS_KEYWORDS_RE)) {
+    const idx = m.index ?? 0;
+    const raw = m[0] ?? "";
+    matches.push({ start: idx, end: idx + raw.length, token: "code.keyword" });
+  }
+  for (const m of chunk.matchAll(BUILTINS_RE)) {
+    const idx = m.index ?? 0;
+    const raw = m[0] ?? "";
+    matches.push({ start: idx, end: idx + raw.length, token: "code.builtin" });
+  }
+  for (const m of chunk.matchAll(NUMBER_RE)) {
+    const idx = m.index ?? 0;
+    const raw = m[0] ?? "";
+    matches.push({ start: idx, end: idx + raw.length, token: "code.number" });
+  }
+
+  matches.sort((a, b) => a.start - b.start || b.end - a.end);
+
+  let cursor = 0;
+  for (const mt of matches) {
+    if (mt.start < cursor) continue; // overlap
+    if (mt.start > cursor) segments.push(mkSeg(chunk.slice(cursor, mt.start), "code.text"));
+    segments.push(mkSeg(chunk.slice(mt.start, mt.end), mt.token));
+    cursor = mt.end;
+  }
+  if (cursor < chunk.length) segments.push(mkSeg(chunk.slice(cursor), "code.text"));
+
+  return segments.length ? segments : [mkSeg(chunk, "code.text")];
+}
+
+function highlightCodeLikeLine(line: string): SyntaxSegment[] {
+  // Very lightweight regex-highlighting (fast + “good enough” while editing).
+  // We intentionally avoid deep parsing to keep typing responsive.
+  const segments: SyntaxSegment[] = [];
+
+  // Split trailing // comment (naive but effective)
+  const commentIdx = line.indexOf("//");
+  const beforeComment = commentIdx >= 0 ? line.slice(0, commentIdx) : line;
+  const comment = commentIdx >= 0 ? line.slice(commentIdx) : "";
+
+  // First split strings so keywords/numbers don't color inside them
+  let last = 0;
+  for (const m of beforeComment.matchAll(STRING_RE)) {
+    const idx = m.index ?? 0;
+    const raw = m[0] ?? "";
+    if (idx > last) {
+      const chunk = beforeComment.slice(last, idx);
+      segments.push(...highlightPlainCodeChunk(chunk));
+    }
+    segments.push(mkSeg(raw, "code.string"));
+    last = idx + raw.length;
+  }
+
+  if (last === 0 && beforeComment.length > 0) {
+    segments.push(...highlightPlainCodeChunk(beforeComment));
+  } else if (last < beforeComment.length) {
+    segments.push(...highlightPlainCodeChunk(beforeComment.slice(last)));
+  }
+
+  if (comment) segments.push(mkSeg(comment, "code.comment"));
+  if (segments.length === 0) segments.push(mkSeg(line, "code.text"));
+
+  return segments;
+}
+
+function renderSyntaxSegments(segments: SyntaxSegment[], palette: MarkdownEditorSyntaxPalette, keyPrefix: string) {
+  return segments.map((seg, i) => {
+    const color = palette[seg.token];
+    const backgroundColor = seg.bgToken ? palette[seg.bgToken] : undefined;
+    return (
+      <RNText
+        key={`${keyPrefix}-${i}`}
+        style={{
+          color,
+          ...(backgroundColor ? { backgroundColor } : null),
+        }}
+      >
+        {seg.text}
+      </RNText>
+    );
+  });
+}
+
+function renderHighlightedMarkdownDocument(value: string, palette: MarkdownEditorSyntaxPalette) {
+  // Safety guard: avoid turning very large notes into thousands of <Text> nodes.
+  const lineCount = (value.match(/\n/g)?.length ?? 0) + 1;
+  if (value.length > 50_000 || lineCount > 2_000) {
+    return <RNText style={{ color: palette.text }}>{value}</RNText>;
+  }
+
+  const lines = value.replace(/\r/g, "").split("\n");
+  const out: React.ReactNode[] = [];
+
+  let inFence = false;
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const line = lines[lineIndex] ?? "";
+
+    // Fenced code blocks
+    if (fenceStartOrEnd(line)) {
+      const m = line.match(/^\s*(```|~~~)\s*(.*)\s*$/);
+      const marker = m?.[1] ?? "```";
+      const info = (m?.[2] ?? "").trim();
+
+      out.push(...renderSyntaxSegments([mkSeg(marker, "fence.marker"), mkSeg(info ? ` ${info}` : "", "fence.language")], palette, `fence-${lineIndex}`));
+      if (lineIndex < lines.length - 1) out.push(<RNText key={`nl-${lineIndex}`}>{"\n"}</RNText>);
+
+      if (!inFence) {
+        inFence = true;
+      } else {
+        inFence = false;
+      }
+      continue;
+    }
+
+    if (inFence) {
+      // Treat fence body as "code-ish" for readability.
+      out.push(...renderSyntaxSegments(highlightCodeLikeLine(line), palette, `code-${lineIndex}`));
+      if (lineIndex < lines.length - 1) out.push(<RNText key={`nl-${lineIndex}`}>{"\n"}</RNText>);
+      continue;
+    }
+
+    // Horizontal rules (---, ***)
+    if (isHorizontalRule(line)) {
+      out.push(...renderSyntaxSegments([mkSeg(line, "hr")], palette, `hr-${lineIndex}`));
+      if (lineIndex < lines.length - 1) out.push(<RNText key={`nl-${lineIndex}`}>{"\n"}</RNText>);
+      continue;
+    }
+
+    // Headings: ### Title
+    const headingMatch = line.match(/^(#{1,6})(\s+)(.*)$/);
+    if (headingMatch) {
+      const [, hashes, space, rest] = headingMatch;
+      out.push(...renderSyntaxSegments([mkSeg(hashes, "heading.marker"), mkSeg(space, "text"), mkSeg(rest, "heading.text")], palette, `h-${lineIndex}`));
+      if (lineIndex < lines.length - 1) out.push(<RNText key={`nl-${lineIndex}`}>{"\n"}</RNText>);
+      continue;
+    }
+
+    // Blockquotes: > text
+    const bqMatch = line.match(/^(\s*>)(\s?)(.*)$/);
+    if (bqMatch) {
+      const [, marker, space, rest] = bqMatch;
+      const segs: SyntaxSegment[] = [mkSeg(marker, "blockquote.marker"), mkSeg(space, "text"), ...highlightInlineMarkdown(rest)];
+      out.push(...renderSyntaxSegments(segs, palette, `bq-${lineIndex}`));
+      if (lineIndex < lines.length - 1) out.push(<RNText key={`nl-${lineIndex}`}>{"\n"}</RNText>);
+      continue;
+    }
+
+    // Lists: - item / 1. item
+    const listMatch = line.match(/^(\s*)([-*+]|\d+\.)(\s+)(.*)$/);
+    if (listMatch) {
+      const [, indent, marker, space, rest] = listMatch;
+      const segs: SyntaxSegment[] = [mkSeg(indent, "text"), mkSeg(marker, "list.marker"), mkSeg(space, "text"), ...highlightInlineMarkdown(rest)];
+      out.push(...renderSyntaxSegments(segs, palette, `li-${lineIndex}`));
+      if (lineIndex < lines.length - 1) out.push(<RNText key={`nl-${lineIndex}`}>{"\n"}</RNText>);
+      continue;
+    }
+
+    // Default: highlight inline patterns
+    out.push(...renderSyntaxSegments(highlightInlineMarkdown(line), palette, `ln-${lineIndex}`));
+    if (lineIndex < lines.length - 1) out.push(<RNText key={`nl-${lineIndex}`}>{"\n"}</RNText>);
+  }
+
+  return out;
+}
 
 interface MarkdownEditorProps {
   value: string;
@@ -41,7 +325,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     },
     ref
   ) {
-    const { colors } = useThemeColors();
+    const { colors, isDark } = useThemeColors();
     const inputRef = useRef<TextInput>(null);
     const [selection, setSelection] = useState({ start: 0, end: 0 });
     const selectionRef = useRef(selection);
@@ -1687,6 +1971,28 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       handleTabKey(e);
     };
 
+    const syntaxPalette = useMemo(
+      () => (isDark ? MARKDOWN_EDITOR_SYNTAX_COLORS.dark : MARKDOWN_EDITOR_SYNTAX_COLORS.light),
+      [isDark]
+    );
+
+    const selectionAccent = isDark ? "#60a5fa" : "#2563eb";
+
+    const highlightedEditingText = useMemo(() => {
+      if (isPreview) return null;
+      if (!value) return null;
+      return renderHighlightedMarkdownDocument(value, syntaxPalette);
+    }, [isPreview, value, syntaxPalette]);
+
+    const [editorScrollY, setEditorScrollY] = useState(0);
+    const editorScrollYRef = useRef(0);
+    const handleEditorScroll = (e: any) => {
+      const y = e?.nativeEvent?.contentOffset?.y ?? 0;
+      if (y === editorScrollYRef.current) return;
+      editorScrollYRef.current = y;
+      setEditorScrollY(y);
+    };
+
     const previewValue = useMemo(() => {
       if (!isPreview) return value;
       return linkifyMarkdown(value);
@@ -1718,39 +2024,83 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             )}
           </ScrollView>
         ) : (
-          <Input
-            ref={inputRef}
-            className="flex-1 border-0 shadow-none bg-transparent text-base leading-6 font-mono px-8"
-            placeholder={placeholder}
-            placeholderTextColor={colors.mutedForeground}
-            value={value}
-            onChangeText={handleTextChange}
-            selection={selection}
-            {...(Platform.OS === "web" ? ({ onKeyDown: handleWebKeyDown } as any) : {})}
-            onSelectionChange={(e) => {
-              const next = e.nativeEvent.selection;
-              const pending = pendingSelectionRef.current;
+          <View style={{ flex: 1, position: "relative", overflow: "hidden" as const }}>
+            {!!highlightedEditingText && (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  zIndex: 1,
+                  overflow: "hidden",
+                }}
+              >
+                <View
+                  style={{
+                    transform: [{ translateY: -editorScrollY }],
+                    paddingHorizontal: 32,
+                    paddingTop: 30,
+                    paddingBottom: 65,
+                  }}
+                >
+                  <RNText
+                    style={{
+                      fontFamily: "monospace",
+                      fontSize: 16,
+                      lineHeight: 24,
+                      color: syntaxPalette.text,
+                      ...(Platform.OS === "web" ? ({ whiteSpace: "pre-wrap" } as any) : null),
+                    }}
+                  >
+                    {highlightedEditingText}
+                  </RNText>
+                </View>
+              </View>
+            )}
 
-              // During programmatic updates, ignore transient selection events (often {0,0} on Android)
-              if (isProcessingListRef.current || suppressSelectionUpdatesRef.current > 0) {
-                if (!pending || pending.start !== next.start || pending.end !== next.end) {
-                  return;
+            <Input
+              ref={inputRef}
+              className="flex-1 border-0 shadow-none bg-transparent text-base leading-6 font-mono px-8"
+              placeholder={placeholder}
+              placeholderTextColor={colors.mutedForeground}
+              value={value}
+              onChangeText={handleTextChange}
+              selection={selection}
+              selectionColor={selectionAccent}
+              {...(Platform.OS === "web" ? ({ onKeyDown: handleWebKeyDown } as any) : {})}
+              onSelectionChange={(e) => {
+                const next = e.nativeEvent.selection;
+                const pending = pendingSelectionRef.current;
+
+                // During programmatic updates, ignore transient selection events (often {0,0} on Android)
+                if (isProcessingListRef.current || suppressSelectionUpdatesRef.current > 0) {
+                  if (!pending || pending.start !== next.start || pending.end !== next.end) {
+                    return;
+                  }
                 }
-              }
 
-              setSelectionBoth({ start: next.start, end: next.end });
-            }}
-            multiline
-            blurOnSubmit={false}
-            textAlignVertical="top"
-            style={{
-              paddingHorizontal: 32,
-              paddingTop: 30,
-              paddingBottom: 65,
-              fontFamily: "monospace",
-              flex: 1,
-            }}
-          />
+                setSelectionBoth({ start: next.start, end: next.end });
+              }}
+              onScroll={handleEditorScroll}
+              multiline
+              scrollEnabled
+              blurOnSubmit={false}
+              textAlignVertical="top"
+              style={{
+                paddingHorizontal: 32,
+                paddingTop: 30,
+                paddingBottom: 65,
+                fontFamily: "monospace",
+                flex: 1,
+                // Hide the raw TextInput glyphs; the overlay paints colored text.
+                color: "transparent",
+                ...(Platform.OS === "web" ? ({ caretColor: selectionAccent } as any) : null),
+              }}
+            />
+          </View>
         )}
       </View>
     );
