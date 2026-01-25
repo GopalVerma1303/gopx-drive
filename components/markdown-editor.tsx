@@ -176,65 +176,83 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
       // Check if a newline was just added (text increased by exactly one line)
       if (newLines.length === oldLines.length + 1) {
-        // Find which line was split by comparing line by line
-        let splitLineIndex = -1;
-        let splitPositionInLine = -1;
-
-        for (let i = 0; i < oldLines.length; i++) {
-          const oldLine = oldLines[i];
-          const newLine = newLines[i];
-
-          // If lines are different, the split happened here
-          if (oldLine !== newLine) {
-            splitLineIndex = i;
-            // Find where in the line the split occurred
-            // The new line should be a prefix of the old line (or vice versa if cursor was at start)
-            if (newLine.length < oldLine.length) {
-              // Split happened in the middle or end of oldLine
-              splitPositionInLine = newLine.length;
-            } else {
-              // This shouldn't happen, but handle it
-              splitPositionInLine = oldLine.length;
-            }
-            break;
-          }
+        // Determine the exact insertion point for the newline using a prefix/suffix diff.
+        // This is more reliable than line-by-line comparison when inserting in the middle
+        // of a document (e.g., adding a new list item between existing items).
+        let prefixLen = 0;
+        const maxPrefix = Math.min(oldText.length, newText.length);
+        while (prefixLen < maxPrefix && oldText[prefixLen] === newText[prefixLen]) {
+          prefixLen++;
         }
 
-        // If no difference found in existing lines, the split happened at the end of the last line
-        if (splitLineIndex === -1) {
-          splitLineIndex = oldLines.length - 1;
-          const lastOldLine = oldLines[splitLineIndex] || '';
-          splitPositionInLine = lastOldLine.length;
+        let oldSuffixIdx = oldText.length - 1;
+        let newSuffixIdx = newText.length - 1;
+        while (
+          oldSuffixIdx >= prefixLen &&
+          newSuffixIdx >= prefixLen &&
+          oldText[oldSuffixIdx] === newText[newSuffixIdx]
+        ) {
+          oldSuffixIdx--;
+          newSuffixIdx--;
         }
 
-        const oldLine = oldLines[splitLineIndex] || '';
-        const newLineAfterSplit = newLines[splitLineIndex + 1] || '';
+        const inserted = newText.slice(prefixLen, newSuffixIdx + 1);
+        const removed = oldText.slice(prefixLen, oldSuffixIdx + 1);
+        const normalizedInserted = inserted.replace(/\r/g, "");
 
-        // Calculate cursor position before the split
-        // If splitPositionInLine is at the end of the line, cursor was at the end
-        // Otherwise, we need to check if cursor was actually at the end
-        const isAtEndOfLine = splitPositionInLine >= oldLine.length;
-
-        // Only process if cursor was at the end of the line (typical use case)
-        if (!isAtEndOfLine) {
-          // Cursor was in the middle, let default behavior happen
+        // Only auto-continue lists for a plain "Enter" that inserts exactly one newline.
+        if (!(removed.length === 0 && normalizedInserted === "\n")) {
           previousValueRef.current = newText;
+          pendingInternalValueRef.current = newText;
           onChangeText(newText);
           return;
         }
 
-        // Calculate cursor position before the split (end of the old line)
-        let cursorBeforeSplit = 0;
-        for (let i = 0; i < splitLineIndex; i++) {
-          cursorBeforeSplit += oldLines[i].length + 1; // +1 for newline
-        }
-        cursorBeforeSplit += oldLine.length;
+        // Figure out where the newline was inserted in the OLD text.
+        // Prefix/suffix diffs can be ambiguous when inserting "\n" next to an existing "\n"
+        // (e.g., adding a blank line between existing lines). Prefer the current selection
+        // (often still at the pre-change cursor) and fall back to diff-derived candidates.
+        const insertedRawLen = inserted.length;
+        const isValidInsertionAt = (pos: number) => {
+          if (pos < 0 || pos > oldText.length) return false;
+          if (newText.slice(0, pos) !== oldText.slice(0, pos)) return false;
+          if (newText.slice(pos, pos + insertedRawLen).replace(/\r/g, "") !== "\n") return false;
+          return newText.slice(pos + insertedRawLen) === oldText.slice(pos);
+        };
+
+        const selStart = selectionRef.current.start;
+        const cursorCandidates = [
+          selStart,
+          selStart - insertedRawLen,
+          prefixLen,
+          prefixLen - insertedRawLen,
+          prefixLen - 1,
+        ].filter((n) => Number.isFinite(n));
+
+        const resolvedCursorBeforeSplit =
+          cursorCandidates.find((pos) => isValidInsertionAt(pos)) ?? prefixLen;
+
+        const cursorBeforeSplit = Math.max(0, Math.min(oldText.length, resolvedCursorBeforeSplit));
 
         // Check if we're in a list context at the cursor position before split
         const listInfo = getListInfo(oldText, cursorBeforeSplit);
 
         if (listInfo) {
-          const { indent, nextMarker, currentLine } = listInfo;
+          const { indent, marker, markerType, nextMarker, currentLine, lineIndex: splitLineIndex } = listInfo;
+
+          const newLineAfterSplit = newLines[splitLineIndex + 1] || '';
+
+          // Avoid inserting list markers if the cursor is before (or inside) the list marker itself.
+          // Example: cursor at the start of "- [ ] item" shouldn't cause "- [ ] - [ ] item".
+          const lineStart = oldText.lastIndexOf('\n', Math.max(0, cursorBeforeSplit - 1)) + 1;
+          const cursorColumn = cursorBeforeSplit - lineStart;
+          const markerEndColumn = indent.length + marker.length;
+          if (cursorColumn < markerEndColumn) {
+            previousValueRef.current = newText;
+            pendingInternalValueRef.current = newText;
+            onChangeText(newText);
+            return;
+          }
 
           // Check if the old line (before split) was empty (only marker, no content)
           const oldLineContent = currentLine.replace(/^\s*[-*+]\s*\[[\s*xX*]\]\s*/, '') // Remove checkbox
@@ -292,6 +310,51 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             const updatedLines = [...newLines];
             // Remove any existing content from the new line and add the marker
             updatedLines[splitLineIndex + 1] = indent + nextMarker + newLineAfterSplit;
+
+            // If we're inserting into an ordered list, renumber subsequent siblings (+1) until the list ends.
+            // Stop at the first blank line; also stop when we encounter a line that isn't part of this list level.
+            if (markerType === 'ordered') {
+              const insertedNumber = parseInt(nextMarker, 10);
+              if (Number.isFinite(insertedNumber)) {
+                let nextNumber = insertedNumber + 1;
+
+                for (let i = splitLineIndex + 2; i < updatedLines.length; i++) {
+                  const line = updatedLines[i] ?? '';
+
+                  // A blank line terminates the list.
+                  if (line.trim() === '') break;
+
+                  const orderedMatch = line.match(/^(\s*)(\d+)\.\s+(.*)$/);
+
+                  if (!orderedMatch) {
+                    // Allow nested content (more-indented) to exist inside a list item without ending the list.
+                    const lineIndent = (line.match(/^(\s*)/)?.[1]) ?? '';
+                    if (lineIndent.length > indent.length) {
+                      continue;
+                    }
+                    break;
+                  }
+
+                  const lineIndent = orderedMatch[1] ?? '';
+                  const lineContent = orderedMatch[3] ?? '';
+
+                  if (lineIndent === indent) {
+                    updatedLines[i] = `${indent}${nextNumber}. ${lineContent}`;
+                    nextNumber += 1;
+                    continue;
+                  }
+
+                  // Nested ordered list (more-indented) - don't renumber at this level, but don't end the list either.
+                  if (lineIndent.length > indent.length) {
+                    continue;
+                  }
+
+                  // Less indentation indicates we've left this list level.
+                  break;
+                }
+              }
+            }
+
             const updatedText = updatedLines.join('\n');
 
             // Calculate new cursor position (after the marker on the new line)
