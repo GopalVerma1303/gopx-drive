@@ -1541,7 +1541,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     const ensureChildrenKeys = (children: any): any => {
       if (Array.isArray(children)) {
         return children.map((child, index) => {
-          if (React.isValidElement(child) && !child.key) {
+          // Note: React keys can be `0`, so don't use a falsy check here.
+          if (React.isValidElement(child) && child.key == null) {
             return React.cloneElement(child, { key: `child-${index}` });
           }
           return child;
@@ -2027,43 +2028,49 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         );
       },
       bullet_list: (node: any, children: any, parent: any, styles: any) => {
+        const childrenWithKeys = ensureChildrenKeys(children);
         return (
           <View key={node.key} style={styles.bullet_list}>
-            {children}
+            {childrenWithKeys}
           </View>
         );
       },
       ordered_list: (node: any, children: any, parent: any, styles: any) => {
+        const childrenWithKeys = ensureChildrenKeys(children);
         return (
           <View key={node.key} style={styles.ordered_list}>
-            {children}
+            {childrenWithKeys}
           </View>
         );
       },
       table: (node: any, children: any, parent: any, styles: any) => {
+        const childrenWithKeys = ensureChildrenKeys(children);
         return (
           <View key={node.key} style={styles.table}>
-            {children}
+            {childrenWithKeys}
           </View>
         );
       },
       thead: (node: any, children: any, parent: any, styles: any) => {
+        const childrenWithKeys = ensureChildrenKeys(children);
         return (
           <View key={node.key} style={styles.thead}>
-            {children}
+            {childrenWithKeys}
           </View>
         );
       },
       tbody: (node: any, children: any, parent: any, styles: any) => {
+        const childrenWithKeys = ensureChildrenKeys(children);
         return (
           <View key={node.key} style={styles.tbody}>
-            {children}
+            {childrenWithKeys}
           </View>
         );
       },
       tr: (node: any, children: any, parent: any, styles: any) => {
         // Ensure children is an array for proper rendering
         const rowChildren = Array.isArray(children) ? children : [children];
+        const rowChildrenWithKeys = ensureChildrenKeys(rowChildren);
         return (
           <View
             key={node.key}
@@ -2076,7 +2083,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               }
             ]}
           >
-            {rowChildren}
+            {rowChildrenWithKeys}
           </View>
         );
       },
