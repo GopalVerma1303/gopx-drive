@@ -13,10 +13,12 @@
   "dependencies": {
     "@codemirror/commands": "^6.10.1",
     "@codemirror/lang-markdown": "^6.5.0",
+    "@codemirror/language": "^6.12.1",
     "@codemirror/language-data": "^6.5.2",
     "@codemirror/state": "^6.5.4",
     "@codemirror/view": "^6.39.11",
     "@expo/vector-icons": "^15.0.3",
+    "@lezer/highlight": "^1.2.3",
     "@nkzw/create-context-hook": "^1.1.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@rn-primitives/alert-dialog": "^1.2.0",

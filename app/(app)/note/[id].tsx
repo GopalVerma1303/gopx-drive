@@ -1,8 +1,7 @@
 "use client";
 
 import { NoteDetailHeader } from "@/components/headers/note-detail-header";
-import { MarkdownEditor, MarkdownEditorRef } from "@/components/markdown-editor";
-import { MarkdownToolbar } from "@/components/markdown-toolbar";
+import { Editor, EditorRef } from "@/components/editor";
 import { useAuth } from "@/contexts/auth-context";
 import { createNote, getNoteById, updateNote } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -33,8 +32,7 @@ export default function NoteEditorScreen() {
   const [content, setContent] = useState("");
   const [lastSavedTitle, setLastSavedTitle] = useState("");
   const [lastSavedContent, setLastSavedContent] = useState("");
-  const [isPreview, setIsPreview] = useState(!isNewNote);
-  const editorRef = useRef<MarkdownEditorRef>(null);
+  const editorRef = useRef<EditorRef>(null);
 
   const containerAnimatedStyle = useAnimatedStyle(() => {
     // Only apply keyboard avoidance on native platforms
@@ -190,32 +188,18 @@ export default function NoteEditorScreen() {
         isDirty={isDirty}
         canSave={canSave}
         onSave={handleSave}
-        isPreview={isPreview}
-        onPreviewToggle={() => setIsPreview(!isPreview)}
         isFetching={isFetching}
         onRefresh={!isNewNote ? handleRefresh : undefined}
       />
       {Platform.OS === "web" ? (
         <View className="flex-1 bg-background" style={{ flex: 1, height: "100%" }}>
           <View className="flex-1 w-full max-w-2xl mx-auto bg-muted" style={{ minHeight: "100%" }}>
-            {!isPreview && (
-              <MarkdownToolbar
-                onInsertText={(text, cursorOffset) => {
-                  editorRef.current?.insertText(text, cursorOffset);
-                }}
-                onWrapSelection={(before, after, cursorOffset) => {
-                  editorRef.current?.wrapSelection(before, after, cursorOffset);
-                }}
-                isPreview={isPreview}
-              />
-            )}
             <View className="flex-1">
-              <MarkdownEditor
+              <Editor
                 ref={editorRef}
                 value={content}
                 onChangeText={setContent}
-                placeholder="Start writing in markdown..."
-                isPreview={isPreview}
+                placeholder="Start writing..."
               />
             </View>
           </View>
@@ -224,24 +208,12 @@ export default function NoteEditorScreen() {
         <Animated.View className="flex-1" style={containerAnimatedStyle}>
           <View className="flex-1 bg-background">
             <View className="flex-1 px-0 w-full max-w-2xl mx-auto bg-muted">
-              {!isPreview && (
-                <MarkdownToolbar
-                  onInsertText={(text, cursorOffset) => {
-                    editorRef.current?.insertText(text, cursorOffset);
-                  }}
-                  onWrapSelection={(before, after, cursorOffset) => {
-                    editorRef.current?.wrapSelection(before, after, cursorOffset);
-                  }}
-                  isPreview={isPreview}
-                />
-              )}
               <View className="flex-1">
-                <MarkdownEditor
+                <Editor
                   ref={editorRef}
                   value={content}
                   onChangeText={setContent}
-                  placeholder="Start writing in markdown..."
-                  isPreview={isPreview}
+                  placeholder="Start writing..."
                 />
               </View>
             </View>

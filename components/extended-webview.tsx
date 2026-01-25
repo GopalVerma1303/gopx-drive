@@ -41,8 +41,17 @@ const ExtendedWebView = forwardRef<ExtendedWebViewRef, Props>(function ExtendedW
   }));
 
   const baseDirectory = useMemo(() => {
-    // cacheDirectory is preferred for temp HTML.
-    return FileSystem.cacheDirectory ?? FileSystem.documentDirectory ?? null;
+    // expo-file-system v19+ uses Paths.* (Directory objects) rather than
+    // the older `cacheDirectory` / `documentDirectory` exports.
+    //
+    // This component is only rendered on native, but it is still imported on web.
+    // Avoid touching native FS APIs on web at module/runtime init.
+    if (Platform.OS === "web") return null;
+    try {
+      return FileSystem.Paths.cache ?? FileSystem.Paths.document ?? null;
+    } catch {
+      return null;
+    }
   }, []);
 
   useEffect(() => {
@@ -60,8 +69,9 @@ const ExtendedWebView = forwardRef<ExtendedWebViewRef, Props>(function ExtendedW
         return;
       }
 
-      const fileUri = `${baseDirectory}${props.webviewInstanceId}.html`;
-      await FileSystem.writeAsStringAsync(fileUri, props.html, { encoding: FileSystem.EncodingType.UTF8 });
+      const file = new FileSystem.File(baseDirectory, `${props.webviewInstanceId}.html`);
+      file.create({ intermediates: true, overwrite: true });
+      file.write(props.html, { encoding: "utf8" });
       if (cancelled) return;
 
       const cacheBust = Math.round(Math.random() * 100000000);
@@ -69,10 +79,8 @@ const ExtendedWebView = forwardRef<ExtendedWebViewRef, Props>(function ExtendedW
       // baseUrl helps relative asset resolution if you ever add local assets.
       // (Matches Joplin's "file load + baseUrl" approach.)
       setSource({
-        // @ts-expect-error baseUrl supported by react-native-webview source
-        uri: `${fileUri}?r=${cacheBust}`,
-        // @ts-expect-error baseUrl supported by react-native-webview source
-        baseUrl: baseDirectory,
+        uri: `${file.uri}?r=${cacheBust}`,
+        baseUrl: baseDirectory.uri,
       } as any);
     }
 
@@ -88,7 +96,7 @@ const ExtendedWebView = forwardRef<ExtendedWebViewRef, Props>(function ExtendedW
   const originWhitelist = useMemo(() => ["file://*", "about:blank", "about:srcdoc"], []);
 
   // When using file:// sources, iOS requires an explicit allowingReadAccessToURL.
-  const allowingReadAccessToURL = baseDirectory ?? undefined;
+  const allowingReadAccessToURL = baseDirectory?.uri ?? undefined;
 
   return (
     <WebView

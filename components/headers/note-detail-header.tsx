@@ -3,7 +3,7 @@ import { Text } from "@/components/ui/text";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { ArrowLeft, Check, Edit, Eye, RefreshCcw } from "lucide-react-native";
+import { ArrowLeft, Check, RefreshCcw } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,8 +15,6 @@ interface NoteDetailHeaderProps {
   isDirty: boolean;
   canSave: boolean;
   onSave: () => void;
-  isPreview: boolean;
-  onPreviewToggle: () => void;
   isFetching?: boolean;
   onRefresh?: () => void;
 }
@@ -28,8 +26,6 @@ export function NoteDetailHeader({
   isDirty,
   canSave,
   onSave,
-  isPreview,
-  onPreviewToggle,
   isFetching = false,
   onRefresh,
 }: NoteDetailHeaderProps) {
@@ -161,19 +157,6 @@ export function NoteDetailHeader({
               />
             </Pressable>
           )}
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              onPreviewToggle();
-            }}
-            style={{ padding: 8 }}
-          >
-            {isPreview ? (
-              <Edit color={colors.foreground} size={22} strokeWidth={2.5} />
-            ) : (
-              <Eye color={colors.foreground} size={22} strokeWidth={2.5} />
-            )}
-          </Pressable>
           <Pressable
             onPress={onSave}
             disabled={!canSave}
