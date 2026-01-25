@@ -32,6 +32,10 @@ type Theme = {
 	dark?: boolean;
 	background?: string;
 	foreground?: string;
+	muted?: string;
+	mutedForeground?: string;
+	ring?: string;
+	primary?: string;
 	caret?: string;
 	selection?: string;
 	gutterForeground?: string;
@@ -102,6 +106,10 @@ const setThemeVars = (theme: Theme | null | undefined) => {
 
 	set('--bg', theme.background);
 	set('--fg', theme.foreground);
+	set('--muted', theme.muted);
+	set('--muted-fg', theme.mutedForeground);
+	set('--ring', theme.ring);
+	set('--primary', theme.primary);
 	set('--caret', theme.caret);
 	set('--selection', theme.selection);
 	set('--gutter-fg', theme.gutterForeground);
@@ -231,19 +239,46 @@ const createCmTheme = (dark: boolean) => {
 
 			// Joplin-like markdown block styling (driven by markdownDecorations).
 			'.cm-blockQuote': {
-				borderLeft: `4px solid var(--gutter-fg)`,
-				opacity: dark ? '0.9' : '0.85',
-				paddingLeft: '4px',
+				backgroundColor: 'var(--muted)',
+				borderLeft: '4px solid var(--ring)',
+				paddingLeft: '16px',
+				paddingRight: '16px',
+				fontStyle: 'italic',
+				color: 'var(--muted-fg)',
+			},
+			'.cm-blockQuote.cm-regionFirstLine': {
+				paddingTop: '8px',
+				marginTop: '8px',
+				borderTopLeftRadius: '4px',
+				borderTopRightRadius: '4px',
+			},
+			'.cm-blockQuote.cm-regionLastLine': {
+				paddingBottom: '8px',
+				marginBottom: '8px',
+				borderBottomLeftRadius: '4px',
+				borderBottomRightRadius: '4px',
 			},
 			'.cm-codeBlock': {
 				borderWidth: '1px',
 				borderStyle: 'solid',
-				borderColor: 'rgba(100, 100, 100, 0.35)',
-				backgroundColor: 'rgba(155, 155, 155, 0.1)',
+				borderColor: 'var(--ring)',
+				backgroundColor: 'var(--muted)',
+				color: 'var(--fg)',
+				fontSize: '14px',
+				paddingLeft: '12px',
+				paddingRight: '12px',
 				fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
 			},
 			'.cm-codeBlock.cm-regionFirstLine, .cm-codeBlock.cm-regionLastLine': {
-				borderRadius: '3px',
+				borderRadius: '8px',
+			},
+			'.cm-codeBlock.cm-regionFirstLine': {
+				paddingTop: '12px',
+				marginTop: '8px',
+			},
+			'.cm-codeBlock.cm-regionLastLine': {
+				paddingBottom: '12px',
+				marginBottom: '8px',
 			},
 			'.cm-codeBlock:not(.cm-regionFirstLine)': {
 				borderTop: 'none',
@@ -256,10 +291,10 @@ const createCmTheme = (dark: boolean) => {
 				borderBottomRightRadius: '0',
 			},
 			'.cm-inlineCode': {
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: dark ? 'rgba(200, 200, 200, 0.5)' : 'rgba(100, 100, 100, 0.5)',
-				borderRadius: '4px',
+				color: '#FF69B4',
+				fontSize: '14px',
+				backgroundColor: 'transparent',
+				border: 'none',
 				fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
 			},
 			'.cm-mathBlock, .cm-inlineMath': {
@@ -274,12 +309,40 @@ const createCmTheme = (dark: boolean) => {
 			'.cm-strike': {
 				textDecoration: 'line-through',
 			},
-			'.cm-h1': { fontWeight: 'bold', fontSize: '1.5em', paddingBottom: '0.2em' },
-			'.cm-h2': { fontWeight: 'bold', fontSize: '1.4em', paddingBottom: '0.2em' },
-			'.cm-h3': { fontWeight: 'bold', fontSize: '1.3em', paddingBottom: '0.2em' },
-			'.cm-h4': { fontWeight: 'bold', fontSize: '1.2em', paddingBottom: '0.2em' },
-			'.cm-h5': { fontWeight: 'bold', fontSize: '1.1em', paddingBottom: '0.2em' },
-			'.cm-h6': { fontWeight: 'bold', fontSize: '1.0em', paddingBottom: '0.2em' },
+			'.cm-h1': {
+				color: 'var(--fg)',
+				fontSize: '32px',
+				fontWeight: 'bold',
+				lineHeight: '32px',
+				marginTop: '16px',
+				marginBottom: '8px',
+			},
+			'.cm-h2': {
+				color: 'var(--fg)',
+				fontSize: '28px',
+				fontWeight: 'bold',
+				lineHeight: '28px',
+				marginTop: '14px',
+				marginBottom: '7px',
+			},
+			'.cm-h3': {
+				color: 'var(--fg)',
+				fontSize: '24px',
+				fontWeight: '600',
+				lineHeight: '24px',
+				marginTop: '12px',
+				marginBottom: '6px',
+			},
+			'.cm-h4': {
+				color: 'var(--fg)',
+				fontSize: '20px',
+				fontWeight: '600',
+				lineHeight: '20px',
+				marginTop: '10px',
+				marginBottom: '5px',
+			},
+			'.cm-h5': { fontWeight: 'bold', fontSize: '18px', lineHeight: '18px' },
+			'.cm-h6': { fontWeight: 'bold', fontSize: '16px', lineHeight: '16px' },
 
 			// Default URL style when URL is within a link.
 			'.tok-url.tok-link, .tok-link.tok-meta, .tok-link.tok-string': {
@@ -295,7 +358,7 @@ const joplinLikeHighlightStyle = HighlightStyle.define([
 	{ tag: tags.emphasis, fontStyle: 'italic' },
 	{ tag: tags.list, fontFamily: 'inherit' },
 	{ tag: tags.comment, opacity: '0.9', fontStyle: 'italic' },
-	{ tag: tags.link, color: 'var(--cm-urlColor)' },
+	{ tag: tags.link, color: 'var(--primary)', textDecoration: 'underline' },
 
 	// Code block content palette (matches Joplin defaults).
 	{ tag: tags.keyword, color: 'var(--cm-kw)' },
@@ -314,6 +377,11 @@ class EmptyWidget extends WidgetType {
 		el.className = 'cm-livePreviewHidden';
 		return el;
 	}
+
+	public override ignoreEvent(_event: Event) {
+		// Treat hidden markup widgets as non-interactive.
+		return true;
+	}
 }
 
 class ListMarkWidget extends WidgetType {
@@ -331,21 +399,31 @@ class ListMarkWidget extends WidgetType {
 	public override toDOM(view: EditorView): HTMLElement {
 		const el = document.createElement('span');
 		el.className = 'cm-livePreviewListMark';
+		el.setAttribute('contenteditable', 'false');
 		el.textContent = this.text;
 
 		const focusEditorHere = (event: Event) => {
 			event.preventDefault();
+			// Prevent CodeMirror's own mouse selection handler from running after
+			// we dispatch selection/focus. Otherwise, it may try to resolve a DOM
+			// position from an event target that gets replaced during this update,
+			// which can throw "Invalid child in posBefore".
+			event.stopPropagation();
+			(event as any).stopImmediatePropagation?.();
 			view.dispatch({ selection: { anchor: this.focusPos }, scrollIntoView: true });
 			view.focus();
 		};
 
 		el.addEventListener('mousedown', focusEditorHere);
+		el.addEventListener('click', focusEditorHere);
 		el.addEventListener('touchstart', focusEditorHere, { passive: false });
 		return el;
 	}
 
-	public override ignoreEvent() {
-		return false;
+	public override ignoreEvent(_event: Event) {
+		// We handle focus/selection ourselves and don't want CM's default
+		// mouse selection to also run for this widget.
+		return true;
 	}
 }
 
@@ -908,8 +986,15 @@ export const install = () => {
 				stack: error?.stack,
 			},
 		});
+		// Prevent "Uncaught Error" overlays from taking over the WebView.
+		return true;
 	};
 	window.onunhandledrejection = (event: PromiseRejectionEvent) => {
+		try {
+			event.preventDefault();
+		} catch {
+			// no-op
+		}
 		sendToHost({
 			kind: 'event',
 			type: 'error',
