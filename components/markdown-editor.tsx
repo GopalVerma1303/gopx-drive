@@ -868,7 +868,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         // fontFamily: "monospace",
       },
       link: {
-        color: colors.primary,
+        color: "#3b82f6",
         textDecorationLine: "underline" as const,
         // fontFamily: "monospace",
       },
@@ -992,6 +992,106 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         .replace(/[^\w\s]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
+    };
+
+    // Helper to strip markdown link syntax for matching.
+    // This prevents URL-heavy markdown like `[Google](https://google.com)` from breaking
+    // checkbox line matching (children render as "Google", but the source includes the URL).
+    const stripLinksForMatching = (text: string): string => {
+      return text
+        // Images: ![alt](url) -> alt
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '$1')
+        // Inline links: [text](url "title") -> text
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+        // Reference links: [text][id] or [text][] -> text
+        .replace(/\[([^\]]+)\]\[[^\]]*\]/g, '$1')
+        // Autolinks: <https://example.com> -> https://example.com
+        .replace(/<((?:https?:\/\/|mailto:)[^>\s]+)>/g, '$1');
+    };
+
+    // Linkify bare URLs/emails in preview without touching the underlying editor value.
+    // Examples:
+    // - https://example.com  -> <https://example.com>
+    // - www.example.com      -> [www.example.com](https://www.example.com)
+    // - foo@bar.com          -> <foo@bar.com>
+    //
+    // Skips fenced code blocks (```), indented code blocks, inline code (`code`),
+    // and existing markdown link syntaxes so we don't double-wrap.
+    const linkifyMarkdown = (markdown: string): string => {
+      const EMAIL_RE = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
+      const URL_RE = /\b(?:https?:\/\/|www\.|mailto:|tel:)[^\s<>()]+/gi;
+
+      const linkifyPlainText = (text: string): string => {
+        const placeholders: string[] = [];
+        const tokenFor = (idx: number) => `\u0000${idx}\u0000`;
+        const mask = (re: RegExp, input: string) =>
+          input.replace(re, (m) => {
+            const idx = placeholders.push(m) - 1;
+            return tokenFor(idx);
+          });
+        const unmask = (input: string) =>
+          input.replace(/\u0000(\d+)\u0000/g, (_m, n) => placeholders[Number(n)] ?? _m);
+
+        // Protect existing markdown link constructs so we don't double-linkify.
+        let masked = text;
+        masked = mask(/!\[[^\]]*\]\([^)]+\)/g, masked);      // images
+        masked = mask(/\[[^\]]+\]\([^)]+\)/g, masked);       // inline links
+        masked = mask(/\[[^\]]+\]\[[^\]]*\]/g, masked);      // reference links
+        masked = mask(/<[^>\s]+>/g, masked);                 // autolinks / html-ish
+
+        const stripTrailingPunctuation = (raw: string) => {
+          let core = raw;
+          let trailing = "";
+          while (core.length > 0 && /[)\].,!?;:'"]/.test(core[core.length - 1])) {
+            trailing = core[core.length - 1] + trailing;
+            core = core.slice(0, -1);
+          }
+          return { core, trailing };
+        };
+
+        // Emails first so we don't partially match inside mailto:foo@bar.com
+        masked = masked.replace(EMAIL_RE, (raw) => {
+          const { core, trailing } = stripTrailingPunctuation(raw);
+          if (!core) return raw;
+          return `<${core}>${trailing}`;
+        });
+
+        masked = masked.replace(URL_RE, (raw) => {
+          const { core, trailing } = stripTrailingPunctuation(raw);
+          if (!core) return raw;
+
+          if (core.toLowerCase().startsWith("www.")) {
+            const href = `https://${core}`;
+            return `[${core}](${href})${trailing}`;
+          }
+
+          // For scheme URLs, autolink form is compact and widely supported by markdown parsers.
+          return `<${core}>${trailing}`;
+        });
+
+        return unmask(masked);
+      };
+
+      const lines = markdown.split("\n");
+      let inFence = false;
+
+      const out = lines.map((line) => {
+        if (/^\s*```/.test(line)) {
+          inFence = !inFence;
+          return line;
+        }
+        if (inFence) return line;
+        if (/^(?:\t| {4})/.test(line)) return line; // indented code block
+
+        // Naive inline-code protection: split on backticks and only linkify even segments.
+        const parts = line.split("`");
+        for (let i = 0; i < parts.length; i += 2) {
+          parts[i] = linkifyPlainText(parts[i] ?? "");
+        }
+        return parts.join("`");
+      });
+
+      return out.join("\n");
     };
 
     // Helper function to ensure children have keys when they're arrays
@@ -1261,7 +1361,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       s: (node: any, children: any) => renderStrikeThrough(node, children),
       list_item: (node: any, children: any, parent: any, styles: any) => {
         // Extract text content from children, removing checkbox syntax for matching
-        let childrenText = normalizeText(extractTextFromChildren(children));
+        let childrenText = normalizeText(stripLinksForMatching(extractTextFromChildren(children)));
         // Remove all checkbox patterns from extracted text for better matching
         childrenText = childrenText
           .replace(/^\s*\[[\s*xX*]\]\s*/, '')
@@ -1282,7 +1382,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           }
 
           const { restText, isChecked } = info;
-          const restTextNormalized = normalizeText(restText);
+          const restTextNormalized = normalizeText(stripLinksForMatching(restText));
 
           // Calculate match score (higher is better)
           let score = 0;
@@ -1379,8 +1479,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               // Find any checkbox line that matches the text (even if already rendered)
               // This is a fallback for when ref tracking gets out of sync
               for (const { lineIndex, info } of checkboxData) {
-                const restTextNormalized = normalizeText(info.restText);
-                const textAfterNormalized = normalizeText(textAfterCheckbox);
+                const restTextNormalized = normalizeText(stripLinksForMatching(info.restText));
+                const textAfterNormalized = normalizeText(stripLinksForMatching(textAfterCheckbox));
                 if (restTextNormalized === textAfterNormalized ||
                   (restTextNormalized === '' && textAfterNormalized === '') ||
                   (restTextNormalized !== '' && textAfterNormalized.includes(restTextNormalized))) {
@@ -1587,6 +1687,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       handleTabKey(e);
     };
 
+    const previewValue = useMemo(() => {
+      if (!isPreview) return value;
+      return linkifyMarkdown(value);
+    }, [value, isPreview]);
+
     return (
       <View className={cn("flex-1", className)}>
         {/* Editor or Preview */}
@@ -1606,7 +1711,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                 rules={markdownRules}
                 mergeStyle={false}
               >
-                {value}
+                {previewValue}
               </Markdown>
             ) : (
               <Text className="text-muted-foreground italic">{placeholder}</Text>
