@@ -7,7 +7,7 @@ import { MARKDOWN_EDITOR_SYNTAX_COLORS, type MarkdownEditorSyntaxPalette, type M
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { Platform, Pressable, Text as RNText, ScrollView, TextInput, View } from "react-native";
+import { Image, Platform, Pressable, Text as RNText, ScrollView, TextInput, View } from "react-native";
 import Markdown, { renderRules } from "react-native-markdown-display";
 
 type SyntaxSegment = {
@@ -16,6 +16,80 @@ type SyntaxSegment = {
   bgToken?: MarkdownEditorSyntaxToken;
   style?: any;
 };
+
+const MARKDOWN_IMAGE_SIZE_CACHE = new Map<string, { width: number; height: number }>();
+
+function MarkdownPreviewImage({
+  uri,
+  alt,
+  maxWidth,
+  colors,
+}: {
+  uri: string;
+  alt?: string;
+  maxWidth: number;
+  colors: { muted: string; ring: string };
+}) {
+  const [aspectRatio, setAspectRatio] = useState<number | null>(() => {
+    const cached = MARKDOWN_IMAGE_SIZE_CACHE.get(uri);
+    if (!cached) return null;
+    const r = cached.width / cached.height;
+    return Number.isFinite(r) && r > 0 ? r : null;
+  });
+
+  useEffect(() => {
+    if (!uri) return;
+
+    const cached = MARKDOWN_IMAGE_SIZE_CACHE.get(uri);
+    if (cached) {
+      const r = cached.width / cached.height;
+      setAspectRatio(Number.isFinite(r) && r > 0 ? r : null);
+      return;
+    }
+
+    let cancelled = false;
+    Image.getSize(
+      uri,
+      (w, h) => {
+        if (cancelled) return;
+        if (!w || !h) return;
+        MARKDOWN_IMAGE_SIZE_CACHE.set(uri, { width: w, height: h });
+        const r = w / h;
+        setAspectRatio(Number.isFinite(r) && r > 0 ? r : null);
+      },
+      () => {
+        if (cancelled) return;
+        setAspectRatio(null);
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [uri]);
+
+  const width = Math.max(1, maxWidth || 0);
+  const height = aspectRatio ? width / aspectRatio : Math.max(180, Math.min(320, Math.round(width * 0.6)));
+
+  return (
+    <Image
+      source={{ uri }}
+      accessibilityLabel={alt}
+      resizeMode="contain"
+      style={{
+        width,
+        height,
+        alignSelf: "center",
+        marginTop: 12,
+        marginBottom: 12,
+        borderRadius: 12,
+        backgroundColor: colors.muted,
+        borderWidth: 1,
+        borderColor: colors.ring,
+      }}
+    />
+  );
+}
 
 const INLINE_MARKDOWN_RE =
   /(`[^`]*`)|(!?\[[^\]]*\]\([^)]+\))|(~~[^~]+~~)|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*]+\*)|(_[^_]+_)/g;
@@ -412,6 +486,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     const { colors, isDark } = useThemeColors();
     const inputRef = useRef<TextInput>(null);
     const [selection, setSelection] = useState({ start: 0, end: 0 });
+    const [previewContentWidth, setPreviewContentWidth] = useState<number>(0);
     const selectionRef = useRef(selection);
     const previousValueRef = useRef<string>(value);
     const isProcessingListRef = useRef<boolean>(false);
@@ -1724,6 +1799,23 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           </RNText>
         );
       },
+      image: (node: any) => {
+        const uriRaw =
+          node?.attributes?.src ??
+          node?.attributes?.href ??
+          node?.url ??
+          node?.destination ??
+          node?.source ??
+          "";
+        const uri = typeof uriRaw === "string" ? uriRaw : "";
+        if (!uri) return null;
+
+        const altRaw = node?.attributes?.alt ?? node?.alt ?? "";
+        const alt = typeof altRaw === "string" ? altRaw : undefined;
+
+        const width = previewContentWidth > 0 ? previewContentWidth : 320;
+        return <MarkdownPreviewImage key={node.key} uri={uri} alt={alt} maxWidth={width} colors={colors} />;
+      },
       // `~~strike~~` (remark AST uses `del` for strikethrough; some configs use `s`)
       del: (node: any, children: any) => renderStrikeThrough(node, children),
       s: (node: any, children: any) => renderStrikeThrough(node, children),
@@ -2096,14 +2188,23 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             }}
           >
             {value ? (
-              <Markdown
-                key={markdownKey}
-                style={markdownStyles}
-                rules={markdownRules}
-                mergeStyle={false}
+              <View
+                style={{ width: "100%" }}
+                onLayout={(e) => {
+                  const w = e?.nativeEvent?.layout?.width ?? 0;
+                  if (!w || w === previewContentWidth) return;
+                  setPreviewContentWidth(w);
+                }}
               >
-                {previewValue}
-              </Markdown>
+                <Markdown
+                  key={markdownKey}
+                  style={markdownStyles}
+                  rules={markdownRules}
+                  mergeStyle={false}
+                >
+                  {previewValue}
+                </Markdown>
+              </View>
             ) : (
               <Text className="text-muted-foreground italic">{placeholder}</Text>
             )}
