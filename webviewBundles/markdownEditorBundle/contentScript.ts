@@ -1,9 +1,18 @@
-import { EditorState, Compartment } from '@codemirror/state';
-import { EditorView, keymap, placeholder as placeholderExtension, ViewUpdate } from '@codemirror/view';
+import { EditorState, Compartment, RangeSetBuilder } from '@codemirror/state';
+import {
+	Decoration,
+	EditorView,
+	keymap,
+	placeholder as placeholderExtension,
+	ViewPlugin,
+	WidgetType,
+	type DecorationSet,
+	ViewUpdate,
+} from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { markdown, markdownKeymap } from '@codemirror/lang-markdown';
 import { javascript } from '@codemirror/lang-javascript';
-import { syntaxHighlighting, defaultHighlightStyle, HighlightStyle } from '@codemirror/language';
+import { syntaxHighlighting, defaultHighlightStyle, HighlightStyle, ensureSyntaxTree } from '@codemirror/language';
 import { tags, classHighlighter } from '@lezer/highlight';
 import markdownDecorations from './markdownDecorations';
 
@@ -167,6 +176,29 @@ const createCmTheme = (dark: boolean) => {
 			},
 			'.cm-placeholder': { color: 'var(--placeholder)' },
 
+			// "Rich Markdown" style preview helpers (hide markup + render checkboxes/markers).
+			'.cm-livePreviewHidden': {
+				display: 'inline-block',
+				width: '0px',
+				overflow: 'hidden',
+			},
+			'.cm-livePreviewListMark': {
+				font: 'inherit',
+				color: 'var(--fg)',
+				opacity: dark ? '0.9' : '0.85',
+				marginRight: '0.2em',
+				userSelect: 'none',
+			},
+			'.cm-livePreviewCheckbox': {
+				font: 'inherit',
+				color: 'var(--fg)',
+				userSelect: 'none',
+			},
+			'.cm-livePreviewCheckboxInput': {
+				transform: 'translateY(1px)',
+				margin: '0',
+			},
+
 			// Joplin-like markdown block styling (driven by markdownDecorations).
 			'.cm-blockQuote': {
 				borderLeft: `4px solid var(--gutter-fg)`,
@@ -246,21 +278,246 @@ const joplinLikeHighlightStyle = HighlightStyle.define([
 	{ tag: tags.className, color: 'var(--cm-class)' },
 ]);
 
+class EmptyWidget extends WidgetType {
+	public override toDOM(): HTMLElement {
+		const el = document.createElement('span');
+		el.className = 'cm-livePreviewHidden';
+		return el;
+	}
+}
+
+class ListMarkWidget extends WidgetType {
+	public constructor(
+		private readonly text: string,
+		private readonly focusPos: number,
+	) {
+		super();
+	}
+
+	public override eq(other: ListMarkWidget) {
+		return this.text === other.text && this.focusPos === other.focusPos;
+	}
+
+	public override toDOM(view: EditorView): HTMLElement {
+		const el = document.createElement('span');
+		el.className = 'cm-livePreviewListMark';
+		el.textContent = this.text;
+
+		const focusEditorHere = (event: Event) => {
+			event.preventDefault();
+			view.dispatch({ selection: { anchor: this.focusPos }, scrollIntoView: true });
+			view.focus();
+		};
+
+		el.addEventListener('mousedown', focusEditorHere);
+		el.addEventListener('touchstart', focusEditorHere, { passive: false });
+		return el;
+	}
+
+	public override ignoreEvent() {
+		return false;
+	}
+}
+
+class CheckboxWidget extends WidgetType {
+	public constructor(
+		private readonly checked: boolean,
+		private readonly togglePos: number,
+	) {
+		super();
+	}
+
+	public override eq(other: CheckboxWidget) {
+		return this.checked === other.checked && this.togglePos === other.togglePos;
+	}
+
+	public override toDOM(view: EditorView): HTMLElement {
+		const wrap = document.createElement('span');
+		wrap.className = 'cm-livePreviewCheckbox';
+
+		const input = document.createElement('input');
+		input.type = 'checkbox';
+		input.checked = this.checked;
+		input.className = 'cm-livePreviewCheckboxInput';
+
+		const onToggle = (event: Event) => {
+			event.preventDefault();
+			const cur = view.state.doc.sliceString(this.togglePos, this.togglePos + 1);
+			const next = cur.toLowerCase() === 'x' ? ' ' : 'x';
+			view.dispatch({ changes: { from: this.togglePos, to: this.togglePos + 1, insert: next } });
+			view.focus();
+		};
+
+		input.addEventListener('click', onToggle);
+		input.addEventListener('mousedown', (e) => e.preventDefault());
+
+		wrap.appendChild(input);
+		wrap.appendChild(document.createTextNode(' '));
+		return wrap;
+	}
+
+	public override ignoreEvent() {
+		return false;
+	}
+}
+
+const emptyWidget = new EmptyWidget();
+
+const markdownInlinePreview = ViewPlugin.fromClass(class {
+	public decorations: DecorationSet;
+
+	public constructor(view: EditorView) {
+		this.decorations = this.compute(view);
+	}
+
+	public update(update: ViewUpdate) {
+		if (update.docChanged || update.selectionSet || update.viewportChanged) {
+			this.decorations = this.compute(update.view);
+		}
+	}
+
+	private compute(view: EditorView): DecorationSet {
+		const sel = view.state.selection.main;
+		const selFrom = Math.min(sel.from, sel.to);
+		const selTo = Math.max(sel.from, sel.to);
+		const selIsCollapsed = selFrom === selTo;
+		const cursorPos = selTo;
+
+		const taskMarkerRangeCache = new Map<number, { start: number; end: number } | null>();
+		const taskMarkerRangeForLine = (lineFrom: number, lineTo: number) => {
+			if (taskMarkerRangeCache.has(lineFrom)) return taskMarkerRangeCache.get(lineFrom)!;
+			const text = view.state.doc.sliceString(lineFrom, lineTo);
+			const m = /^(\s*(?:[-+*]|\d+\.)\s*)\[( |x|X)\]/.exec(text);
+			if (!m) {
+				taskMarkerRangeCache.set(lineFrom, null);
+				return null;
+			}
+			const start = lineFrom + (m[1]?.length ?? 0);
+			const end = start + 3;
+			const r = { start, end };
+			taskMarkerRangeCache.set(lineFrom, r);
+			return r;
+		};
+
+		const items: Array<{ from: number; to: number; deco: Decoration }> = [];
+		const add = (from: number, to: number, deco: Decoration) => {
+			if (from >= to) return;
+			const line = view.state.doc.lineAt(from);
+			if (to > line.to) return;
+			items.push({ from, to, deco });
+		};
+
+		for (const range of view.visibleRanges) {
+			const tree = ensureSyntaxTree(view.state, range.to);
+			if (!tree) continue;
+
+			tree.iterate({
+				from: range.from,
+				to: range.to,
+				enter: (node) => {
+					const from = node.from;
+					const to = node.to;
+
+					const line = view.state.doc.lineAt(from);
+					const overlapsSelection = selFrom <= line.to && selTo >= line.from;
+					let treatLineAsActive = overlapsSelection;
+					if (treatLineAsActive && selIsCollapsed) {
+						const r = taskMarkerRangeForLine(line.from, line.to);
+						if (r && cursorPos >= r.start && cursorPos <= r.end) {
+							// Cursor is on the checkbox marker itself -> keep preview mode.
+							treatLineAsActive = false;
+						}
+					}
+					if (treatLineAsActive) return;
+
+					// If this line is a task list item, don't apply other inline replacements
+					// inside the "[ ]"/"[x]" marker range—otherwise they can "win" over the checkbox.
+					const taskRange = taskMarkerRangeForLine(line.from, line.to);
+					if (taskRange && from >= taskRange.start && to <= taskRange.end && node.name !== 'TaskMarker') {
+						return;
+					}
+
+					if (node.name === 'TaskMarker') {
+						const text = view.state.doc.sliceString(from, to);
+						const isChecked = /\[x\]/i.test(text);
+						const togglePos = Math.min(to - 2, from + 1);
+						add(from, to, Decoration.replace({ widget: new CheckboxWidget(isChecked, togglePos) }));
+						return;
+					}
+
+					// Hide link destinations like: [text](url) / ![alt](url)
+					// (We don't want to hide bare URLs in text.)
+					if (node.name === 'URL') {
+						const relFrom = from - line.from;
+						if (relFrom >= 2) {
+							const lineText = view.state.doc.sliceString(line.from, line.to);
+							const before2 = lineText.slice(relFrom - 2, relFrom);
+							if (before2 === '](' || before2 === ']<' ) {
+								add(from, to, Decoration.replace({ widget: emptyWidget }));
+								return;
+							}
+						}
+					}
+
+					const isMark = node.name.endsWith('Mark') || node.name === 'HeaderMark' || node.name === 'QuoteMark';
+					if (!isMark) return;
+
+					const text = view.state.doc.sliceString(from, to).trim();
+					if (!text) {
+						add(from, to, Decoration.replace({ widget: emptyWidget }));
+						return;
+					}
+
+					if (node.name === 'ListMark') {
+						const fullLineText = view.state.doc.sliceString(line.from, line.to);
+						if (/^\s*(?:[-+*]|\d+\.)\s*\[(?: |x|X)\]/.test(fullLineText)) {
+							// Task list items shouldn't show an extra bullet before the checkbox.
+							add(from, to, Decoration.replace({ widget: emptyWidget }));
+							return;
+						}
+						const marker = /^\d+\.$/.test(text) ? `${text} ` : '• ';
+						add(from, to, Decoration.replace({ widget: new ListMarkWidget(marker, line.from) }));
+						return;
+					}
+
+					add(from, to, Decoration.replace({ widget: emptyWidget }));
+				},
+			});
+		}
+
+		items.sort((a, b) => (a.from - b.from) || (a.to - b.to));
+		const builder = new RangeSetBuilder<Decoration>();
+		let lastTo = -1;
+		for (const item of items) {
+			if (item.from < lastTo) continue;
+			builder.add(item.from, item.to, item.deco);
+			lastTo = item.to;
+		}
+		return builder.finish();
+	}
+}, { decorations: v => v.decorations });
+
 // IMPORTANT:
 // Using `@codemirror/language-data` causes lazy language loading via dynamic import and "skipping parsers".
 // In Android WebView this can lead to Lezer TreeBuffer class identity mismatches and crashes when typing
 // in fenced code blocks (e.g. ```js).
 //
 // To match Joplin's stability, keep code fence languages synchronous and bundled.
+// Cache language supports so embedded parsers are stable.
+const jsSupport = javascript({ jsx: false, typescript: false });
+const jsxSupport = javascript({ jsx: true, typescript: false });
+const tsSupport = javascript({ jsx: false, typescript: true });
+const tsxSupport = javascript({ jsx: true, typescript: true });
+
 const codeLanguageFromInfo = (info: string) => {
 	const name = (info || '').trim().split(/\s+/)[0]?.toLowerCase() ?? '';
 	if (!name) return null;
 
 	// JavaScript / TypeScript family
-	if (name === 'js' || name === 'javascript') return javascript({ jsx: false, typescript: false }).language;
-	if (name === 'jsx') return javascript({ jsx: true, typescript: false }).language;
-	if (name === 'ts' || name === 'typescript') return javascript({ jsx: false, typescript: true }).language;
-	if (name === 'tsx') return javascript({ jsx: true, typescript: true }).language;
+	if (name === 'js' || name === 'javascript') return jsSupport.language;
+	if (name === 'jsx') return jsxSupport.language;
+	if (name === 'ts' || name === 'typescript') return tsSupport.language;
+	if (name === 'tsx') return tsxSupport.language;
 
 	return null;
 };
@@ -334,10 +591,11 @@ const ensureEditor = (args: InitArgs) => {
 		doc: typeof args.value === 'string' ? args.value : '',
 		extensions: [
 			history(),
-			markdown({ codeLanguages: codeLanguageFromInfo }),
+			markdown({ codeLanguages: codeLanguageFromInfo, defaultCodeLanguage: jsSupport }),
 			keymap.of([...defaultKeymap, ...historyKeymap, ...markdownKeymap, indentWithTab]),
 			EditorView.lineWrapping,
 			markdownDecorations,
+			markdownInlinePreview,
 			// Add stable token classes (tok-*) for CSS selectors (like Joplin).
 			syntaxHighlighting(classHighlighter),
 			syntaxHighlighting(joplinLikeHighlightStyle),
