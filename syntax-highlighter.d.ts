@@ -1,5 +1,5 @@
 declare module "react-native-syntax-highlighter" {
-  import { Component } from "react";
+  import type * as React from "react";
 
   export interface SyntaxHighlighterProps {
     language?: string;
@@ -18,6 +18,8 @@ declare module "react-native-syntax-highlighter" {
 }
 
 declare module "react-syntax-highlighter/styles/hljs" {
+  const styles: Record<string, any>;
+  export default styles;
   export const atomOneDark: any;
   export const atomOneLight: any;
   export const docco: any;
@@ -25,10 +27,11 @@ declare module "react-syntax-highlighter/styles/hljs" {
   export const vs2015: any;
   export const solarizedDark: any;
   export const xcode: any;
-  [key: string]: any;
 }
 
 declare module "react-syntax-highlighter/dist/esm/styles/hljs" {
+  const styles: Record<string, any>;
+  export default styles;
   export const atomOneDark: any;
   export const atomOneLight: any;
   export const docco: any;
@@ -36,10 +39,11 @@ declare module "react-syntax-highlighter/dist/esm/styles/hljs" {
   export const vs2015: any;
   export const solarizedDark: any;
   export const xcode: any;
-  [key: string]: any;
 }
 
 declare module "react-syntax-highlighter/dist/cjs/styles/hljs" {
+  const styles: Record<string, any>;
+  export default styles;
   export const atomOneDark: any;
   export const atomOneLight: any;
   export const docco: any;
@@ -47,5 +51,4 @@ declare module "react-syntax-highlighter/dist/cjs/styles/hljs" {
   export const vs2015: any;
   export const solarizedDark: any;
   export const xcode: any;
-  [key: string]: any;
 }

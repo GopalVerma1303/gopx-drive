@@ -8,7 +8,11 @@ const Input = forwardRef<TextInput, TextInputProps>(
       <TextInput
         ref={ref}
         className={cn(
-          " border-input bg-background text-foreground flex h-10 w-full min-w-0 flex-row items-center rounded-md border px-3 py-1 text-base leading-5 shadow-sm shadow-black/5",
+          // Base input styles.
+          // IMPORTANT: don't force a fixed height for multiline inputs (e.g. editor/textarea),
+          // otherwise the TextInput can't fill its container or scroll properly.
+          "border-input bg-background text-foreground w-full min-w-0 rounded-md border px-3 py-1 text-base leading-5 shadow-sm shadow-black/5",
+          props.multiline ? "min-h-0" : "flex h-10 flex-row items-center",
           props.editable === false &&
           cn(
             "opacity-50",

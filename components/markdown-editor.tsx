@@ -2068,14 +2068,15 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       return renderHighlightedMarkdownDocument(value, syntaxPalette);
     }, [isPreview, value, syntaxPalette]);
 
-    const [editorScrollY, setEditorScrollY] = useState(0);
-    const editorScrollYRef = useRef(0);
-    const handleEditorScroll = (e: any) => {
-      const y = e?.nativeEvent?.contentOffset?.y ?? 0;
-      if (y === editorScrollYRef.current) return;
-      editorScrollYRef.current = y;
-      setEditorScrollY(y);
-    };
+    // Editing mode scroll:
+    // Don't rely on TextInput's `onScroll` (platform support is inconsistent).
+    // Instead, make the *container* scroll and expand the TextInput to content height.
+    const [editorViewportHeight, setEditorViewportHeight] = useState(0);
+    const [editorContentHeight, setEditorContentHeight] = useState(0);
+    const editorHeight = useMemo(
+      () => Math.max(editorViewportHeight, editorContentHeight),
+      [editorViewportHeight, editorContentHeight]
+    );
 
     const previewValue = useMemo(() => {
       if (!isPreview) return value;
@@ -2108,84 +2109,110 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             )}
           </ScrollView>
         ) : (
-          <View style={{ flex: 1, position: "relative", overflow: "hidden" as const }}>
-            {!!highlightedEditingText && (
+          <View
+            style={{ flex: 1, minHeight: 0 }}
+            onLayout={(e) => {
+              const h = e?.nativeEvent?.layout?.height ?? 0;
+              if (!h || h === editorViewportHeight) return;
+              setEditorViewportHeight(h);
+            }}
+          >
+            <ScrollView
+              className="flex-1"
+              contentContainerStyle={{ flexGrow: 1, minHeight: editorViewportHeight || undefined }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+            >
               <View
-                pointerEvents="none"
                 style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  zIndex: 1,
-                  overflow: "hidden",
+                  minHeight: editorViewportHeight || undefined,
+                  height: editorHeight || undefined,
+                  position: "relative",
                 }}
               >
-                <View
+                {!!highlightedEditingText && (
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      zIndex: 1,
+                    }}
+                  >
+                    <View
+                      style={{
+                        paddingHorizontal: 32,
+                        paddingTop: 30,
+                        paddingBottom: 65,
+                      }}
+                    >
+                      <RNText
+                        style={{
+                          fontFamily: "monospace",
+                          fontSize: 16,
+                          lineHeight: 24,
+                          color: syntaxPalette.text,
+                          ...(Platform.OS === "web" ? ({ whiteSpace: "pre-wrap" } as any) : null),
+                        }}
+                      >
+                        {highlightedEditingText}
+                      </RNText>
+                    </View>
+                  </View>
+                )}
+
+                <Input
+                  ref={inputRef}
+                  className="border-0 shadow-none bg-transparent text-base leading-6 font-mono px-8"
+                  placeholder={placeholder}
+                  placeholderTextColor={colors.mutedForeground}
+                  value={value}
+                  onChangeText={handleTextChange}
+                  selection={selection}
+                  selectionColor={selectionAccent}
+                  {...(Platform.OS === "web" ? ({ onKeyDown: handleWebKeyDown } as any) : {})}
+                  onSelectionChange={(e) => {
+                    const next = e.nativeEvent.selection;
+                    const pending = pendingSelectionRef.current;
+
+                    // During programmatic updates, ignore transient selection events (often {0,0} on Android)
+                    if (isProcessingListRef.current || suppressSelectionUpdatesRef.current > 0) {
+                      if (!pending || pending.start !== next.start || pending.end !== next.end) {
+                        return;
+                      }
+                    }
+
+                    setSelectionBoth({ start: next.start, end: next.end });
+                  }}
+                  onContentSizeChange={(e) => {
+                    const h = e?.nativeEvent?.contentSize?.height ?? 0;
+                    if (!h || h === editorContentHeight) return;
+                    setEditorContentHeight(h);
+                  }}
+                  multiline
+                  scrollEnabled={false}
+                  blurOnSubmit={false}
+                  textAlignVertical="top"
                   style={{
-                    transform: [{ translateY: -editorScrollY }],
                     paddingHorizontal: 32,
                     paddingTop: 30,
                     paddingBottom: 65,
+                    fontFamily: "monospace",
+                    minHeight: editorViewportHeight || undefined,
+                    height: editorHeight || undefined,
+                    position: "relative",
+                    zIndex: 2,
+                    // Hide the raw TextInput glyphs; the overlay paints colored text.
+                    color: "transparent",
+                    ...(Platform.OS === "web" ? ({ caretColor: selectionAccent } as any) : null),
                   }}
-                >
-                  <RNText
-                    style={{
-                      fontFamily: "monospace",
-                      fontSize: 16,
-                      lineHeight: 24,
-                      color: syntaxPalette.text,
-                      ...(Platform.OS === "web" ? ({ whiteSpace: "pre-wrap" } as any) : null),
-                    }}
-                  >
-                    {highlightedEditingText}
-                  </RNText>
-                </View>
+                />
               </View>
-            )}
-
-            <Input
-              ref={inputRef}
-              className="flex-1 border-0 shadow-none bg-transparent text-base leading-6 font-mono px-8"
-              placeholder={placeholder}
-              placeholderTextColor={colors.mutedForeground}
-              value={value}
-              onChangeText={handleTextChange}
-              selection={selection}
-              selectionColor={selectionAccent}
-              {...(Platform.OS === "web" ? ({ onKeyDown: handleWebKeyDown } as any) : {})}
-              onSelectionChange={(e) => {
-                const next = e.nativeEvent.selection;
-                const pending = pendingSelectionRef.current;
-
-                // During programmatic updates, ignore transient selection events (often {0,0} on Android)
-                if (isProcessingListRef.current || suppressSelectionUpdatesRef.current > 0) {
-                  if (!pending || pending.start !== next.start || pending.end !== next.end) {
-                    return;
-                  }
-                }
-
-                setSelectionBoth({ start: next.start, end: next.end });
-              }}
-              onScroll={handleEditorScroll}
-              multiline
-              scrollEnabled
-              blurOnSubmit={false}
-              textAlignVertical="top"
-              style={{
-                paddingHorizontal: 32,
-                paddingTop: 30,
-                paddingBottom: 65,
-                fontFamily: "monospace",
-                flex: 1,
-                position: "relative",
-                zIndex: 2,
-                // Hide the raw TextInput glyphs; the overlay paints colored text.
-                color: "transparent",
-                ...(Platform.OS === "web" ? ({ caretColor: selectionAccent } as any) : null),
-              }}
-            />
+            </ScrollView>
           </View>
         )}
       </View>
