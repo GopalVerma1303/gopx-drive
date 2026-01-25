@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Image, Platform, Pressable, Text as RNText, ScrollView, TextInput, View } from "react-native";
 import Markdown, { renderRules } from "react-native-markdown-display";
+import { MarkdownTextInput, parseExpensiMark, type MarkdownStyle } from "@expensify/react-native-live-markdown";
 
 type SyntaxSegment = {
   text: string;
@@ -2161,11 +2162,48 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
     const selectionAccent = isDark ? "#60a5fa" : "#2563eb";
 
+    // Best practice: Android TextInput "overlay + transparent glyphs" is unreliable across devices/skins.
+    // Use a native MarkdownTextInput on native platforms; keep the overlay approach only on web.
+    const canUseEditingOverlay = Platform.OS === "web";
+
     const highlightedEditingText = useMemo(() => {
+      if (!canUseEditingOverlay) return null;
       if (isPreview) return null;
       if (!value) return null;
       return renderHighlightedMarkdownDocument(value, syntaxPalette);
-    }, [isPreview, value, syntaxPalette]);
+    }, [canUseEditingOverlay, isPreview, value, syntaxPalette]);
+
+    const nativeMarkdownStyle = useMemo<MarkdownStyle>(() => {
+      return {
+        // Markdown markers like '*', '`', '~~', etc.
+        syntax: { color: syntaxPalette.punctuation },
+        // Headings (library currently exposes limited styling for headings)
+        h1: { fontSize: 20 },
+        // Links
+        link: { color: syntaxPalette["link.text"] },
+        // Inline code
+        code: {
+          fontFamily: "monospace",
+          fontSize: 16,
+          color: syntaxPalette["inlineCode.text"],
+          backgroundColor: syntaxPalette["inlineCode.bg"],
+        },
+        // Fenced code blocks
+        pre: {
+          fontFamily: "monospace",
+          fontSize: 16,
+          color: syntaxPalette["code.text"],
+          backgroundColor: syntaxPalette["inlineCode.bg"],
+        },
+        // Blockquotes (uses a left border)
+        blockquote: {
+          borderColor: syntaxPalette["blockquote.marker"],
+          borderWidth: 3,
+          marginLeft: 6,
+          paddingLeft: 8,
+        },
+      };
+    }, [syntaxPalette]);
 
     // Editing mode scroll:
     // Don't rely on TextInput's `onScroll` (platform support is inconsistent).
@@ -2273,52 +2311,103 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                   </View>
                 )}
 
-                <Input
-                  ref={inputRef}
-                  className="border-0 shadow-none bg-transparent text-base leading-6 font-mono px-8"
-                  placeholder={placeholder}
-                  placeholderTextColor={colors.mutedForeground}
-                  value={value}
-                  onChangeText={handleTextChange}
-                  selection={selection}
-                  selectionColor={selectionAccent}
-                  {...(Platform.OS === "web" ? ({ onKeyDown: handleWebKeyDown } as any) : {})}
-                  onSelectionChange={(e) => {
-                    const next = e.nativeEvent.selection;
-                    const pending = pendingSelectionRef.current;
+                {Platform.OS === "web" ? (
+                  <Input
+                    ref={inputRef}
+                    className={cn("border-0 shadow-none bg-transparent text-base leading-6 font-mono px-8")}
+                    placeholder={placeholder}
+                    placeholderTextColor={colors.mutedForeground}
+                    value={value}
+                    onChangeText={handleTextChange}
+                    selection={selection}
+                    selectionColor={selectionAccent}
+                    {...(Platform.OS === "web" ? ({ onKeyDown: handleWebKeyDown } as any) : {})}
+                    onSelectionChange={(e) => {
+                      const next = e.nativeEvent.selection;
+                      const pending = pendingSelectionRef.current;
 
-                    // During programmatic updates, ignore transient selection events (often {0,0} on Android)
-                    if (isProcessingListRef.current || suppressSelectionUpdatesRef.current > 0) {
-                      if (!pending || pending.start !== next.start || pending.end !== next.end) {
-                        return;
+                      // During programmatic updates, ignore transient selection events (often {0,0} on Android)
+                      if (isProcessingListRef.current || suppressSelectionUpdatesRef.current > 0) {
+                        if (!pending || pending.start !== next.start || pending.end !== next.end) {
+                          return;
+                        }
                       }
-                    }
 
-                    setSelectionBoth({ start: next.start, end: next.end });
-                  }}
-                  onContentSizeChange={(e) => {
-                    const h = e?.nativeEvent?.contentSize?.height ?? 0;
-                    if (!h || h === editorContentHeight) return;
-                    setEditorContentHeight(h);
-                  }}
-                  multiline
-                  scrollEnabled={false}
-                  blurOnSubmit={false}
-                  textAlignVertical="top"
-                  style={{
-                    paddingHorizontal: 32,
-                    paddingTop: 30,
-                    paddingBottom: 65,
-                    fontFamily: "monospace",
-                    minHeight: editorViewportHeight || undefined,
-                    height: editorHeight || undefined,
-                    position: "relative",
-                    zIndex: 2,
-                    // Hide the raw TextInput glyphs; the overlay paints colored text.
-                    color: "transparent",
-                    ...(Platform.OS === "web" ? ({ caretColor: selectionAccent } as any) : null),
-                  }}
-                />
+                      setSelectionBoth({ start: next.start, end: next.end });
+                    }}
+                    onContentSizeChange={(e) => {
+                      const h = e?.nativeEvent?.contentSize?.height ?? 0;
+                      if (!h || h === editorContentHeight) return;
+                      setEditorContentHeight(h);
+                    }}
+                    multiline
+                    scrollEnabled={false}
+                    blurOnSubmit={false}
+                    textAlignVertical="top"
+                    style={{
+                      paddingHorizontal: 32,
+                      paddingTop: 30,
+                      paddingBottom: 65,
+                      fontFamily: "monospace",
+                      minHeight: editorViewportHeight || undefined,
+                      height: editorHeight || undefined,
+                      position: "relative",
+                      zIndex: 2,
+                      // Hide the raw TextInput glyphs; the overlay paints colored text.
+                      color: "transparent",
+                      ...(Platform.OS === "web" ? ({ caretColor: selectionAccent } as any) : null),
+                    }}
+                  />
+                ) : (
+                  <MarkdownTextInput
+                    ref={inputRef as any}
+                    parser={parseExpensiMark}
+                    markdownStyle={nativeMarkdownStyle}
+                    placeholder={placeholder}
+                    placeholderTextColor={colors.mutedForeground}
+                    value={value}
+                    onChangeText={handleTextChange}
+                    selection={selection}
+                    selectionColor={selectionAccent}
+                    cursorColor={selectionAccent}
+                    onSelectionChange={(e: any) => {
+                      const next = e.nativeEvent.selection;
+                      const pending = pendingSelectionRef.current;
+
+                      // During programmatic updates, ignore transient selection events (often {0,0} on Android)
+                      if (isProcessingListRef.current || suppressSelectionUpdatesRef.current > 0) {
+                        if (!pending || pending.start !== next.start || pending.end !== next.end) {
+                          return;
+                        }
+                      }
+
+                      setSelectionBoth({ start: next.start, end: next.end });
+                    }}
+                    onContentSizeChange={(e: any) => {
+                      const h = e?.nativeEvent?.contentSize?.height ?? 0;
+                      if (!h || h === editorContentHeight) return;
+                      setEditorContentHeight(h);
+                    }}
+                    multiline
+                    scrollEnabled={false}
+                    blurOnSubmit={false}
+                    textAlignVertical="top"
+                    style={{
+                      paddingHorizontal: 32,
+                      paddingTop: 30,
+                      paddingBottom: 65,
+                      fontFamily: "monospace",
+                      fontSize: 16,
+                      lineHeight: 24,
+                      minHeight: editorViewportHeight || undefined,
+                      height: editorHeight || undefined,
+                      position: "relative",
+                      zIndex: 2,
+                      backgroundColor: "transparent",
+                      color: syntaxPalette.text,
+                    }}
+                  />
+                )}
               </View>
             </ScrollView>
           </View>
