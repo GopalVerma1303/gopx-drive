@@ -207,6 +207,18 @@ export default function NoteEditorScreen() {
                 onWrapSelection={(before, after, cursorOffset) => {
                   editorRef.current?.wrapSelection(before, after, cursorOffset);
                 }}
+                onIndent={() => {
+                  editorRef.current?.indent();
+                }}
+                onOutdent={() => {
+                  editorRef.current?.outdent();
+                }}
+                onUndo={() => {
+                  editorRef.current?.undo();
+                }}
+                onRedo={() => {
+                  editorRef.current?.redo();
+                }}
                 isPreview={isPreview}
               />
             )}
@@ -237,6 +249,18 @@ export default function NoteEditorScreen() {
                   }}
                   onWrapSelection={(before, after, cursorOffset) => {
                     editorRef.current?.wrapSelection(before, after, cursorOffset);
+                  }}
+                  onIndent={() => {
+                    editorRef.current?.indent();
+                  }}
+                  onOutdent={() => {
+                    editorRef.current?.outdent();
+                  }}
+                  onUndo={() => {
+                    editorRef.current?.undo();
+                  }}
+                  onRedo={() => {
+                    editorRef.current?.redo();
                   }}
                   isPreview={isPreview}
                 />

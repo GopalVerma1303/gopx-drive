@@ -20,6 +20,12 @@ interface MarkdownEditorProps {
 export interface MarkdownEditorRef {
   insertText: (text: string, cursorOffset?: number) => void;
   wrapSelection: (before: string, after: string, cursorOffset?: number) => void;
+  indent: () => void;
+  outdent: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
   focus: () => void;
   getSelection: () => { start: number; end: number };
 }
@@ -38,22 +44,48 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     const { colors } = useThemeColors();
     const inputRef = useRef<TextInput>(null);
     const [selection, setSelection] = useState({ start: 0, end: 0 });
+    const selectionRef = useRef(selection);
     const previousValueRef = useRef<string>(value);
     const isProcessingListRef = useRef<boolean>(false);
     const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null);
     const suppressSelectionUpdatesRef = useRef<number>(0);
     const TAB_SPACES = "   ";
 
+    type Snapshot = { text: string; selection: { start: number; end: number } };
+    const MAX_HISTORY = 200;
+    const undoStackRef = useRef<Snapshot[]>([]);
+    const redoStackRef = useRef<Snapshot[]>([]);
+    const pendingInternalValueRef = useRef<string | null>(null);
+
+    const setSelectionBoth = (nextSelection: { start: number; end: number }) => {
+      selectionRef.current = nextSelection;
+      setSelection(nextSelection);
+    };
+
     const beginProgrammaticSelection = (nextSelection: { start: number; end: number }) => {
       pendingSelectionRef.current = nextSelection;
       suppressSelectionUpdatesRef.current += 1;
-      setSelection(nextSelection);
+      setSelectionBoth(nextSelection);
     };
 
     const endProgrammaticSelection = () => {
       suppressSelectionUpdatesRef.current = Math.max(0, suppressSelectionUpdatesRef.current - 1);
       if (suppressSelectionUpdatesRef.current === 0) {
         pendingSelectionRef.current = null;
+      }
+    };
+
+    const pushUndoSnapshot = (snapshot: Snapshot) => {
+      undoStackRef.current.push(snapshot);
+      if (undoStackRef.current.length > MAX_HISTORY) {
+        undoStackRef.current.shift();
+      }
+    };
+
+    const pushRedoSnapshot = (snapshot: Snapshot) => {
+      redoStackRef.current.push(snapshot);
+      if (redoStackRef.current.length > MAX_HISTORY) {
+        redoStackRef.current.shift();
       }
     };
 
@@ -127,6 +159,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       // Skip processing if we're already processing a list change (avoid infinite loops)
       if (isProcessingListRef.current) {
         previousValueRef.current = newText;
+        pendingInternalValueRef.current = newText;
         onChangeText(newText);
         return;
       }
@@ -134,6 +167,12 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       const oldText = previousValueRef.current;
       const oldLines = oldText.split('\n');
       const newLines = newText.split('\n');
+
+      // Record undo snapshot (user typing) before any auto-transforms.
+      if (!isPreview && oldText !== newText) {
+        pushUndoSnapshot({ text: oldText, selection: selectionRef.current });
+        redoStackRef.current = [];
+      }
 
       // Check if a newline was just added (text increased by exactly one line)
       if (newLines.length === oldLines.length + 1) {
@@ -223,6 +262,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             });
 
             previousValueRef.current = updatedText;
+            pendingInternalValueRef.current = updatedText;
             onChangeText(updatedText);
 
             requestAnimationFrame(() => {
@@ -268,6 +308,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             });
 
             previousValueRef.current = updatedText;
+            pendingInternalValueRef.current = updatedText;
             onChangeText(updatedText);
 
             requestAnimationFrame(() => {
@@ -297,20 +338,45 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
       // Update previous value and call original onChangeText
       previousValueRef.current = newText;
+      pendingInternalValueRef.current = newText;
       onChangeText(newText);
     };
 
     // Update previousValueRef when value changes externally
     useEffect(() => {
       if (!isProcessingListRef.current) {
+        if (pendingInternalValueRef.current !== null) {
+          if (pendingInternalValueRef.current === value) {
+            pendingInternalValueRef.current = null;
+            previousValueRef.current = value;
+            return;
+          }
+          pendingInternalValueRef.current = null;
+        }
+
+        // External value update (e.g. note load/refresh) - reset history.
         previousValueRef.current = value;
+        undoStackRef.current = [];
+        redoStackRef.current = [];
       }
     }, [value]);
 
-    const applyTextAndSelection = (nextText: string, nextSelection: { start: number; end: number }) => {
+    const applyTextAndSelection = (
+      nextText: string,
+      nextSelection: { start: number; end: number },
+      options?: { skipHistory?: boolean }
+    ) => {
       if (isPreview || !inputRef.current) return;
 
+      const currentText = previousValueRef.current;
+      if (!options?.skipHistory && currentText !== nextText) {
+        pushUndoSnapshot({ text: currentText, selection: selectionRef.current });
+        redoStackRef.current = [];
+      }
+
       beginProgrammaticSelection(nextSelection);
+      previousValueRef.current = nextText;
+      pendingInternalValueRef.current = nextText;
       onChangeText(nextText);
       inputRef.current?.focus();
 
@@ -345,12 +411,58 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
       const start = selection.start;
       const end = selection.end;
-      const beforeText = value.substring(0, start);
-      const afterText = value.substring(end);
-      const newText = beforeText + text + afterText;
+      const currentText = previousValueRef.current;
+      const beforeText = currentText.substring(0, start);
+      const afterText = currentText.substring(end);
+      const nextText = beforeText + text + afterText;
       const newCursorPosition = start + (cursorOffset ?? text.length);
 
-      applyTextAndSelection(newText, { start: newCursorPosition, end: newCursorPosition });
+      applyTextAndSelection(nextText, { start: newCursorPosition, end: newCursorPosition });
+    };
+
+    const indentAtSelection = () => {
+      if (isPreview || !inputRef.current) return;
+
+      const start = selection.start;
+      const end = selection.end;
+      const currentText = previousValueRef.current;
+
+      // No selection: behave like inserting TAB_SPACES at cursor
+      if (start === end) {
+        insertTextAtSelection(TAB_SPACES, TAB_SPACES.length);
+        return;
+      }
+
+      // Selection: indent each line touched by the selection (prepend TAB_SPACES)
+      const blockStart = currentText.lastIndexOf("\n", start - 1) + 1;
+      let blockEnd = value.indexOf("\n", end);
+      if (blockEnd === -1) blockEnd = currentText.length;
+
+      const block = currentText.slice(blockStart, blockEnd);
+      const lines = block.split("\n");
+
+      const insertionStarts: number[] = [];
+      let runningIndex = blockStart;
+      const nextLines = lines.map((line) => {
+        insertionStarts.push(runningIndex);
+        // advance using ORIGINAL line length (+ newline)
+        runningIndex += line.length + 1;
+        return TAB_SPACES + line;
+      });
+
+      const nextBlock = nextLines.join("\n");
+      const nextText = currentText.slice(0, blockStart) + nextBlock + currentText.slice(blockEnd);
+
+      const adjustPos = (pos: number) => {
+        let nextPos = pos;
+        for (const p of insertionStarts) {
+          if (pos < p) continue;
+          nextPos += TAB_SPACES.length;
+        }
+        return nextPos;
+      };
+
+      applyTextAndSelection(nextText, { start: adjustPos(start), end: adjustPos(end) });
     };
 
     const unindentAtSelection = () => {
@@ -358,11 +470,12 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
       const start = selection.start;
       const end = selection.end;
+      const currentText = previousValueRef.current;
 
       // No selection: remove one indent level immediately before cursor if present
       if (start === end) {
-        if (start >= TAB_SPACES.length && value.substring(start - TAB_SPACES.length, start) === TAB_SPACES) {
-          const nextText = value.substring(0, start - TAB_SPACES.length) + value.substring(end);
+        if (start >= TAB_SPACES.length && currentText.substring(start - TAB_SPACES.length, start) === TAB_SPACES) {
+          const nextText = currentText.substring(0, start - TAB_SPACES.length) + currentText.substring(end);
           const nextPos = start - TAB_SPACES.length;
           applyTextAndSelection(nextText, { start: nextPos, end: nextPos });
         }
@@ -370,11 +483,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       }
 
       // Selection: unindent each line touched by the selection (remove leading TAB_SPACES)
-      const blockStart = value.lastIndexOf("\n", start - 1) + 1;
-      let blockEnd = value.indexOf("\n", end);
-      if (blockEnd === -1) blockEnd = value.length;
+      const blockStart = currentText.lastIndexOf("\n", start - 1) + 1;
+      let blockEnd = currentText.indexOf("\n", end);
+      if (blockEnd === -1) blockEnd = currentText.length;
 
-      const block = value.slice(blockStart, blockEnd);
+      const block = currentText.slice(blockStart, blockEnd);
       const lines = block.split("\n");
 
       const removalStarts: number[] = [];
@@ -393,7 +506,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       if (removalStarts.length === 0) return;
 
       const nextBlock = nextLines.join("\n");
-      const nextText = value.slice(0, blockStart) + nextBlock + value.slice(blockEnd);
+      const nextText = currentText.slice(0, blockStart) + nextBlock + currentText.slice(blockEnd);
 
       const adjustPos = (pos: number) => {
         let nextPos = pos;
@@ -439,7 +552,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       if (e?.shiftKey) {
         unindentAtSelection();
       } else {
-        insertTextAtSelection(TAB_SPACES, TAB_SPACES.length);
+        indentAtSelection();
       }
     };
 
@@ -449,14 +562,50 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       if (typeof document === "undefined") return;
 
       const handleDocumentKeyDownCapture = (e: any) => {
-        if (e?.key !== "Tab") return;
-
         const el = getWebInputElement();
         const active = document.activeElement as any;
         const isEditorFocused = !!el && !!active && (active === el || (typeof el.contains === "function" && el.contains(active)));
         if (!isEditorFocused) return;
 
-        handleTabKey(e);
+        if (e?.isComposing) return;
+
+        const key = (e?.key ?? "").toLowerCase();
+        const isCmdOrCtrl = !!e?.metaKey || !!e?.ctrlKey;
+
+        // Undo / Redo
+        if (isCmdOrCtrl && key === "z") {
+          e?.preventDefault?.();
+          e?.stopPropagation?.();
+          e?.stopImmediatePropagation?.();
+
+          if (e?.shiftKey) {
+            // Cmd/Ctrl + Shift + Z => Redo
+            const canRedo = redoStackRef.current.length > 0;
+            if (!canRedo) return;
+
+            const currentText = previousValueRef.current;
+            const currentSel = selectionRef.current;
+            const snap = redoStackRef.current.pop()!;
+            pushUndoSnapshot({ text: currentText, selection: currentSel });
+            applyTextAndSelection(snap.text, snap.selection, { skipHistory: true });
+          } else {
+            // Cmd/Ctrl + Z => Undo
+            const canUndo = undoStackRef.current.length > 0;
+            if (!canUndo) return;
+
+            const currentText = previousValueRef.current;
+            const currentSel = selectionRef.current;
+            const snap = undoStackRef.current.pop()!;
+            pushRedoSnapshot({ text: currentText, selection: currentSel });
+            applyTextAndSelection(snap.text, snap.selection, { skipHistory: true });
+          }
+          return;
+        }
+
+        // Tab indentation
+        if (e?.key === "Tab") {
+          handleTabKey(e);
+        }
       };
 
       document.addEventListener("keydown", handleDocumentKeyDownCapture, true);
@@ -474,62 +623,55 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
         const start = selection.start;
         const end = selection.end;
-        const selectedText = value.substring(start, end);
+        const currentText = previousValueRef.current;
+        const selectedText = currentText.substring(start, end);
 
         // If there's selected text, wrap it; otherwise insert the formatting markers
-        let newText: string;
+        let nextText: string;
         let newCursorPosition: number;
 
         if (selectedText.length > 0) {
           // Wrap selected text - place cursor at the end of the wrapped text
-          newText = value.substring(0, start) + before + selectedText + after + value.substring(end);
+          nextText = currentText.substring(0, start) + before + selectedText + after + currentText.substring(end);
           newCursorPosition = start + before.length + selectedText.length + after.length;
         } else {
           // No selection, insert formatting markers with cursor positioned according to cursorOffset
-          newText = value.substring(0, start) + before + after + value.substring(end);
+          nextText = currentText.substring(0, start) + before + after + currentText.substring(end);
           // cursorOffset should position cursor between before and after markers
           // e.g., for "**" + "**" with offset 2, cursor should be at start + 2 (after first "**")
           newCursorPosition = start + (cursorOffset ?? before.length);
         }
 
-        // Update state immediately - the controlled selection prop will handle cursor positioning
-        beginProgrammaticSelection({ start: newCursorPosition, end: newCursorPosition });
-
-        onChangeText(newText);
-
-        // Ensure input maintains focus
-        inputRef.current?.focus();
-
-        // Set cursor position - use different methods for web vs native
-        // Use requestAnimationFrame + timeout to ensure text has been updated
-        const setCursorPosition = () => {
-          if (Platform.OS === "web") {
-            // For web, use DOM API directly
-            const input = inputRef.current as any;
-            if (input && input.setSelectionRange) {
-              input.setSelectionRange(newCursorPosition, newCursorPosition);
-            } else if (input && input.selectionStart !== undefined) {
-              input.selectionStart = newCursorPosition;
-              input.selectionEnd = newCursorPosition;
-            }
-          } else {
-            // For native, use setNativeProps as fallback (controlled selection prop is primary)
-            const input = inputRef.current as any;
-            if (input && typeof input.setNativeProps === "function") {
-              input.setNativeProps({
-                selection: { start: newCursorPosition, end: newCursorPosition },
-              });
-            }
-            inputRef.current?.focus();
-          }
-          endProgrammaticSelection();
-        };
-
-        // Use requestAnimationFrame + timeout to ensure text has been updated
-        requestAnimationFrame(() => {
-          setTimeout(setCursorPosition, Platform.OS === "android" ? 16 : 0);
-        });
+        applyTextAndSelection(nextText, { start: newCursorPosition, end: newCursorPosition });
       },
+      indent: () => {
+        indentAtSelection();
+      },
+      outdent: () => {
+        unindentAtSelection();
+      },
+      undo: () => {
+        if (isPreview || !inputRef.current) return;
+        if (undoStackRef.current.length === 0) return;
+
+        const currentText = previousValueRef.current;
+        const currentSel = selectionRef.current;
+        const snap = undoStackRef.current.pop()!;
+        pushRedoSnapshot({ text: currentText, selection: currentSel });
+        applyTextAndSelection(snap.text, snap.selection, { skipHistory: true });
+      },
+      redo: () => {
+        if (isPreview || !inputRef.current) return;
+        if (redoStackRef.current.length === 0) return;
+
+        const currentText = previousValueRef.current;
+        const currentSel = selectionRef.current;
+        const snap = redoStackRef.current.pop()!;
+        pushUndoSnapshot({ text: currentText, selection: currentSel });
+        applyTextAndSelection(snap.text, snap.selection, { skipHistory: true });
+      },
+      canUndo: () => undoStackRef.current.length > 0,
+      canRedo: () => redoStackRef.current.length > 0,
       focus: () => {
         inputRef.current?.focus();
       },
@@ -1428,7 +1570,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                 }
               }
 
-              setSelection({ start: next.start, end: next.end });
+              setSelectionBoth({ start: next.start, end: next.end });
             }}
             multiline
             blurOnSubmit={false}

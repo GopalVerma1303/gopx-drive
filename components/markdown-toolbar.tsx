@@ -2,12 +2,13 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
 import * as Haptics from "expo-haptics";
 import {
-  ArrowRightToLine,
   Bold,
   Code,
   Code2,
   Hash,
   Image,
+  IndentDecrease,
+  IndentIncrease,
   Italic,
   Link,
   List,
@@ -15,6 +16,8 @@ import {
   ListOrdered,
   Minus,
   Quote,
+  RotateCcw,
+  RotateCw,
   Strikethrough,
   Table
 } from "lucide-react-native";
@@ -91,6 +94,12 @@ interface MarkdownToolbarProps {
   onInsertText: (text: string, cursorOffset?: number) => void;
   onWrapSelection?: (before: string, after: string, cursorOffset?: number) => void;
   onToggleFormat?: (format: string) => void;
+  onIndent?: () => void;
+  onOutdent?: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
   isPreview?: boolean;
 }
 
@@ -98,6 +107,12 @@ export function MarkdownToolbar({
   onInsertText,
   onWrapSelection,
   onToggleFormat,
+  onIndent,
+  onOutdent,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
   isPreview = false,
 }: MarkdownToolbarProps) {
   const { colors } = useThemeColors();
@@ -189,9 +204,28 @@ export function MarkdownToolbar({
     onInsertText("\n---\n", 5);
   };
 
-  const handleTab = () => {
+  const handleIndent = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (onIndent) {
+      onIndent();
+      return;
+    }
     onInsertText(TAB_SPACES, TAB_SPACES.length);
+  };
+
+  const handleOutdent = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onOutdent?.();
+  };
+
+  const handleUndo = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onUndo?.();
+  };
+
+  const handleRedo = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onRedo?.();
   };
 
 
@@ -202,16 +236,19 @@ export function MarkdownToolbar({
     onPress,
     ariaLabel,
     IconComponent,
-    textIcon
+    textIcon,
+    disabled,
   }: {
     onPress: () => void;
     ariaLabel: string;
     IconComponent?: React.ComponentType<{ size?: number; color?: string }>;
     textIcon?: string;
+    disabled?: boolean;
   }) => {
     return (
       <Pressable
         onPress={onPress}
+        disabled={disabled}
         className={cn(
           "h-10 w-10 items-center justify-center rounded-md active:bg-accent",
           Platform.select({
@@ -219,6 +256,8 @@ export function MarkdownToolbar({
           })
         )}
         aria-label={ariaLabel}
+        accessibilityState={disabled ? { disabled: true } : undefined}
+        style={disabled ? { opacity: 0.4 } : undefined}
       >
         {textIcon ? (
           <Text style={{ fontSize: iconSize, color: iconColor, fontWeight: "600" }}>
@@ -260,6 +299,32 @@ export function MarkdownToolbar({
           alignItems: "center",
         }}
       >
+        {/* Undo / Redo */}
+        <View style={{ flexDirection: "row", gap: 4 }}>
+          <ToolbarButton
+            onPress={handleUndo}
+            ariaLabel="Undo"
+            IconComponent={RotateCcw}
+            disabled={canUndo === false}
+          />
+          <ToolbarButton
+            onPress={handleRedo}
+            ariaLabel="Redo"
+            IconComponent={RotateCw}
+            disabled={canRedo === false}
+          />
+        </View>
+
+        {/* Divider */}
+        <View
+          style={{
+            width: 1,
+            height: 32,
+            backgroundColor: colors.border,
+            marginHorizontal: 4,
+          }}
+        />
+
         {/* Essential Formatting Icons */}
         <View style={{ flexDirection: "row", gap: 4 }}>
           <ToolbarButton onPress={handleBold} ariaLabel="Bold" IconComponent={Bold} />
@@ -267,7 +332,8 @@ export function MarkdownToolbar({
           <ToolbarButton onPress={handleStrikethrough} ariaLabel="Strikethrough" IconComponent={Strikethrough} />
           <ToolbarButton onPress={handleHeading} ariaLabel="Heading" IconComponent={Hash} />
           <ToolbarButton onPress={handleInlineCode} ariaLabel="Inline Code" IconComponent={Code} />
-          <ToolbarButton onPress={handleTab} ariaLabel="Tab (3 spaces)" IconComponent={ArrowRightToLine} />
+          <ToolbarButton onPress={handleIndent} ariaLabel="Indent (Tab)" IconComponent={IndentIncrease} />
+          <ToolbarButton onPress={handleOutdent} ariaLabel="Outdent (Shift+Tab)" IconComponent={IndentDecrease} />
           <ToolbarButton onPress={handleQuote} ariaLabel="Quote" IconComponent={Quote} />
           <ToolbarButton onPress={handleLink} ariaLabel="Link" IconComponent={Link} />
           <ToolbarButton onPress={handleImage} ariaLabel="Image" IconComponent={Image} />
