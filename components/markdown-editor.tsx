@@ -14,6 +14,7 @@ type SyntaxSegment = {
   text: string;
   token: MarkdownEditorSyntaxToken;
   bgToken?: MarkdownEditorSyntaxToken;
+  style?: any;
 };
 
 const INLINE_MARKDOWN_RE =
@@ -26,6 +27,18 @@ const mkSeg = (text: string, token: MarkdownEditorSyntaxToken, bgToken?: Markdow
   text,
   token,
   ...(bgToken ? { bgToken } : {}),
+});
+
+const mkSegStyled = (
+  text: string,
+  token: MarkdownEditorSyntaxToken,
+  style?: any,
+  bgToken?: MarkdownEditorSyntaxToken
+): SyntaxSegment => ({
+  text,
+  token,
+  ...(bgToken ? { bgToken } : {}),
+  ...(style ? { style } : {}),
 });
 
 function highlightInlineMarkdown(text: string): SyntaxSegment[] {
@@ -42,9 +55,10 @@ function highlightInlineMarkdown(text: string): SyntaxSegment[] {
     // Inline code: `code`
     if (m.startsWith("`")) {
       const inner = m.slice(1, -1);
-      segments.push(mkSeg("`", "inlineCode.marker", "inlineCode.bg"));
-      if (inner.length > 0) segments.push(mkSeg(inner, "inlineCode.text", "inlineCode.bg"));
-      segments.push(mkSeg("`", "inlineCode.marker", "inlineCode.bg"));
+      const codeStyle = { fontFamily: "monospace" };
+      segments.push(mkSegStyled("`", "inlineCode.marker", codeStyle, "inlineCode.bg"));
+      if (inner.length > 0) segments.push(mkSegStyled(inner, "inlineCode.text", codeStyle, "inlineCode.bg"));
+      segments.push(mkSegStyled("`", "inlineCode.marker", codeStyle, "inlineCode.bg"));
       lastIndex = index + m.length;
       continue;
     }
@@ -69,38 +83,54 @@ function highlightInlineMarkdown(text: string): SyntaxSegment[] {
     }
 
     // Emphasis / strike (we mostly color the markers so the *content* stays readable)
-    const wrap = (marker: string, markerToken: MarkdownEditorSyntaxToken, content: string) => {
-      segments.push(mkSeg(marker, markerToken));
-      if (content) segments.push(mkSeg(content, "emphasis.text"));
-      segments.push(mkSeg(marker, markerToken));
+    const wrap = (
+      marker: string,
+      markerToken: MarkdownEditorSyntaxToken,
+      content: string,
+      contentStyle?: any,
+      markerStyle?: any
+    ) => {
+      segments.push(mkSegStyled(marker, markerToken, markerStyle));
+      if (content) segments.push(mkSegStyled(content, "emphasis.text", contentStyle));
+      segments.push(mkSegStyled(marker, markerToken, markerStyle));
     };
 
     if (m.startsWith("~~") && m.endsWith("~~")) {
-      wrap("~~", "emphasis.marker", m.slice(2, -2));
+      const strike = { textDecorationLine: "line-through" as const };
+      // Only strike the content, not the marker tildes (keeps cursor metrics stable).
+      wrap("~~", "emphasis.marker", m.slice(2, -2), strike, undefined);
       lastIndex = index + m.length;
       continue;
     }
     if (m.startsWith("**") && m.endsWith("**")) {
-      segments.push(mkSeg("**", "emphasis.marker"));
-      if (m.length > 4) segments.push(mkSeg(m.slice(2, -2), "emphasis.text"));
-      segments.push(mkSeg("**", "emphasis.marker"));
+      const bold = { fontWeight: "700" as const };
+      // Only bold the content, not the marker asterisks.
+      segments.push(mkSegStyled("**", "emphasis.marker"));
+      if (m.length > 4) segments.push(mkSegStyled(m.slice(2, -2), "emphasis.text", bold));
+      segments.push(mkSegStyled("**", "emphasis.marker"));
       lastIndex = index + m.length;
       continue;
     }
     if (m.startsWith("__") && m.endsWith("__")) {
-      segments.push(mkSeg("__", "emphasis.marker"));
-      if (m.length > 4) segments.push(mkSeg(m.slice(2, -2), "emphasis.text"));
-      segments.push(mkSeg("__", "emphasis.marker"));
+      const bold = { fontWeight: "700" as const };
+      // Only bold the content, not the marker underscores.
+      segments.push(mkSegStyled("__", "emphasis.marker"));
+      if (m.length > 4) segments.push(mkSegStyled(m.slice(2, -2), "emphasis.text", bold));
+      segments.push(mkSegStyled("__", "emphasis.marker"));
       lastIndex = index + m.length;
       continue;
     }
     if (m.startsWith("*") && m.endsWith("*") && m.length >= 2) {
-      wrap("*", "emphasis.marker", m.slice(1, -1));
+      const italic = { fontStyle: "italic" as const };
+      // Only italicize the content, not the marker asterisks.
+      wrap("*", "emphasis.marker", m.slice(1, -1), italic, undefined);
       lastIndex = index + m.length;
       continue;
     }
     if (m.startsWith("_") && m.endsWith("_") && m.length >= 2) {
-      wrap("_", "emphasis.marker", m.slice(1, -1));
+      const italic = { fontStyle: "italic" as const };
+      // Only italicize the content, not the marker underscores.
+      wrap("_", "emphasis.marker", m.slice(1, -1), italic, undefined);
       lastIndex = index + m.length;
       continue;
     }
@@ -202,12 +232,21 @@ function renderSyntaxSegments(segments: SyntaxSegment[], palette: MarkdownEditor
         style={{
           color,
           ...(backgroundColor ? { backgroundColor } : null),
+          ...(seg.style ? seg.style : null),
         }}
       >
         {seg.text}
       </RNText>
     );
   });
+}
+
+function overrideTokens(
+  segments: SyntaxSegment[],
+  overrideToken: MarkdownEditorSyntaxToken,
+  tokensToOverride: Set<MarkdownEditorSyntaxToken>
+): SyntaxSegment[] {
+  return segments.map((s) => (tokensToOverride.has(s.token) ? { ...s, token: overrideToken } : s));
 }
 
 function renderHighlightedMarkdownDocument(value: string, palette: MarkdownEditorSyntaxPalette) {
@@ -227,11 +266,21 @@ function renderHighlightedMarkdownDocument(value: string, palette: MarkdownEdito
 
     // Fenced code blocks
     if (fenceStartOrEnd(line)) {
-      const m = line.match(/^\s*(```|~~~)\s*(.*)\s*$/);
-      const marker = m?.[1] ?? "```";
-      const info = (m?.[2] ?? "").trim();
+      // IMPORTANT: preserve the *exact* characters/spaces after the fence marker.
+      // Rendering a reconstructed string (e.g. inserting a space before language)
+      // causes caret/visual mismatches while typing.
+      const m = line.match(/^(\s*)(```|~~~)(.*)$/);
+      const indent = m?.[1] ?? "";
+      const marker = m?.[2] ?? "```";
+      const rest = m?.[3] ?? "";
 
-      out.push(...renderSyntaxSegments([mkSeg(marker, "fence.marker"), mkSeg(info ? ` ${info}` : "", "fence.language")], palette, `fence-${lineIndex}`));
+      out.push(
+        ...renderSyntaxSegments(
+          [mkSeg(indent, "fence.marker"), mkSeg(marker, "fence.marker"), mkSeg(rest, "fence.language")],
+          palette,
+          `fence-${lineIndex}`
+        )
+      );
       if (lineIndex < lines.length - 1) out.push(<RNText key={`nl-${lineIndex}`}>{"\n"}</RNText>);
 
       if (!inFence) {
@@ -260,7 +309,21 @@ function renderHighlightedMarkdownDocument(value: string, palette: MarkdownEdito
     const headingMatch = line.match(/^(#{1,6})(\s+)(.*)$/);
     if (headingMatch) {
       const [, hashes, space, rest] = headingMatch;
-      out.push(...renderSyntaxSegments([mkSeg(hashes, "heading.marker"), mkSeg(space, "text"), mkSeg(rest, "heading.text")], palette, `h-${lineIndex}`));
+      const inline = highlightInlineMarkdown(rest);
+      const headingOverrides = new Set<MarkdownEditorSyntaxToken>([
+        "text",
+        "punctuation",
+        "emphasis.marker",
+        "emphasis.text",
+      ]);
+      const colored = overrideTokens(inline, "heading.text", headingOverrides);
+      out.push(
+        ...renderSyntaxSegments(
+          [mkSeg(hashes, "heading.marker"), mkSeg(space, "heading.text"), ...colored],
+          palette,
+          `h-${lineIndex}`
+        )
+      );
       if (lineIndex < lines.length - 1) out.push(<RNText key={`nl-${lineIndex}`}>{"\n"}</RNText>);
       continue;
     }
@@ -269,7 +332,15 @@ function renderHighlightedMarkdownDocument(value: string, palette: MarkdownEdito
     const bqMatch = line.match(/^(\s*>)(\s?)(.*)$/);
     if (bqMatch) {
       const [, marker, space, rest] = bqMatch;
-      const segs: SyntaxSegment[] = [mkSeg(marker, "blockquote.marker"), mkSeg(space, "text"), ...highlightInlineMarkdown(rest)];
+      const inline = highlightInlineMarkdown(rest);
+      const bqOverrides = new Set<MarkdownEditorSyntaxToken>([
+        "text",
+        "punctuation",
+        "emphasis.marker",
+        "emphasis.text",
+      ]);
+      const colored = overrideTokens(inline, "blockquote.marker", bqOverrides);
+      const segs: SyntaxSegment[] = [mkSeg(marker, "blockquote.marker"), mkSeg(space, "blockquote.marker"), ...colored];
       out.push(...renderSyntaxSegments(segs, palette, `bq-${lineIndex}`));
       if (lineIndex < lines.length - 1) out.push(<RNText key={`nl-${lineIndex}`}>{"\n"}</RNText>);
       continue;
@@ -279,7 +350,20 @@ function renderHighlightedMarkdownDocument(value: string, palette: MarkdownEdito
     const listMatch = line.match(/^(\s*)([-*+]|\d+\.)(\s+)(.*)$/);
     if (listMatch) {
       const [, indent, marker, space, rest] = listMatch;
-      const segs: SyntaxSegment[] = [mkSeg(indent, "text"), mkSeg(marker, "list.marker"), mkSeg(space, "text"), ...highlightInlineMarkdown(rest)];
+      const inline = highlightInlineMarkdown(rest);
+      const listOverrides = new Set<MarkdownEditorSyntaxToken>([
+        "text",
+        "punctuation",
+        "emphasis.marker",
+        "emphasis.text",
+      ]);
+      const colored = overrideTokens(inline, "list.marker", listOverrides);
+      const segs: SyntaxSegment[] = [
+        mkSeg(indent, "list.marker"),
+        mkSeg(marker, "list.marker"),
+        mkSeg(space, "list.marker"),
+        ...colored,
+      ];
       out.push(...renderSyntaxSegments(segs, palette, `li-${lineIndex}`));
       if (lineIndex < lines.length - 1) out.push(<RNText key={`nl-${lineIndex}`}>{"\n"}</RNText>);
       continue;
@@ -2095,6 +2179,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                 paddingBottom: 65,
                 fontFamily: "monospace",
                 flex: 1,
+                position: "relative",
+                zIndex: 2,
                 // Hide the raw TextInput glyphs; the overlay paints colored text.
                 color: "transparent",
                 ...(Platform.OS === "web" ? ({ caretColor: selectionAccent } as any) : null),
