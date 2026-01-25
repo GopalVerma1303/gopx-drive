@@ -6,7 +6,7 @@ import { Text } from "@/components/ui/text";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { Platform, Pressable, Text as RNText, ScrollView, TextInput, View } from "react-native";
+import { Image, Platform, Pressable, Text as RNText, ScrollView, TextInput, useWindowDimensions, View } from "react-native";
 import Markdown, { renderRules } from "react-native-markdown-display";
 
 interface MarkdownEditorProps {
@@ -42,6 +42,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     ref
   ) {
     const { colors } = useThemeColors();
+    const { width: windowWidth } = useWindowDimensions();
     const inputRef = useRef<TextInput>(null);
     const [selection, setSelection] = useState({ start: 0, end: 0 });
     const selectionRef = useRef(selection);
@@ -50,6 +51,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null);
     const suppressSelectionUpdatesRef = useRef<number>(0);
     const TAB_SPACES = "   ";
+    const [imageMeta, setImageMeta] = useState<Record<string, { width: number; height: number }>>({});
 
     type Snapshot = { text: string; selection: { start: number; end: number } };
     const MAX_HISTORY = 200;
@@ -1260,8 +1262,63 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       );
     };
 
+    const renderImage = (node: any) => {
+      const src =
+        node?.attributes?.src ||
+        node?.src ||
+        node?.url ||
+        node?.href ||
+        "";
+      const alt = node?.attributes?.alt || node?.alt || "";
+
+      // In preview we use paddingHorizontal: 32, so subtract that to get the available width.
+      const availableWidth = Math.max(0, windowWidth - 64);
+      const maxWidth = Math.min(availableWidth, 720);
+
+      const meta = src ? imageMeta[src] : undefined;
+      const aspectRatio =
+        meta && meta.width > 0 && meta.height > 0 ? meta.width / meta.height : 16 / 9;
+
+      // Ensure the image always reserves layout space so following content cannot overlap it.
+      return (
+        <View key={node.key} style={{ marginTop: 8, marginBottom: 8 }}>
+          <Image
+            source={{ uri: src }}
+            resizeMode="contain"
+            style={{
+              width: maxWidth,
+              aspectRatio,
+              borderRadius: 8,
+              backgroundColor: colors.muted,
+              borderWidth: 1,
+              borderColor: colors.ring,
+              alignSelf: "center",
+            }}
+            onLoad={(e) => {
+              const w = e?.nativeEvent?.source?.width;
+              const h = e?.nativeEvent?.source?.height;
+              if (!src || !w || !h) return;
+              setImageMeta((prev) => {
+                const existing = prev[src];
+                if (existing && existing.width === w && existing.height === h) return prev;
+                return { ...prev, [src]: { width: w, height: h } };
+              });
+            }}
+          />
+          {alt ? (
+            <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 6 }}>
+              {alt}
+            </Text>
+          ) : null}
+        </View>
+      );
+    };
+
     // Custom renderer for checkboxes in task lists and code blocks
     const markdownRules = {
+      image: (node: any) => renderImage(node),
+      // Some markdown parsers use `img` instead of `image`.
+      img: (node: any) => renderImage(node),
       fence: (node: any, children: any, parent: any, styles: any) => {
         // Debug: Log node structure to understand what we're working with
         if (__DEV__) {
