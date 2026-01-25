@@ -1,14 +1,13 @@
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
-import CodeMirror from "@uiw/react-codemirror";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
+import { markdown, markdownKeymap } from "@codemirror/lang-markdown";
 import { HighlightStyle, defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
-import { markdown, markdownKeymap } from "@codemirror/lang-markdown";
-import { keymap, EditorView } from "@codemirror/view";
+import { EditorView, keymap } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
+import CodeMirror from "@uiw/react-codemirror";
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
-import { View } from "react-native";
 
 interface EditorProps {
   value: string;
@@ -77,11 +76,18 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
           backgroundColor: editorTheme.background,
           color: editorTheme.foreground,
           height: "100%",
+          minHeight: 0,
         },
-        ".cm-editor": { height: "100%" },
-        ".cm-scroller": {
-          overflow: "auto",
+        ".cm-editor": {
           height: "100%",
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+        },
+        ".cm-scroller": {
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto !important",
           backgroundColor: editorTheme.background,
         },
         ".cm-content": {
@@ -181,11 +187,15 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
   }));
 
   return (
-    <View className={cn("flex-1", className)} style={{ backgroundColor: editorTheme.background }}>
+    <div
+      className={cn("h-screen w-full overflow-hidden flex flex-col min-h-0", className)}
+      style={{ backgroundColor: editorTheme.background }}
+    >
       <CodeMirror
         value={value}
         height="100%"
         placeholder={placeholder}
+        style={{ flex: 1, minHeight: 0 }}
         basicSetup={{
           lineNumbers: false,
           foldGutter: false,
@@ -213,7 +223,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
           }
         }}
       />
-    </View>
+    </div>
   );
 });
 

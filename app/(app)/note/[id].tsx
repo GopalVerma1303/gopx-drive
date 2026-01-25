@@ -1,7 +1,7 @@
 "use client";
 
-import { NoteDetailHeader } from "@/components/headers/note-detail-header";
 import { Editor, EditorRef } from "@/components/editor";
+import { NoteDetailHeader } from "@/components/headers/note-detail-header";
 import { useAuth } from "@/contexts/auth-context";
 import { createNote, getNoteById, updateNote } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";

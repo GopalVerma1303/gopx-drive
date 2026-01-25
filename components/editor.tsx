@@ -77,7 +77,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
       padTop: 10,
       padBottom: 1,
       fontSize: 17,
-      lineHeight: 24,
+      lineHeight: 24
     };
   }, [colors, isDark]);
 
