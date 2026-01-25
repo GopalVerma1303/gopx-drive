@@ -11,6 +11,7 @@ import { tags } from "@lezer/highlight";
 import CodeMirror from "@uiw/react-codemirror";
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import markdownDecorations from "@/webviewBundles/markdownEditorBundle/markdownDecorations";
+import { gfmMarkdownLanguage } from "@/webviewBundles/markdownEditorBundle/gfmMarkdownLanguage";
 import { Checkbox } from "@/components/ui/checkbox";
 import { createRoot, type Root } from "react-dom/client";
 
@@ -490,7 +491,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
 
     return [
       history(),
-      markdown({ codeLanguages: languages }),
+      markdown({ base: gfmMarkdownLanguage, codeLanguages: languages }),
       keymap.of([...defaultKeymap, ...historyKeymap, ...markdownKeymap, indentWithTab]),
       EditorView.lineWrapping,
       themeExt,

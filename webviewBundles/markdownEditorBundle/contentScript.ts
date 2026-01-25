@@ -15,6 +15,7 @@ import { javascript } from '@codemirror/lang-javascript';
 import { syntaxHighlighting, defaultHighlightStyle, HighlightStyle, ensureSyntaxTree } from '@codemirror/language';
 import { tags, classHighlighter } from '@lezer/highlight';
 import markdownDecorations from './markdownDecorations';
+import { gfmMarkdownLanguage } from './gfmMarkdownLanguage';
 
 // Newer versions of CodeMirror may enable Chrome's EditContext API by default.
 // This causes major issues on Android WebView. Joplin disables it; we do the same.
@@ -663,7 +664,11 @@ const ensureEditor = (args: InitArgs) => {
 		doc: typeof args.value === 'string' ? args.value : '',
 		extensions: [
 			history(),
-			markdown({ codeLanguages: codeLanguageFromInfo, defaultCodeLanguage: jsSupport }),
+			markdown({
+				base: gfmMarkdownLanguage,
+				codeLanguages: codeLanguageFromInfo,
+				defaultCodeLanguage: jsSupport,
+			}),
 			keymap.of([...defaultKeymap, ...historyKeymap, ...markdownKeymap, indentWithTab]),
 			EditorView.lineWrapping,
 			markdownDecorations,
