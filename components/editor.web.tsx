@@ -185,12 +185,13 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
         }
 
         public update(update: ViewUpdate) {
-          if (update.docChanged || update.selectionSet || update.viewportChanged) {
+          if (update.docChanged || update.selectionSet || update.viewportChanged || update.focusChanged) {
             this.decorations = this.compute(update.view);
           }
         }
 
         private compute(view: EditorView): DecorationSet {
+          const isFocused = view.hasFocus;
           const sel = view.state.selection.main;
           const selFrom = Math.min(sel.from, sel.to);
           const selTo = Math.max(sel.from, sel.to);
@@ -236,7 +237,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
                 const to = node.to;
 
                 const line = view.state.doc.lineAt(from);
-                const overlapsSelection = selFrom <= line.to && selTo >= line.from;
+                const overlapsSelection = isFocused && selFrom <= line.to && selTo >= line.from;
                 let treatLineAsActive = overlapsSelection;
                 if (treatLineAsActive && selIsCollapsed) {
                   const r = taskMarkerRangeForLine(line.from, line.to);
@@ -316,7 +317,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(function Editor(
               pos = line.to + 1;
               if (taskLinesWithSyntaxNode.has(line.from)) continue;
 
-              const overlapsSelection = selFrom <= line.to && selTo >= line.from;
+              const overlapsSelection = isFocused && selFrom <= line.to && selTo >= line.from;
               if (overlapsSelection) {
                 if (!selIsCollapsed) continue;
                 const r = taskMarkerRangeForLine(line.from, line.to);

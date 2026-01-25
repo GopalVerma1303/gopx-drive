@@ -193,10 +193,39 @@ const createCmTheme = (dark: boolean) => {
 				font: 'inherit',
 				color: 'var(--fg)',
 				userSelect: 'none',
+				display: 'inline-flex',
+				alignItems: 'center',
+				marginRight: '0.2em',
 			},
-			'.cm-livePreviewCheckboxInput': {
+			'.cm-livePreviewCheckboxBox': {
+				width: '16px',
+				height: '16px',
+				borderRadius: '4px',
+				borderWidth: '2px',
+				borderStyle: 'solid',
+				display: 'inline-flex',
+				alignItems: 'center',
+				justifyContent: 'center',
 				transform: 'translateY(1px)',
-				margin: '0',
+			},
+			'.cm-livePreviewCheckboxBox.is-unchecked': {
+				backgroundColor: 'transparent',
+				borderColor: '#ef4444', // red-500
+			},
+			'.cm-livePreviewCheckboxBox.is-checked': {
+				backgroundColor: '#22c55e', // green-500
+				borderColor: '#22c55e',
+			},
+			'.cm-livePreviewCheckboxCheck': {
+				color: 'white',
+				fontSize: '12px',
+				lineHeight: '12px',
+				fontWeight: '700',
+				transform: 'translateY(-0.5px)',
+				opacity: '0',
+			},
+			'.cm-livePreviewCheckboxBox.is-checked .cm-livePreviewCheckboxCheck': {
+				opacity: '1',
 			},
 
 			// Joplin-like markdown block styling (driven by markdownDecorations).
@@ -334,11 +363,21 @@ class CheckboxWidget extends WidgetType {
 	public override toDOM(view: EditorView): HTMLElement {
 		const wrap = document.createElement('span');
 		wrap.className = 'cm-livePreviewCheckbox';
+		wrap.setAttribute('contenteditable', 'false');
+		const stop = (e: Event) => e.stopPropagation();
+		wrap.addEventListener('mousedown', stop);
+		wrap.addEventListener('click', stop);
+		wrap.addEventListener('touchstart', stop);
 
-		const input = document.createElement('input');
-		input.type = 'checkbox';
-		input.checked = this.checked;
-		input.className = 'cm-livePreviewCheckboxInput';
+		const box = document.createElement('span');
+		box.className = `cm-livePreviewCheckboxBox ${this.checked ? 'is-checked' : 'is-unchecked'}`;
+		box.setAttribute('role', 'checkbox');
+		box.setAttribute('aria-checked', this.checked ? 'true' : 'false');
+
+		const check = document.createElement('span');
+		check.className = 'cm-livePreviewCheckboxCheck';
+		check.textContent = '✓';
+		box.appendChild(check);
 
 		const onToggle = (event: Event) => {
 			event.preventDefault();
@@ -348,16 +387,17 @@ class CheckboxWidget extends WidgetType {
 			view.focus();
 		};
 
-		input.addEventListener('click', onToggle);
-		input.addEventListener('mousedown', (e) => e.preventDefault());
+		box.addEventListener('click', onToggle);
+		box.addEventListener('mousedown', (e) => e.preventDefault());
+		box.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
 
-		wrap.appendChild(input);
+		wrap.appendChild(box);
 		wrap.appendChild(document.createTextNode(' '));
 		return wrap;
 	}
 
 	public override ignoreEvent() {
-		return false;
+		return true;
 	}
 }
 
@@ -371,12 +411,13 @@ const markdownInlinePreview = ViewPlugin.fromClass(class {
 	}
 
 	public update(update: ViewUpdate) {
-		if (update.docChanged || update.selectionSet || update.viewportChanged) {
+		if (update.docChanged || update.selectionSet || update.viewportChanged || update.focusChanged) {
 			this.decorations = this.compute(update.view);
 		}
 	}
 
 	private compute(view: EditorView): DecorationSet {
+		const isFocused = view.hasFocus;
 		const sel = view.state.selection.main;
 		const selFrom = Math.min(sel.from, sel.to);
 		const selTo = Math.max(sel.from, sel.to);
@@ -407,6 +448,8 @@ const markdownInlinePreview = ViewPlugin.fromClass(class {
 			items.push({ from, to, deco });
 		};
 
+		const taskLinesWithSyntaxNode = new Set<number>();
+
 		for (const range of view.visibleRanges) {
 			const tree = ensureSyntaxTree(view.state, range.to);
 			if (!tree) continue;
@@ -419,7 +462,7 @@ const markdownInlinePreview = ViewPlugin.fromClass(class {
 					const to = node.to;
 
 					const line = view.state.doc.lineAt(from);
-					const overlapsSelection = selFrom <= line.to && selTo >= line.from;
+					const overlapsSelection = isFocused && selFrom <= line.to && selTo >= line.from;
 					let treatLineAsActive = overlapsSelection;
 					if (treatLineAsActive && selIsCollapsed) {
 						const r = taskMarkerRangeForLine(line.from, line.to);
@@ -442,6 +485,7 @@ const markdownInlinePreview = ViewPlugin.fromClass(class {
 						const isChecked = /\[x\]/i.test(text);
 						const togglePos = Math.min(to - 2, from + 1);
 						add(from, to, Decoration.replace({ widget: new CheckboxWidget(isChecked, togglePos) }));
+						taskLinesWithSyntaxNode.add(line.from);
 						return;
 					}
 
@@ -483,6 +527,34 @@ const markdownInlinePreview = ViewPlugin.fromClass(class {
 					add(from, to, Decoration.replace({ widget: emptyWidget }));
 				},
 			});
+		}
+
+		// Fallback: if the syntax tree doesn't include TaskMarker (parser differences on some platforms),
+		// detect task markers by regex and render the checkbox anyway.
+		for (const range of view.visibleRanges) {
+			let pos = range.from;
+			while (pos <= range.to) {
+				const line = view.state.doc.lineAt(pos);
+				pos = line.to + 1;
+				if (taskLinesWithSyntaxNode.has(line.from)) continue;
+
+				const overlapsSelection = isFocused && selFrom <= line.to && selTo >= line.from;
+				if (overlapsSelection) {
+					if (!selIsCollapsed) continue;
+					const r = taskMarkerRangeForLine(line.from, line.to);
+					if (!r || cursorPos < r.start || cursorPos > r.end) continue;
+				}
+
+				const text = view.state.doc.sliceString(line.from, line.to);
+				const m = /^(\s*(?:[-+*]|\d+\.)\s*)\[( |x|X)\]/.exec(text);
+				if (!m) continue;
+
+				const start = line.from + (m[1]?.length ?? 0);
+				const end = start + 3; // "[ ]" / "[x]"
+				const togglePos = start + 1;
+				const isChecked = (m[2] ?? '').toLowerCase() === 'x';
+				add(start, end, Decoration.replace({ widget: new CheckboxWidget(isChecked, togglePos) }));
+			}
 		}
 
 		items.sort((a, b) => (a.from - b.from) || (a.to - b.to));
@@ -608,6 +680,15 @@ const ensureEditor = (args: InitArgs) => {
 	});
 
 	view = new EditorView({ state, parent });
+
+	// Ensure we start "not editing" until the user taps.
+	// Some WebViews can end up focused by default; explicitly blur once on init.
+	try {
+		(view as any).contentDOM?.blur?.();
+		(document.activeElement as any)?.blur?.();
+	} catch {
+		// no-op
+	}
 
 	// Focusing behavior: tapping the editor container should focus the editor,
 	// even if the tap target isn't the contentDOM (matches Joplin's behavior).
