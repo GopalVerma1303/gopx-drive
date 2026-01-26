@@ -65,6 +65,8 @@ export function TagRow({
         }}
         scrollEventThrottle={16}
         bounces={false}
+        scrollEnabled={true}
+        directionalLockEnabled={true}
       >
 
         {/* All Tags */}
@@ -76,6 +78,12 @@ export function TagRow({
               onPress={() => handleTagPress(tag.id)}
               onLongPress={() => handleTagLongPress(tag)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              delayLongPress={500}
+              pressRetentionOffset={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={{ 
+                alignSelf: 'center',
+                flexShrink: 0,
+              }}
             >
               <Badge
                 variant={isSelected ? "default" : "outline"}
@@ -90,6 +98,11 @@ export function TagRow({
         <Pressable
           onPress={handleCreatePress}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          pressRetentionOffset={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{ 
+            alignSelf: 'center',
+            flexShrink: 0,
+          }}
         >
           <Badge
             variant="outline"

@@ -34,7 +34,7 @@ import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import { LayoutGrid, Plus, Rows2, Search, Tag as TagIcon, Trash2 } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -226,9 +226,17 @@ export default function NotesScreen() {
   // Tag mutations
   const createTagMutation = useMutation({
     mutationFn: (input: { user_id: string; name: string }) => createTag(input),
-    onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ["tags"] });
-      await refetchTags();
+    onSuccess: async (newTag) => {
+      // Optimistically update the cache with the new tag
+      queryClient.setQueryData<Tag[]>(["tags", user?.id], (oldTags = []) => {
+        // Check if tag already exists to avoid duplicates
+        if (oldTags.some(tag => tag.id === newTag.id)) {
+          return oldTags;
+        }
+        return [...oldTags, newTag].sort((a, b) => a.name.localeCompare(b.name));
+      });
+      // Then refetch to ensure we have the latest data
+      await queryClient.refetchQueries({ queryKey: ["tags", user?.id] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setTagModalOpen(false);
       setEditingTag(null);
@@ -247,10 +255,16 @@ export default function NotesScreen() {
       id: string;
       updates: Partial<Pick<Tag, "name">>;
     }) => updateTag(id, updates),
-    onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ["tags"] });
+    onSuccess: async (updatedTag) => {
+      // Optimistically update the cache with the updated tag
+      if (updatedTag) {
+        queryClient.setQueryData<Tag[]>(["tags", user?.id], (oldTags = []) => {
+          return oldTags.map(tag => tag.id === updatedTag.id ? updatedTag : tag).sort((a, b) => a.name.localeCompare(b.name));
+        });
+      }
+      // Then refetch to ensure we have the latest data
+      await queryClient.refetchQueries({ queryKey: ["tags", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["noteTags"] });
-      await refetchTags();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setTagModalOpen(false);
       setEditingTag(null);
@@ -264,9 +278,13 @@ export default function NotesScreen() {
   const deleteTagMutation = useMutation({
     mutationFn: (id: string) => deleteTag(id),
     onSuccess: async (_data, deletedTagId) => {
-      queryClient.invalidateQueries({ queryKey: ["tags"] });
+      // Optimistically remove the tag from cache
+      queryClient.setQueryData<Tag[]>(["tags", user?.id], (oldTags = []) => {
+        return oldTags.filter(tag => tag.id !== deletedTagId);
+      });
+      // Then refetch to ensure we have the latest data
+      await queryClient.refetchQueries({ queryKey: ["tags", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["noteTags"] });
-      await refetchTags();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setTagModalOpen(false);
       setEditingTag(null);
@@ -952,8 +970,10 @@ function NoteCard({
 }: NoteCardProps) {
   const { colors } = useThemeColors();
   const scale = new Animated.Value(1);
+  const hasLongPressed = useRef(false);
 
   const handlePressIn = () => {
+    hasLongPressed.current = false;
     Animated.spring(scale, {
       toValue: 0.96,
       useNativeDriver: true,
@@ -961,11 +981,38 @@ function NoteCard({
   };
 
   const handlePressOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: true,
-      friction: 3,
-    }).start();
+    // Only trigger onPress if it wasn't a long press
+    if (!hasLongPressed.current) {
+      Animated.spring(scale, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 3,
+      }).start();
+    } else {
+      // Reset scale after long press
+      Animated.spring(scale, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 3,
+      }).start();
+    }
+  };
+
+  const handleLongPress = () => {
+    hasLongPressed.current = true;
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    // Trigger context menu programmatically if possible
+    // The ContextMenuTrigger should handle this automatically, but we ensure it works
+  };
+
+  const handlePress = () => {
+    // Only trigger onPress if it wasn't a long press
+    if (!hasLongPressed.current) {
+      onPress();
+    }
+    hasLongPressed.current = false;
   };
 
   const formatDate = (dateString: string) => {
@@ -1008,9 +1055,11 @@ function NoteCard({
     <ContextMenu>
       <ContextMenuTrigger>
         <Pressable
-          onPress={onPress}
+          onPress={handlePress}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
+          onLongPress={handleLongPress}
+          delayLongPress={500}
         >
           <Animated.View style={{ transform: [{ scale }] }}>
             <Card
