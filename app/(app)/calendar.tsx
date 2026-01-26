@@ -244,12 +244,9 @@ export default function CalendarScreen() {
 
         if (selectedDate) {
           const eventDate = event.instanceDate || event.event_date.split("T")[0];
-          // For selected date, still check if time has passed
+          // For selected date, show ALL events for that date (both past and future)
           if (eventDate === selectedDate) {
-            // Parse the full event datetime
-            const eventDateTime = new Date(event.event_date);
-            // Only show if the event datetime is in the future
-            return matchesSearch && eventDateTime > now;
+            return matchesSearch;
           }
           return false;
         }
