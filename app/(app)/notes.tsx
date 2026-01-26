@@ -1,11 +1,31 @@
 "use client";
 
+import { NoteTagModal } from "@/components/note-tag-modal";
+import { TagModal } from "@/components/tag-modal";
+import { TagRow } from "@/components/tag-row";
 import { Card } from "@/components/ui/card";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
 import { deleteNote, listNotes } from "@/lib/notes";
 import type { Note } from "@/lib/supabase";
+import type { Tag } from "@/lib/supabase-tags";
+import {
+  addTagToNote,
+  createTag,
+  deleteTag,
+  ensureDefaultTag,
+  getNoteTags,
+  listTags,
+  removeTagFromNote,
+  updateTag
+} from "@/lib/supabase-tags";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -13,8 +33,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { LayoutGrid, Plus, Rows2, Search } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { LayoutGrid, Plus, Rows2, Search, Tag as TagIcon, Trash2 } from "lucide-react-native";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -113,8 +133,81 @@ export default function NotesScreen() {
     refetchOnWindowFocus: false,
   });
 
+  // Tags state and queries
+  const {
+    data: tags = [],
+    isLoading: tagsLoading,
+    refetch: refetchTags,
+  } = useQuery({
+    queryKey: ["tags", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      // Ensure default tag exists
+      await ensureDefaultTag(user.id);
+      return listTags(user.id);
+    },
+    enabled: !!user?.id,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+  });
+
+  // Fetch note tags mapping
+  const { data: noteTagsMap = {} } = useQuery({
+    queryKey: ["noteTags", notes.map((n) => n.id).join(",")],
+    queryFn: async () => {
+      const map: Record<string, Tag[]> = {};
+      await Promise.all(
+        notes.map(async (note) => {
+          try {
+            const noteTags = await getNoteTags(note.id);
+            map[note.id] = noteTags;
+          } catch (error) {
+            console.error(`Failed to fetch tags for note ${note.id}:`, error);
+            map[note.id] = [];
+          }
+        })
+      );
+      return map;
+    },
+    enabled: notes.length > 0,
+  });
+
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
+  const [tagModalOpen, setTagModalOpen] = useState(false);
+  const [editingTag, setEditingTag] = useState<Tag | null>(null);
+
+  // Set default tag as selected when tags are loaded, or if no tag is selected
+  useEffect(() => {
+    if (tags.length > 0) {
+      const defaultTag = tags.find((t) => t.name === "Default");
+      if (defaultTag) {
+        // Always ensure default tag is selected if no tag is currently selected
+        if (selectedTagId === null) {
+          setSelectedTagId(defaultTag.id);
+        }
+      }
+    }
+  }, [tags, selectedTagId]);
+
+  // Wrapper to prevent deselecting tags - always fallback to default
+  const handleTagSelection = (tagId: string | null) => {
+    if (tagId === null) {
+      // If trying to deselect, select default tag instead
+      const defaultTag = tags.find((t) => t.name === "Default");
+      if (defaultTag) {
+        setSelectedTagId(defaultTag.id);
+      }
+    } else {
+      setSelectedTagId(tagId);
+    }
+  };
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+  const [noteTagModalOpen, setNoteTagModalOpen] = useState(false);
+  const [noteToTag, setNoteToTag] = useState<{
     id: string;
     title: string;
   } | null>(null);
@@ -130,6 +223,95 @@ export default function NotesScreen() {
     },
   });
 
+  // Tag mutations
+  const createTagMutation = useMutation({
+    mutationFn: (input: { user_id: string; name: string }) => createTag(input),
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["tags"] });
+      await refetchTags();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setTagModalOpen(false);
+      setEditingTag(null);
+    },
+    onError: (error: any) => {
+      console.error("Create tag error:", error);
+      Alert.alert("Error", error.message || "Failed to create tag");
+    },
+  });
+
+  const updateTagMutation = useMutation({
+    mutationFn: ({
+      id,
+      updates,
+    }: {
+      id: string;
+      updates: Partial<Pick<Tag, "name">>;
+    }) => updateTag(id, updates),
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["tags"] });
+      queryClient.invalidateQueries({ queryKey: ["noteTags"] });
+      await refetchTags();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setTagModalOpen(false);
+      setEditingTag(null);
+    },
+    onError: (error: any) => {
+      console.error("Update tag error:", error);
+      Alert.alert("Error", error.message || "Failed to update tag");
+    },
+  });
+
+  const deleteTagMutation = useMutation({
+    mutationFn: (id: string) => deleteTag(id),
+    onSuccess: async (_data, deletedTagId) => {
+      queryClient.invalidateQueries({ queryKey: ["tags"] });
+      queryClient.invalidateQueries({ queryKey: ["noteTags"] });
+      await refetchTags();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setTagModalOpen(false);
+      setEditingTag(null);
+      // If deleted tag was selected, switch to default tag
+      if (selectedTagId === deletedTagId) {
+        const defaultTag = tags.find((t) => t.name === "Default");
+        if (defaultTag) {
+          setSelectedTagId(defaultTag.id);
+        }
+        // If no default tag found, useEffect will handle setting it when tags reload
+      }
+    },
+    onError: (error: any) => {
+      console.error("Delete tag error:", error);
+      Alert.alert("Error", error.message || "Failed to delete tag");
+    },
+  });
+
+  // Note tag mutations
+  const addTagToNoteMutation = useMutation({
+    mutationFn: ({ noteId, tagId }: { noteId: string; tagId: string }) =>
+      addTagToNote(noteId, tagId),
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["noteTags"] });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+    onError: (error: any) => {
+      console.error("Add tag to note error:", error);
+      Alert.alert("Error", error.message || "Failed to add tag to note");
+    },
+  });
+
+  const removeTagFromNoteMutation = useMutation({
+    mutationFn: ({ noteId, tagId }: { noteId: string; tagId: string }) =>
+      removeTagFromNote(noteId, tagId),
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["noteTags"] });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+    onError: (error: any) => {
+      console.error("Remove tag from note error:", error);
+      Alert.alert("Error", error.message || "Failed to remove tag from note");
+    },
+  });
+
 
   const handleDeleteNote = (id: string, title: string) => {
     Alert.alert("Delete Note", `Are you sure you want to delete "${title}"?`, [
@@ -142,7 +324,15 @@ export default function NotesScreen() {
     ]);
   };
 
-  const handleRightClickDelete = (id: string, title: string) => {
+  const handleOpenTagModal = (id: string, title: string) => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    setNoteToTag({ id, title });
+    setNoteTagModalOpen(true);
+  };
+
+  const handleOpenDeleteModal = (id: string, title: string) => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
@@ -159,20 +349,78 @@ export default function NotesScreen() {
     }
   };
 
-  const filteredNotes = notes.filter(
-    (note) =>
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter notes by search query and selected tag
+  const filteredNotes = useMemo(() => {
+    let filtered = notes.filter(
+      (note) =>
+        note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.content.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Always filter by tag - default to "Default" tag if none selected
+    const defaultTag = tags.find((t) => t.name === "Default");
+    const defaultTagId = defaultTag?.id;
+    const activeTagId = selectedTagId || defaultTagId;
+
+    if (activeTagId) {
+      if (activeTagId === defaultTagId) {
+        // Show notes with no tags or with default tag only
+        filtered = filtered.filter((note) => {
+          const noteTags = noteTagsMap[note.id] || [];
+          return noteTags.length === 0 || (noteTags.length === 1 && noteTags[0].id === defaultTagId);
+        });
+      } else {
+        // Show notes with the selected tag
+        filtered = filtered.filter((note) => {
+          const noteTags = noteTagsMap[note.id] || [];
+          return noteTags.some((tag) => tag.id === activeTagId);
+        });
+      }
+    }
+
+    return filtered;
+  }, [notes, searchQuery, selectedTagId, tags, noteTagsMap]);
 
   const onRefresh = async () => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    await refetch();
+    await Promise.all([refetch(), refetchTags()]);
     if (Platform.OS !== "web") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
+  };
+
+  // Tag handlers
+  const handleCreateTag = () => {
+    setEditingTag(null);
+    setTagModalOpen(true);
+  };
+
+  const handleTagLongPress = (tag: Tag) => {
+    setEditingTag(tag);
+    setTagModalOpen(true);
+  };
+
+  const handleSaveNoteTags = (selectedTagIds: Set<string>) => {
+    if (!noteToTag) return;
+
+    const currentTags = noteTagsMap[noteToTag.id] || [];
+    const currentTagIds = new Set(currentTags.map((t) => t.id));
+
+    // Add new tags
+    selectedTagIds.forEach((tagId) => {
+      if (!currentTagIds.has(tagId)) {
+        addTagToNoteMutation.mutate({ noteId: noteToTag.id, tagId });
+      }
+    });
+
+    // Remove tags that were deselected
+    currentTagIds.forEach((tagId) => {
+      if (!selectedTagIds.has(tagId)) {
+        removeTagFromNoteMutation.mutate({ noteId: noteToTag.id, tagId });
+      }
+    });
   };
 
   return (
@@ -267,6 +515,19 @@ export default function NotesScreen() {
             />
           </View>
         </View>
+
+        {/* Tags Row */}
+        {!tagsLoading && tags.length > 0 && (
+          <View className="w-full max-w-2xl mx-auto">
+            <TagRow
+              tags={tags}
+              selectedTagId={selectedTagId}
+              onTagPress={handleTagSelection}
+              onTagLongPress={handleTagLongPress}
+              onCreateTag={handleCreateTag}
+            />
+          </View>
+        )}
 
         {isLoading ? (
           <View className="flex-1 justify-center items-center">
@@ -366,12 +627,9 @@ export default function NotesScreen() {
                                 note={note}
                                 cardWidth={cardWidth}
                                 onPress={() => router.push(`/(app)/note/${note.id}`)}
-                                onDelete={() => handleRightClickDelete(note.id, note.title)}
-                                onRightClickDelete={
-                                  Platform.OS === "web"
-                                    ? () => handleRightClickDelete(note.id, note.title)
-                                    : undefined
-                                }
+                                onTagPress={() => handleOpenTagModal(note.id, note.title)}
+                                onDeletePress={() => handleOpenDeleteModal(note.id, note.title)}
+                                noteTags={noteTagsMap[note.id] || []}
                               />
                             </View>
                           ))}
@@ -404,12 +662,9 @@ export default function NotesScreen() {
                             note={note}
                             cardWidth={cardWidth}
                             onPress={() => router.push(`/(app)/note/${note.id}`)}
-                            onDelete={() => handleRightClickDelete(note.id, note.title)}
-                            onRightClickDelete={
-                              Platform.OS === "web"
-                                ? () => handleRightClickDelete(note.id, note.title)
-                                : undefined
-                            }
+                            onTagPress={() => handleOpenTagModal(note.id, note.title)}
+                            onDeletePress={() => handleOpenDeleteModal(note.id, note.title)}
+                            noteTags={noteTagsMap[note.id] || []}
                           />
                         </View>
                       ))}
@@ -422,9 +677,39 @@ export default function NotesScreen() {
         )}
       </View>
 
-      {/* Simple Delete Confirmation Dialog */}
+      {/* Tag Modal */}
+      <TagModal
+        open={tagModalOpen}
+        onClose={() => {
+          setTagModalOpen(false);
+          setEditingTag(null);
+        }}
+        tag={editingTag}
+        onCreate={createTagMutation.mutate}
+        onUpdate={updateTagMutation.mutate}
+        onDelete={deleteTagMutation.mutate}
+        userId={user?.id || ""}
+      />
+
+      {/* Note Tag Modal */}
+      {noteToTag && (
+        <NoteTagModal
+          open={noteTagModalOpen}
+          onClose={() => {
+            setNoteTagModalOpen(false);
+            setNoteToTag(null);
+          }}
+          noteId={noteToTag.id}
+          noteTitle={noteToTag.title}
+          tags={tags}
+          noteTags={noteTagsMap[noteToTag.id] || []}
+          onSave={handleSaveNoteTags}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
       {Platform.OS === "web" ? (
-        deleteDialogOpen && (
+        deleteDialogOpen && noteToDelete && (
           <View
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
             style={{
@@ -441,7 +726,10 @@ export default function NotesScreen() {
             <Pressable
               className="absolute inset-0"
               style={{ position: "absolute" as any }}
-              onPress={() => setDeleteDialogOpen(false)}
+              onPress={() => {
+                setDeleteDialogOpen(false);
+                setNoteToDelete(null);
+              }}
             />
             <View
               className="bg-background border-border w-full max-w-md rounded-lg border p-6 shadow-lg"
@@ -492,7 +780,10 @@ export default function NotesScreen() {
                     paddingHorizontal: 16,
                     paddingVertical: 8,
                   }}
-                  onPress={() => setDeleteDialogOpen(false)}
+                  onPress={() => {
+                    setDeleteDialogOpen(false);
+                    setNoteToDelete(null);
+                  }}
                 >
                   <Text style={{ color: colors.foreground }}>Cancel</Text>
                 </Pressable>
@@ -518,7 +809,10 @@ export default function NotesScreen() {
           visible={deleteDialogOpen}
           transparent
           animationType="fade"
-          onRequestClose={() => setDeleteDialogOpen(false)}
+          onRequestClose={() => {
+            setDeleteDialogOpen(false);
+            setNoteToDelete(null);
+          }}
         >
           <View
             style={{
@@ -544,74 +838,93 @@ export default function NotesScreen() {
                   right: 0,
                   bottom: 0,
                 }}
-                onPress={() => setDeleteDialogOpen(false)}
-              />
-              <View
-                style={{
-                  backgroundColor: colors.muted,
-                  borderColor: colors.border,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  padding: 24,
-                  width: "100%",
-                  maxWidth: 400,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 5,
+                onPress={() => {
+                  setDeleteDialogOpen(false);
+                  setNoteToDelete(null);
                 }}
+                pointerEvents="box-none"
+              />
+              <ScrollView
+                contentContainerStyle={{
+                  flexGrow: 1,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                pointerEvents="box-none"
               >
-                <Text
+                <Pressable
+                  onPress={(e) => e.stopPropagation()}
                   style={{
-                    color: colors.foreground,
-                    fontSize: 18,
-                    fontWeight: "600",
-                    marginBottom: 8,
+                    backgroundColor: colors.muted,
+                    borderColor: colors.border,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    padding: 24,
+                    width: "100%",
+                    maxWidth: 400,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 8,
+                    elevation: 5,
                   }}
                 >
-                  Delete Note
-                </Text>
-                <Text
-                  style={{
-                    color: colors.mutedForeground,
-                    fontSize: 14,
-                    marginBottom: 24,
-                  }}
-                >
-                  Are you sure you want to delete "{noteToDelete?.title}"? This
-                  action cannot be undone.
-                </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "flex-end",
-                    gap: 12,
-                  }}
-                >
-                  <Pressable
+                  <Text
                     style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
+                      color: colors.foreground,
+                      fontSize: 18,
+                      fontWeight: "600",
+                      marginBottom: 8,
                     }}
-                    onPress={() => setDeleteDialogOpen(false)}
                   >
-                    <Text style={{ color: colors.foreground }}>Cancel</Text>
-                  </Pressable>
-                  <Pressable
+                    Delete Note
+                  </Text>
+                  <Text
                     style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 6,
+                      color: colors.mutedForeground,
+                      fontSize: 14,
+                      marginBottom: 24,
                     }}
-                    onPress={handleDeleteConfirm}
                   >
-                    <Text style={{ color: "#ef4444", fontWeight: "600" }}>
-                      Delete
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
+                    Are you sure you want to delete "{noteToDelete?.title}"? This
+                    action cannot be undone.
+                  </Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "flex-end",
+                      gap: 12,
+                    }}
+                  >
+                    <Pressable
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                      }}
+                      onPress={() => {
+                        setDeleteDialogOpen(false);
+                        setNoteToDelete(null);
+                      }}
+                    >
+                      <Text style={{ color: colors.foreground }}>Cancel</Text>
+                    </Pressable>
+                    <Pressable
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        borderRadius: 6,
+                      }}
+                      onPress={handleDeleteConfirm}
+                    >
+                      <Text style={{ color: "#ef4444", fontWeight: "600" }}>
+                        Delete
+                      </Text>
+                    </Pressable>
+                  </View>
+                </Pressable>
+              </ScrollView>
             </BlurView>
           </View>
         </Modal>
@@ -624,17 +937,20 @@ interface NoteCardProps {
   note: Note;
   cardWidth: number;
   onPress: () => void;
-  onDelete: () => void;
-  onRightClickDelete?: () => void;
+  onTagPress: () => void;
+  onDeletePress: () => void;
+  noteTags?: Tag[];
 }
 
 function NoteCard({
   note,
   cardWidth,
   onPress,
-  onDelete,
-  onRightClickDelete,
+  onTagPress,
+  onDeletePress,
+  noteTags = [],
 }: NoteCardProps) {
+  const { colors } = useThemeColors();
   const scale = new Animated.Value(1);
 
   const handlePressIn = () => {
@@ -650,13 +966,6 @@ function NoteCard({
       useNativeDriver: true,
       friction: 3,
     }).start();
-  };
-
-  const handleContextMenu = (e: any) => {
-    if (Platform.OS === "web" && onRightClickDelete) {
-      e.preventDefault();
-      onRightClickDelete();
-    }
   };
 
   const formatDate = (dateString: string) => {
@@ -696,45 +1005,64 @@ function NoteCard({
   const cardHeight = Math.min(calculatedHeight, a4MaxHeight);
 
   return (
-    <Pressable
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      onLongPress={onDelete}
-      {...(Platform.OS === "web" && {
-        onContextMenu: handleContextMenu,
-      })}
-    >
-      <Animated.View style={{ transform: [{ scale }] }}>
-        <Card
-          className="rounded-2xl bg-muted border border-border"
-          style={{
-            width: cardWidth,
-            minHeight: cardHeight,
-            maxHeight: a4MaxHeight,
-            padding: padding,
-          }}
+    <ContextMenu>
+      <ContextMenuTrigger>
+        <Pressable
+          onPress={onPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
         >
-          <Text
-            className="text-lg font-semibold text-foreground"
-            numberOfLines={1}
-          >
-            {note.title || "Untitled"}
-          </Text>
-          <Text
-            className="text-sm text-muted-foreground leading-4"
-            numberOfLines={contentLength > 200 ? 8 : 6}
-          >
-            {note.content ? note.content : "No content"}
-          </Text>
-          <Text
-            className="text-xs text-muted-foreground/70"
-            style={{ marginTop: 8 }}
-          >
-            {formatDate(note.updated_at)}
-          </Text>
-        </Card>
-      </Animated.View>
-    </Pressable>
+          <Animated.View style={{ transform: [{ scale }] }}>
+            <Card
+              className="rounded-2xl bg-muted border border-border"
+              style={{
+                width: cardWidth,
+                minHeight: cardHeight,
+                maxHeight: a4MaxHeight,
+                padding: padding,
+              }}
+            >
+              <Text
+                className="text-lg font-semibold text-foreground"
+                numberOfLines={1}
+              >
+                {note.title || "Untitled"}
+              </Text>
+              <Text
+                className="text-sm text-muted-foreground leading-4"
+                numberOfLines={contentLength > 200 ? 8 : 6}
+              >
+                {note.content ? note.content : "No content"}
+              </Text>
+              {/* Footer with last edit */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "flex-start",
+                  alignItems: "center",
+                  marginTop: 8,
+                }}
+              >
+                <Text
+                  className="text-xs text-muted-foreground/70"
+                >
+                  {formatDate(note.updated_at)}
+                </Text>
+              </View>
+            </Card>
+          </Animated.View>
+        </Pressable>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onPress={onTagPress}>
+          <TagIcon size={16} color={colors.foreground} />
+          <Text style={{ color: colors.foreground, marginLeft: 8 }}>Tags</Text>
+        </ContextMenuItem>
+        <ContextMenuItem onPress={onDeletePress} variant="destructive">
+          <Trash2 size={16} color="#ef4444" />
+          <Text style={{ color: "#ef4444", marginLeft: 8 }}>Delete</Text>
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

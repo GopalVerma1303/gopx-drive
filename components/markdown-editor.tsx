@@ -1573,6 +1573,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             return (
               <View key={node.key} style={[styles.list_item, { flexDirection: 'row', alignItems: 'flex-start' }]}>
                 <Pressable
+                  key={`checkbox-${lineIndex}`}
                   onPress={() => {
                     toggleCheckbox(lineIndex);
                   }}
@@ -1585,7 +1586,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                     }}
                   />
                 </Pressable>
-                <View style={{ flex: 1 }}>
+                <View key={node.key} style={{ flex: 1 }}>
                   {childrenWithKeys}
                 </View>
               </View>
