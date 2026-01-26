@@ -1,8 +1,9 @@
 "use client";
 
 import { NoteDetailHeader } from "@/components/headers/note-detail-header";
-import { MarkdownEditor, MarkdownEditorRef } from "@/components/markdown-editor";
 import { MarkdownToolbar } from "@/components/markdown-toolbar";
+// Import from index which handles platform-specific exports
+import { CodeMirrorEditor, CodeMirrorEditorRef } from "@/components/editor";
 import { useAuth } from "@/contexts/auth-context";
 import { createNote, getNoteById, updateNote } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -15,7 +16,6 @@ import {
   BackHandler,
   Platform,
   Alert as RNAlert,
-  ScrollView,
   View,
 } from "react-native";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
@@ -35,7 +35,7 @@ export default function NoteEditorScreen() {
   const [lastSavedTitle, setLastSavedTitle] = useState("");
   const [lastSavedContent, setLastSavedContent] = useState("");
   const [isPreview, setIsPreview] = useState(!isNewNote);
-  const editorRef = useRef<MarkdownEditorRef>(null);
+  const editorRef = useRef<CodeMirrorEditorRef>(null);
 
   const containerAnimatedStyle = useAnimatedStyle(() => {
     // Only apply keyboard avoidance on native platforms
@@ -222,20 +222,13 @@ export default function NoteEditorScreen() {
                 isPreview={isPreview}
               />
             )}
-            <ScrollView
-              className="flex-1"
-              contentContainerStyle={{ flexGrow: 1, minHeight: "100%" }}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              <MarkdownEditor
-                ref={editorRef}
-                value={content}
-                onChangeText={setContent}
-                placeholder="Start writing in markdown..."
-                isPreview={isPreview}
-              />
-            </ScrollView>
+            <CodeMirrorEditor
+              ref={editorRef}
+              value={content}
+              onChangeText={setContent}
+              placeholder="Start writing in markdown..."
+              isPreview={isPreview}
+            />
           </View>
         </View>
       ) : (
@@ -265,21 +258,13 @@ export default function NoteEditorScreen() {
                   isPreview={isPreview}
                 />
               )}
-              <ScrollView
-                className="flex-1"
-                contentContainerStyle={{ flexGrow: 1 }}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-                keyboardDismissMode="interactive"
-              >
-                <MarkdownEditor
-                  ref={editorRef}
-                  value={content}
-                  onChangeText={setContent}
-                  placeholder="Start writing in markdown..."
-                  isPreview={isPreview}
-                />
-              </ScrollView>
+              <CodeMirrorEditor
+                ref={editorRef}
+                value={content}
+                onChangeText={setContent}
+                placeholder="Start writing in markdown..."
+                isPreview={isPreview}
+              />
             </View>
           </View>
         </Animated.View>
