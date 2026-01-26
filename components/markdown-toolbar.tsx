@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import * as Haptics from "expo-haptics";
 import {
   Bold,
+  Calendar,
   Code,
   Code2,
   Hash,
@@ -148,7 +149,7 @@ export function MarkdownToolbar({
 
   const handleHeading = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onInsertText("#", 1);
+    onInsertText("# ", 2);
   };
 
   const handleInlineCode = () => {
@@ -226,6 +227,16 @@ export function MarkdownToolbar({
   const handleRedo = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onRedo?.();
+  };
+
+  const handleDate = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const year = String(today.getFullYear()).slice(-2);
+    const dateString = `${day}/${month}/${year}`;
+    onInsertText(dateString, dateString.length);
   };
 
 
@@ -371,6 +382,7 @@ export function MarkdownToolbar({
           <ToolbarButton onPress={handleCodeBlock} ariaLabel="Code Block" IconComponent={Code2} />
           <ToolbarButton onPress={handleTable} ariaLabel="Table" IconComponent={Table} />
           <ToolbarButton onPress={handleHorizontalRule} ariaLabel="Horizontal Rule" IconComponent={Minus} />
+          <ToolbarButton onPress={handleDate} ariaLabel="Insert Date" IconComponent={Calendar} />
         </View>
       </ScrollView>
     </View>
