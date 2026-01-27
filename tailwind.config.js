@@ -50,6 +50,9 @@ module.exports = {
       borderWidth: {
         hairline: hairlineWidth(),
       },
+      fontFamily: {
+        mono: ["Iosevka", "monospace"],
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },

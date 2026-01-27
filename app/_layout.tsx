@@ -10,6 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as Linking from "expo-linking";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { Alert, Platform, View } from "react-native";
@@ -159,10 +160,49 @@ function RootLayoutNav() {
   );
 }
 
+// Store font module reference for web font-face injection
+const iosevkaFont = require("@/assets/fonts/Iosevka.ttf");
+
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Iosevka: iosevkaFont,
+  });
+
+  // Inject @font-face for web platform after font is loaded
   useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+    if (Platform.OS === "web" && typeof document !== "undefined" && fontsLoaded) {
+      // Check if font-face already exists
+      const existingStyle = document.getElementById("iosevka-font-face");
+      if (!existingStyle) {
+        // On web, Metro processes require() and returns a string URL for assets
+        // Fallback to a path that Metro should resolve
+        const fontUrl = typeof iosevkaFont === "string" ? iosevkaFont : "/assets/fonts/Iosevka.ttf";
+        
+        const style = document.createElement("style");
+        style.id = "iosevka-font-face";
+        style.textContent = `
+          @font-face {
+            font-family: 'Iosevka';
+            src: url('${fontUrl}') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    }
+  }, [fontsLoaded]);
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <QueryClientProvider client={queryClient}>

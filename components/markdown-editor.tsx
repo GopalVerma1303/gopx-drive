@@ -1804,7 +1804,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               paddingHorizontal: 32,
               paddingTop: 30,
               paddingBottom: 65,
-              fontFamily: "monospace",
+              fontFamily: Platform.select({
+                web: "Iosevka, monospace",
+                default: "Iosevka",
+              }),
               flex: 1,
             }}
           />
