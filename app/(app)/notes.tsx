@@ -8,8 +8,9 @@ import { archiveNote, listNotes } from "@/lib/notes";
 import type { Note } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import { useOfflineQuery } from "@/lib/use-offline-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
@@ -106,9 +107,10 @@ export default function NotesScreen() {
     isLoading,
     refetch,
     isFetching,
-  } = useQuery({
+  } = useOfflineQuery({
     queryKey: ["notes", user?.id],
     queryFn: () => listNotes(user?.id),
+    resource: "notes",
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes

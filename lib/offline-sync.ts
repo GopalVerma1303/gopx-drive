@@ -26,7 +26,14 @@ async function processMutation(
         if (mutation.type === "create") {
           result = await notesApi.createNote(mutation.data);
         } else if (mutation.type === "update") {
-          result = await notesApi.updateNote(mutation.data.id, mutation.data.updates);
+          // Check if this is an archive/restore operation
+          if (mutation.data.updates?.is_archived === true) {
+            await notesApi.archiveNote(mutation.data.id);
+          } else if (mutation.data.updates?.is_archived === false) {
+            await notesApi.restoreNote(mutation.data.id);
+          } else {
+            result = await notesApi.updateNote(mutation.data.id, mutation.data.updates);
+          }
         } else if (mutation.type === "delete") {
           await notesApi.deleteNote(mutation.data.id);
         }
@@ -36,6 +43,14 @@ async function processMutation(
       case "file":
         if (mutation.type === "create") {
           result = await filesApi.uploadFile(mutation.data);
+        } else if (mutation.type === "update") {
+          // Check if this is an archive/restore operation
+          if (mutation.data.updates?.is_archived === true) {
+            await filesApi.archiveFile(mutation.data.id);
+          } else if (mutation.data.updates?.is_archived === false) {
+            await filesApi.restoreFile(mutation.data.id);
+          }
+          // Note: Files don't have other update operations currently
         } else if (mutation.type === "delete") {
           await filesApi.deleteFile(mutation.data.id);
         }

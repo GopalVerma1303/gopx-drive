@@ -1,19 +1,28 @@
 import { UI_DEV } from "@/lib/config";
 import * as mockNotes from "@/lib/mock-notes";
 import * as supabaseNotes from "@/lib/supabase-notes";
+import * as offlineNotes from "@/lib/offline-notes";
+import { isOffline } from "@/lib/network-utils";
 import type { Note } from "@/lib/supabase";
 
-// Unified notes API that switches between mock and Supabase based on UI_DEV config
+// Unified notes API that switches between mock, Supabase, and offline-aware functions
 export const listNotes = async (userId?: string): Promise<Note[]> => {
   if (UI_DEV) {
     return mockNotes.listNotes(userId);
   }
-  return supabaseNotes.listNotes(userId);
+  const offline = await isOffline();
+  return offlineNotes.listNotes(userId, offline);
 };
 
 export const listArchivedNotes = async (userId?: string): Promise<Note[]> => {
   if (UI_DEV) {
     return mockNotes.listArchivedNotes?.(userId) || [];
+  }
+  const offline = await isOffline();
+  // For archived notes, we need to filter from the offline cache
+  if (offline) {
+    const cached = await offlineNotes.listNotes(userId, true);
+    return cached.filter((note) => note.is_archived === true);
   }
   return supabaseNotes.listArchivedNotes(userId);
 };
@@ -22,7 +31,8 @@ export const getNoteById = async (id: string): Promise<Note | null> => {
   if (UI_DEV) {
     return mockNotes.getNoteById(id);
   }
-  return supabaseNotes.getNoteById(id);
+  const offline = await isOffline();
+  return offlineNotes.getNoteById(id, offline);
 };
 
 export const createNote = async (input: {
@@ -33,7 +43,8 @@ export const createNote = async (input: {
   if (UI_DEV) {
     return mockNotes.createNote(input);
   }
-  return supabaseNotes.createNote(input);
+  const offline = await isOffline();
+  return offlineNotes.createNote(input, offline);
 };
 
 export const updateNote = async (
@@ -43,26 +54,30 @@ export const updateNote = async (
   if (UI_DEV) {
     return mockNotes.updateNote(id, updates);
   }
-  return supabaseNotes.updateNote(id, updates);
+  const offline = await isOffline();
+  return offlineNotes.updateNote(id, updates, offline);
 };
 
 export const archiveNote = async (id: string): Promise<void> => {
   if (UI_DEV) {
     return mockNotes.archiveNote?.(id) || Promise.resolve();
   }
-  return supabaseNotes.archiveNote(id);
+  const offline = await isOffline();
+  return offlineNotes.archiveNote(id, offline);
 };
 
 export const restoreNote = async (id: string): Promise<void> => {
   if (UI_DEV) {
     return mockNotes.restoreNote?.(id) || Promise.resolve();
   }
-  return supabaseNotes.restoreNote(id);
+  const offline = await isOffline();
+  return offlineNotes.restoreNote(id, offline);
 };
 
 export const deleteNote = async (id: string): Promise<void> => {
   if (UI_DEV) {
     return mockNotes.deleteNote(id);
   }
-  return supabaseNotes.deleteNote(id);
+  const offline = await isOffline();
+  return offlineNotes.deleteNote(id, offline);
 };

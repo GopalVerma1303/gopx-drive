@@ -221,3 +221,101 @@ export async function deleteNote(
     throw error;
   }
 }
+
+/**
+ * Enhanced archiveNote with offline queue support
+ */
+export async function archiveNote(
+  id: string,
+  isOffline: boolean = false
+): Promise<void> {
+  if (isOffline) {
+    await queueMutation({
+      type: "update",
+      resource: "note",
+      data: { id, updates: { is_archived: true } },
+    });
+    // Optimistically update cache
+    const cached = await getCachedData<Note[]>("notes");
+    if (cached) {
+      const note = cached.find((n) => n.id === id);
+      if (note) {
+        note.is_archived = true;
+        note.updated_at = new Date().toISOString();
+        await setCachedData("notes", cached);
+      }
+    }
+    return;
+  }
+
+  try {
+    await notesApi.archiveNote(id);
+    // Update cache
+    const cached = await getCachedData<Note[]>("notes");
+    if (cached) {
+      const note = cached.find((n) => n.id === id);
+      if (note) {
+        note.is_archived = true;
+        note.updated_at = new Date().toISOString();
+        await setCachedData("notes", cached);
+      }
+    }
+  } catch (error) {
+    // Queue for retry
+    await queueMutation({
+      type: "update",
+      resource: "note",
+      data: { id, updates: { is_archived: true } },
+    });
+    throw error;
+  }
+}
+
+/**
+ * Enhanced restoreNote with offline queue support
+ */
+export async function restoreNote(
+  id: string,
+  isOffline: boolean = false
+): Promise<void> {
+  if (isOffline) {
+    await queueMutation({
+      type: "update",
+      resource: "note",
+      data: { id, updates: { is_archived: false } },
+    });
+    // Optimistically update cache
+    const cached = await getCachedData<Note[]>("notes");
+    if (cached) {
+      const note = cached.find((n) => n.id === id);
+      if (note) {
+        note.is_archived = false;
+        note.updated_at = new Date().toISOString();
+        await setCachedData("notes", cached);
+      }
+    }
+    return;
+  }
+
+  try {
+    await notesApi.restoreNote(id);
+    // Update cache
+    const cached = await getCachedData<Note[]>("notes");
+    if (cached) {
+      const note = cached.find((n) => n.id === id);
+      if (note) {
+        note.is_archived = false;
+        note.updated_at = new Date().toISOString();
+        await setCachedData("notes", cached);
+      }
+    }
+  } catch (error) {
+    // Queue for retry
+    await queueMutation({
+      type: "update",
+      resource: "note",
+      data: { id, updates: { is_archived: false } },
+    });
+    throw error;
+  }
+}

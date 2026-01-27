@@ -6,7 +6,8 @@ import { MarkdownToolbar } from "@/components/markdown-toolbar";
 import { useAuth } from "@/contexts/auth-context";
 import { createNote, getNoteById, updateNote } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useOfflineQuery } from "@/lib/use-offline-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -53,7 +54,7 @@ export default function NoteEditorScreen() {
     isLoading,
     isFetching,
     refetch,
-  } = useQuery({
+  } = useOfflineQuery({
     queryKey: ["note", id],
     queryFn: async () => {
       const existingNote = await getNoteById(id);
@@ -62,6 +63,7 @@ export default function NoteEditorScreen() {
       }
       return existingNote;
     },
+    resource: "notes",
     enabled: !isNewNote && !!id,
     staleTime: 2 * 60 * 1000, // 2 minutes - shorter for individual notes since they change more frequently
   });

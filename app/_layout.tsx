@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthProvider } from "@/contexts/auth-context";
+import { NetworkProvider } from "@/contexts/network-context";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import "@/global.css";
 import { supabase } from "@/lib/supabase";
@@ -210,23 +211,25 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-          {Platform.OS === "web" ? (
-            <AuthProvider>
-              <ThemeProvider>
-                <RootLayoutNav />
-                <PortalHost />
-              </ThemeProvider>
-            </AuthProvider>
-          ) : (
-            <KeyboardProvider>
+          <NetworkProvider>
+            {Platform.OS === "web" ? (
               <AuthProvider>
                 <ThemeProvider>
                   <RootLayoutNav />
                   <PortalHost />
                 </ThemeProvider>
               </AuthProvider>
-            </KeyboardProvider>
-          )}
+            ) : (
+              <KeyboardProvider>
+                <AuthProvider>
+                  <ThemeProvider>
+                    <RootLayoutNav />
+                    <PortalHost />
+                  </ThemeProvider>
+                </AuthProvider>
+              </KeyboardProvider>
+            )}
+          </NetworkProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>

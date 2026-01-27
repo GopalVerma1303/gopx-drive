@@ -1,21 +1,25 @@
 import { UI_DEV } from "@/lib/config";
 import * as mockEvents from "@/lib/mock-events";
 import * as supabaseEvents from "@/lib/supabase-events";
+import * as offlineEvents from "@/lib/offline-events";
+import { isOffline } from "@/lib/network-utils";
 import type { Event } from "@/lib/supabase";
 
-// Unified events API that switches between mock and Supabase based on UI_DEV config
+// Unified events API that switches between mock, Supabase, and offline-aware functions
 export const listEvents = async (userId?: string): Promise<Event[]> => {
   if (UI_DEV) {
     return mockEvents.listEvents(userId);
   }
-  return supabaseEvents.listEvents(userId);
+  const offline = await isOffline();
+  return offlineEvents.listEvents(userId, offline);
 };
 
 export const getEventById = async (id: string): Promise<Event | null> => {
   if (UI_DEV) {
     return mockEvents.getEventById(id);
   }
-  return supabaseEvents.getEventById(id);
+  const offline = await isOffline();
+  return offlineEvents.getEventById(id, offline);
 };
 
 export const createEvent = async (input: {
@@ -28,7 +32,8 @@ export const createEvent = async (input: {
   if (UI_DEV) {
     return mockEvents.createEvent(input);
   }
-  return supabaseEvents.createEvent(input);
+  const offline = await isOffline();
+  return offlineEvents.createEvent(input, offline);
 };
 
 export const updateEvent = async (
@@ -38,7 +43,8 @@ export const updateEvent = async (
   if (UI_DEV) {
     return mockEvents.updateEvent(id, updates);
   }
-  return supabaseEvents.updateEvent(id, updates);
+  const offline = await isOffline();
+  return offlineEvents.updateEvent(id, updates, offline);
 };
 
 export const deleteEvent = async (id: string): Promise<void> => {
@@ -46,5 +52,6 @@ export const deleteEvent = async (id: string): Promise<void> => {
   if (UI_DEV) {
     return mockEvents.deleteEvent(id);
   }
-  return supabaseEvents.deleteEvent(id);
+  const offline = await isOffline();
+  return offlineEvents.deleteEvent(id, offline);
 };
