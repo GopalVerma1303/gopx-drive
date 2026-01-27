@@ -6,7 +6,7 @@ import { Text } from "@/components/ui/text";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { Image, Platform, Pressable, Text as RNText, ScrollView, TextInput, useWindowDimensions, View } from "react-native";
+import { Image, Linking, Platform, Pressable, Text as RNText, ScrollView, TextInput, useWindowDimensions, View } from "react-native";
 import Markdown, { renderRules } from "react-native-markdown-display";
 
 interface MarkdownEditorProps {
@@ -1011,16 +1011,24 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         .replace(/<((?:https?:\/\/|mailto:)[^>\s]+)>/g, '$1');
     };
 
-    // Linkify bare URLs/emails in preview without touching the underlying editor value.
+    // Linkify bare URLs/emails/phone numbers in preview without touching the underlying editor value.
     // Examples:
     // - https://example.com  -> <https://example.com>
     // - www.example.com      -> [www.example.com](https://www.example.com)
-    // - foo@bar.com          -> <foo@bar.com>
+    // - foo@bar.com          -> [foo@bar.com](mailto:foo@bar.com)
+    // - +919876543210        -> [919876543210](tel:+919876543210)
+    // - 9876543210           -> [9876543210](tel:+919876543210)
     //
     // Skips fenced code blocks (```), indented code blocks, inline code (`code`),
     // and existing markdown link syntaxes so we don't double-wrap.
     const linkifyMarkdown = (markdown: string): string => {
+      // Email regex: matches standard email format
       const EMAIL_RE = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
+      // Phone number regex: matches various formats including:
+      // - International: +1234567890, +1 234 567 8900
+      // - US formats: (123) 456-7890, 123-456-7890, 123.456.7890, 1234567890
+      // - With optional country code: +1-123-456-7890
+      const PHONE_RE = /(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b|\+\d{1,3}[-.\s]?\d{1,14}\b/gi;
       const URL_RE = /\b(?:https?:\/\/|www\.|mailto:|tel:)[^\s<>()]+/gi;
 
       const linkifyPlainText = (text: string): string => {
@@ -1051,11 +1059,50 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           return { core, trailing };
         };
 
-        // Emails first so we don't partially match inside mailto:foo@bar.com
+        // Normalize phone number: remove formatting characters and add country code if needed
+        const normalizePhoneNumber = (phone: string): string => {
+          // Remove all non-digit characters except +
+          let cleaned = phone.replace(/[^\d+]/g, '');
+          
+          // If it already starts with +, keep it as is (international format)
+          if (cleaned.startsWith('+')) {
+            return cleaned;
+          }
+          
+          // Remove leading 0 (trunk prefix) if present
+          if (cleaned.startsWith('0') && cleaned.length > 10) {
+            cleaned = cleaned.substring(1);
+          }
+          
+          // If it's 10 digits, assume Indian number and add +91
+          if (cleaned.length === 10) {
+            return `+91${cleaned}`;
+          }
+          
+          // If it's 12 digits and starts with 91, add +
+          if (cleaned.length === 12 && cleaned.startsWith('91')) {
+            return `+${cleaned}`;
+          }
+          
+          // For other cases, add +91 prefix (default to India)
+          return cleaned.length > 0 ? `+91${cleaned}` : phone;
+        };
+
+        // Phone numbers first (before emails) to avoid conflicts
+        masked = masked.replace(PHONE_RE, (raw) => {
+          const { core, trailing } = stripTrailingPunctuation(raw);
+          if (!core) return raw;
+          const normalizedPhone = normalizePhoneNumber(core);
+          // Use markdown link syntax to show original text but link to tel: URL
+          return `[${core}](tel:${normalizedPhone})${trailing}`;
+        });
+
+        // Emails second so we don't partially match inside mailto:foo@bar.com
         masked = masked.replace(EMAIL_RE, (raw) => {
           const { core, trailing } = stripTrailingPunctuation(raw);
           if (!core) return raw;
-          return `<${core}>${trailing}`;
+          // Use markdown link syntax to show original text but link to mailto: URL
+          return `[${core}](mailto:${core})${trailing}`;
         });
 
         masked = masked.replace(URL_RE, (raw) => {
@@ -1314,8 +1361,38 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       );
     };
 
+    // Custom renderer for links (handles tel: and mailto: with Linking API)
+    const renderLink = (node: any, children: any, parent: any, styles: any) => {
+      const href = node.attributes?.href || node.href || '';
+      
+      const handlePress = async () => {
+        if (!href) return;
+        
+        try {
+          // Check if we can open the URL
+          const canOpen = await Linking.canOpenURL(href);
+          if (canOpen) {
+            await Linking.openURL(href);
+          } else {
+            console.warn(`Cannot open URL: ${href}`);
+          }
+        } catch (error) {
+          console.error(`Error opening URL ${href}:`, error);
+        }
+      };
+
+      return (
+        <Pressable key={node.key} onPress={handlePress}>
+          <RNText style={styles.link}>
+            {children}
+          </RNText>
+        </Pressable>
+      );
+    };
+
     // Custom renderer for checkboxes in task lists and code blocks
     const markdownRules = {
+      link: (node: any, children: any, parent: any, styles: any) => renderLink(node, children, parent, styles),
       image: (node: any) => renderImage(node),
       // Some markdown parsers use `img` instead of `image`.
       img: (node: any) => renderImage(node),
