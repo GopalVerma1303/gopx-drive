@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
-import { deleteNote, listNotes } from "@/lib/notes";
+import { archiveNote, listNotes } from "@/lib/notes";
 import type { Note } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -113,49 +113,49 @@ export default function NotesScreen() {
     refetchOnWindowFocus: false,
   });
 
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [noteToDelete, setNoteToDelete] = useState<{
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [noteToArchive, setNoteToArchive] = useState<{
     id: string;
     title: string;
   } | null>(null);
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteNote(id),
+  const archiveMutation = useMutation({
+    mutationFn: (id: string) => archiveNote(id),
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["notes"] });
       await refetch();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setDeleteDialogOpen(false);
-      setNoteToDelete(null);
+      setArchiveDialogOpen(false);
+      setNoteToArchive(null);
     },
   });
 
 
-  const handleDeleteNote = (id: string, title: string) => {
-    Alert.alert("Delete Note", `Are you sure you want to delete "${title}"?`, [
+  const handleArchiveNote = (id: string, title: string) => {
+    Alert.alert("Archive Note", `Are you sure you want to archive "${title}"?`, [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => deleteMutation.mutate(id),
+        text: "Archive",
+        style: "default",
+        onPress: () => archiveMutation.mutate(id),
       },
     ]);
   };
 
-  const handleRightClickDelete = (id: string, title: string) => {
+  const handleRightClickArchive = (id: string, title: string) => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    setNoteToDelete({ id, title });
-    setDeleteDialogOpen(true);
+    setNoteToArchive({ id, title });
+    setArchiveDialogOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
-    if (noteToDelete) {
+  const handleArchiveConfirm = () => {
+    if (noteToArchive) {
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
-      deleteMutation.mutate(noteToDelete.id);
+      archiveMutation.mutate(noteToArchive.id);
     }
   };
 
@@ -366,10 +366,10 @@ export default function NotesScreen() {
                                 note={note}
                                 cardWidth={cardWidth}
                                 onPress={() => router.push(`/(app)/note/${note.id}`)}
-                                onDelete={() => handleRightClickDelete(note.id, note.title)}
+                                onDelete={() => handleRightClickArchive(note.id, note.title)}
                                 onRightClickDelete={
                                   Platform.OS === "web"
-                                    ? () => handleRightClickDelete(note.id, note.title)
+                                    ? () => handleRightClickArchive(note.id, note.title)
                                     : undefined
                                 }
                               />
@@ -404,10 +404,10 @@ export default function NotesScreen() {
                             note={note}
                             cardWidth={cardWidth}
                             onPress={() => router.push(`/(app)/note/${note.id}`)}
-                            onDelete={() => handleRightClickDelete(note.id, note.title)}
+                            onDelete={() => handleRightClickArchive(note.id, note.title)}
                             onRightClickDelete={
                               Platform.OS === "web"
-                                ? () => handleRightClickDelete(note.id, note.title)
+                                ? () => handleRightClickArchive(note.id, note.title)
                                 : undefined
                             }
                           />
@@ -422,9 +422,9 @@ export default function NotesScreen() {
         )}
       </View>
 
-      {/* Simple Delete Confirmation Dialog */}
+      {/* Simple Archive Confirmation Dialog */}
       {Platform.OS === "web" ? (
-        deleteDialogOpen && (
+        archiveDialogOpen && (
           <View
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
             style={{
@@ -441,7 +441,7 @@ export default function NotesScreen() {
             <Pressable
               className="absolute inset-0"
               style={{ position: "absolute" as any }}
-              onPress={() => setDeleteDialogOpen(false)}
+              onPress={() => setArchiveDialogOpen(false)}
             />
             <View
               className="bg-background border-border w-full max-w-md rounded-lg border p-6 shadow-lg"
@@ -465,7 +465,7 @@ export default function NotesScreen() {
                   marginBottom: 8,
                 }}
               >
-                Delete Note
+                Archive Note
               </Text>
               <Text
                 className="text-sm mb-6"
@@ -475,8 +475,7 @@ export default function NotesScreen() {
                   marginBottom: 24,
                 }}
               >
-                Are you sure you want to delete "{noteToDelete?.title}"? This
-                action cannot be undone.
+                Are you sure you want to archive "{noteToArchive?.title}"? You can restore it from the archive later.
               </Text>
               <View
                 className="flex-row justify-end gap-3"
@@ -492,7 +491,7 @@ export default function NotesScreen() {
                     paddingHorizontal: 16,
                     paddingVertical: 8,
                   }}
-                  onPress={() => setDeleteDialogOpen(false)}
+                  onPress={() => setArchiveDialogOpen(false)}
                 >
                   <Text style={{ color: colors.foreground }}>Cancel</Text>
                 </Pressable>
@@ -503,10 +502,10 @@ export default function NotesScreen() {
                     paddingVertical: 8,
                     borderRadius: 6,
                   }}
-                  onPress={handleDeleteConfirm}
+                  onPress={handleArchiveConfirm}
                 >
                   <Text style={{ color: "#ef4444", fontWeight: "600" }}>
-                    Delete
+                    Archive
                   </Text>
                 </Pressable>
               </View>
@@ -515,10 +514,10 @@ export default function NotesScreen() {
         )
       ) : (
         <Modal
-          visible={deleteDialogOpen}
+          visible={archiveDialogOpen}
           transparent
           animationType="fade"
-          onRequestClose={() => setDeleteDialogOpen(false)}
+          onRequestClose={() => setArchiveDialogOpen(false)}
         >
           <View
             style={{
@@ -544,7 +543,7 @@ export default function NotesScreen() {
                   right: 0,
                   bottom: 0,
                 }}
-                onPress={() => setDeleteDialogOpen(false)}
+                onPress={() => setArchiveDialogOpen(false)}
               />
               <View
                 style={{
@@ -570,7 +569,7 @@ export default function NotesScreen() {
                     marginBottom: 8,
                   }}
                 >
-                  Delete Note
+                  Archive Note
                 </Text>
                 <Text
                   style={{
@@ -579,8 +578,7 @@ export default function NotesScreen() {
                     marginBottom: 24,
                   }}
                 >
-                  Are you sure you want to delete "{noteToDelete?.title}"? This
-                  action cannot be undone.
+                  Are you sure you want to archive "{noteToArchive?.title}"? You can restore it from the archive later.
                 </Text>
                 <View
                   style={{
@@ -594,7 +592,7 @@ export default function NotesScreen() {
                       paddingHorizontal: 16,
                       paddingVertical: 8,
                     }}
-                    onPress={() => setDeleteDialogOpen(false)}
+                    onPress={() => setArchiveDialogOpen(false)}
                   >
                     <Text style={{ color: colors.foreground }}>Cancel</Text>
                   </Pressable>
@@ -604,10 +602,10 @@ export default function NotesScreen() {
                       paddingVertical: 8,
                       borderRadius: 6,
                     }}
-                    onPress={handleDeleteConfirm}
+                    onPress={handleArchiveConfirm}
                   >
                     <Text style={{ color: "#ef4444", fontWeight: "600" }}>
-                      Delete
+                      Archive
                     </Text>
                   </Pressable>
                 </View>

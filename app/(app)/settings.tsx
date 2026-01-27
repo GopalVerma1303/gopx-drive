@@ -6,8 +6,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import * as Haptics from "expo-haptics";
-import { Stack } from "expo-router";
-import { LogOut } from "lucide-react-native";
+import { Stack, useRouter } from "expo-router";
+import { Archive, LogOut } from "lucide-react-native";
 import { Alert, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -16,6 +16,7 @@ export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   const handleSignOut = async () => {
     try {
@@ -185,6 +186,48 @@ export default function SettingsScreen() {
                   toggleTheme();
                 }}
               />
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Archive Section */}
+        <View className="w-full max-w-2xl mx-auto">
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: "600",
+              color: colors.mutedForeground,
+              marginBottom: 12,
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
+            Storage
+          </Text>
+          <View className="bg-muted border border-border rounded-2xl overflow-hidden">
+            <Pressable
+              className="flex flex-row p-4 gap-12"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/(app)/archive");
+              }}
+            >
+              <View className="flex flex-row items-center gap-2">
+                <Archive
+                  color={colors.foreground}
+                  size={20}
+                  strokeWidth={2.5}
+                />
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: colors.foreground,
+                    fontWeight: "500",
+                  }}
+                >
+                  Archive
+                </Text>
+              </View>
             </Pressable>
           </View>
         </View>

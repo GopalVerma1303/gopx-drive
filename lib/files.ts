@@ -11,6 +11,13 @@ export const listFiles = async (userId?: string): Promise<File[]> => {
   return supabaseFiles.listFiles(userId);
 };
 
+export const listArchivedFiles = async (userId?: string): Promise<File[]> => {
+  if (UI_DEV) {
+    return mockFiles.listArchivedFiles?.(userId) || [];
+  }
+  return supabaseFiles.listArchivedFiles(userId);
+};
+
 export const getFileById = async (id: string): Promise<File | null> => {
   if (UI_DEV) {
     return mockFiles.getFileById(id);
@@ -31,6 +38,20 @@ export const uploadFile = async (input: {
     return mockFiles.uploadFile(input);
   }
   return supabaseFiles.uploadFile(input);
+};
+
+export const archiveFile = async (id: string): Promise<void> => {
+  if (UI_DEV) {
+    return mockFiles.archiveFile?.(id) || Promise.resolve();
+  }
+  return supabaseFiles.archiveFile(id);
+};
+
+export const restoreFile = async (id: string): Promise<void> => {
+  if (UI_DEV) {
+    return mockFiles.restoreFile?.(id) || Promise.resolve();
+  }
+  return supabaseFiles.restoreFile(id);
 };
 
 export const deleteFile = async (id: string): Promise<void> => {

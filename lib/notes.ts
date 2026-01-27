@@ -11,6 +11,13 @@ export const listNotes = async (userId?: string): Promise<Note[]> => {
   return supabaseNotes.listNotes(userId);
 };
 
+export const listArchivedNotes = async (userId?: string): Promise<Note[]> => {
+  if (UI_DEV) {
+    return mockNotes.listArchivedNotes?.(userId) || [];
+  }
+  return supabaseNotes.listArchivedNotes(userId);
+};
+
 export const getNoteById = async (id: string): Promise<Note | null> => {
   if (UI_DEV) {
     return mockNotes.getNoteById(id);
@@ -37,6 +44,20 @@ export const updateNote = async (
     return mockNotes.updateNote(id, updates);
   }
   return supabaseNotes.updateNote(id, updates);
+};
+
+export const archiveNote = async (id: string): Promise<void> => {
+  if (UI_DEV) {
+    return mockNotes.archiveNote?.(id) || Promise.resolve();
+  }
+  return supabaseNotes.archiveNote(id);
+};
+
+export const restoreNote = async (id: string): Promise<void> => {
+  if (UI_DEV) {
+    return mockNotes.restoreNote?.(id) || Promise.resolve();
+  }
+  return supabaseNotes.restoreNote(id);
 };
 
 export const deleteNote = async (id: string): Promise<void> => {

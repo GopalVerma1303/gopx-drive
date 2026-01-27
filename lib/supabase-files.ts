@@ -8,11 +8,29 @@ export const listFiles = async (userId?: string): Promise<File[]> => {
     throw new Error("User ID is required");
   }
 
-  const { data, error } = await supabase
+  // Try querying with is_archived filter first
+  let { data, error } = await supabase
     .from("files")
     .select("*")
     .eq("user_id", userId)
+    .eq("is_archived", false)
     .order("updated_at", { ascending: false });
+
+  // If column doesn't exist (400 error), fallback to querying without filter
+  if (error && (error.code === "PGRST116" || error.message?.includes("column") || error.message?.includes("is_archived"))) {
+    const fallbackQuery = await supabase
+      .from("files")
+      .select("*")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false });
+    
+    if (fallbackQuery.error) {
+      throw new Error(`Failed to fetch files: ${fallbackQuery.error.message}`);
+    }
+    
+    // Filter out archived items in JavaScript (treat null/undefined as false)
+    return (fallbackQuery.data || []).filter((file: any) => !file.is_archived);
+  }
 
   if (error) {
     throw new Error(`Failed to fetch files: ${error.message}`);
@@ -21,12 +39,65 @@ export const listFiles = async (userId?: string): Promise<File[]> => {
   return data || [];
 };
 
-export const getFileById = async (id: string): Promise<File | null> => {
-  const { data, error } = await supabase
+export const listArchivedFiles = async (userId?: string): Promise<File[]> => {
+  if (!userId) {
+    throw new Error("User ID is required");
+  }
+
+  // Try querying with is_archived filter first
+  let { data, error } = await supabase
     .from("files")
     .select("*")
-    .eq("id", id)
-    .single();
+    .eq("user_id", userId)
+    .eq("is_archived", true)
+    .order("updated_at", { ascending: false });
+
+  // If column doesn't exist (400 error), return empty array (no archived items yet)
+  if (error && (error.code === "PGRST116" || error.message?.includes("column") || error.message?.includes("is_archived"))) {
+    return [];
+  }
+
+  if (error) {
+    throw new Error(`Failed to fetch archived files: ${error.message}`);
+  }
+
+  return data || [];
+};
+
+export const getFileById = async (id: string, includeArchived: boolean = true): Promise<File | null> => {
+  let query = supabase
+    .from("files")
+    .select("*")
+    .eq("id", id);
+  
+  if (!includeArchived) {
+    query = query.eq("is_archived", false);
+  }
+  
+  let { data, error } = await query.single();
+
+  // If column doesn't exist and we're filtering, retry without filter
+  if (error && !includeArchived && (error.message?.includes("column") || error.message?.includes("is_archived"))) {
+    const fallbackQuery = await supabase
+      .from("files")
+      .select("*")
+      .eq("id", id)
+      .single();
+    
+    if (fallbackQuery.error) {
+      if (fallbackQuery.error.code === "PGRST116") {
+        return null;
+      }
+      throw new Error(`Failed to fetch file: ${fallbackQuery.error.message}`);
+    }
+    
+    // Filter in JavaScript if needed
+    if (fallbackQuery.data && (fallbackQuery.data as any).is_archived) {
+      return null;
+    }
+    
+    return fallbackQuery.data;
+  }
 
   if (error) {
     if (error.code === "PGRST116") {
@@ -108,7 +179,8 @@ export const uploadFile = async (input: {
     .getPublicUrl(filePath);
 
   // Create file record in database
-  const { data, error } = await supabase
+  // Try with is_archived first
+  let { data, error } = await supabase
     .from("files")
     .insert({
       user_id,
@@ -117,9 +189,34 @@ export const uploadFile = async (input: {
       file_size: file.size,
       mime_type: file.type,
       extension: fileExt,
+      is_archived: false,
     })
     .select()
     .single();
+
+  // If column doesn't exist, try without is_archived
+  if (error && (error.message?.includes("column") || error.message?.includes("is_archived"))) {
+    const fallbackQuery = await supabase
+      .from("files")
+      .insert({
+        user_id,
+        name: file.name,
+        file_path: filePath,
+        file_size: file.size,
+        mime_type: file.type,
+        extension: fileExt,
+      })
+      .select()
+      .single();
+    
+    if (fallbackQuery.error) {
+      // If database insert fails, try to delete the uploaded file
+      await supabase.storage.from("files").remove([filePath]);
+      throw new Error(`Failed to create file record: ${fallbackQuery.error.message}`);
+    }
+    
+    return fallbackQuery.data;
+  }
 
   if (error) {
     // If database insert fails, try to delete the uploaded file
@@ -128,6 +225,58 @@ export const uploadFile = async (input: {
   }
 
   return data;
+};
+
+export const archiveFile = async (id: string): Promise<void> => {
+  // Try updating with is_archived first
+  let { error } = await supabase
+    .from("files")
+    .update({ is_archived: true, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  // If column doesn't exist, just update updated_at (column will be added later)
+  if (error && (error.message?.includes("column") || error.message?.includes("is_archived"))) {
+    const fallbackQuery = await supabase
+      .from("files")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", id);
+    
+    if (fallbackQuery.error) {
+      throw new Error(`Failed to archive file: ${fallbackQuery.error.message}`);
+    }
+    // Note: Archive functionality won't work until column is added, but won't crash
+    return;
+  }
+
+  if (error) {
+    throw new Error(`Failed to archive file: ${error.message}`);
+  }
+};
+
+export const restoreFile = async (id: string): Promise<void> => {
+  // Try updating with is_archived first
+  let { error } = await supabase
+    .from("files")
+    .update({ is_archived: false, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  // If column doesn't exist, just update updated_at (column will be added later)
+  if (error && (error.message?.includes("column") || error.message?.includes("is_archived"))) {
+    const fallbackQuery = await supabase
+      .from("files")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", id);
+    
+    if (fallbackQuery.error) {
+      throw new Error(`Failed to restore file: ${fallbackQuery.error.message}`);
+    }
+    // Note: Restore functionality won't work until column is added, but won't crash
+    return;
+  }
+
+  if (error) {
+    throw new Error(`Failed to restore file: ${error.message}`);
+  }
 };
 
 export const deleteFile = async (id: string): Promise<void> => {

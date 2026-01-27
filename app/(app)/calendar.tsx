@@ -55,6 +55,9 @@ export default function CalendarScreen() {
     title: string;
   } | null>(null);
 
+  // Track previous month to detect month changes
+  const previousMonthRef = useRef<string | null>(null);
+
   const {
     data: events = [],
     isLoading,
@@ -63,11 +66,31 @@ export default function CalendarScreen() {
   } = useQuery({
     queryKey: ["events", user?.id],
     queryFn: () => listEvents(user?.id),
-    refetchOnMount: false,
+    refetchOnMount: true, // Fetch on initial mount
     refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    staleTime: Infinity, // Don't auto-refetch based on stale time - we'll refetch manually on month change
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (formerly cacheTime)
   });
+
+  // Refetch events when month changes
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const currentMonthKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth()}`;
+    const previousMonthKey = previousMonthRef.current;
+
+    // Skip refetch on initial mount (handled by refetchOnMount: true)
+    if (previousMonthKey === null) {
+      previousMonthRef.current = currentMonthKey;
+      return;
+    }
+
+    // Refetch only if month actually changed
+    if (previousMonthKey !== currentMonthKey) {
+      previousMonthRef.current = currentMonthKey;
+      refetch();
+    }
+  }, [currentMonth, user?.id, refetch]);
 
   const createMutation = useMutation({
     mutationFn: (input: {
@@ -210,15 +233,18 @@ export default function CalendarScreen() {
   };
 
   // Expand events into recurring instances (memoized to prevent unnecessary recalculations)
+  // Include events from 1 year ago to 1 year ahead to show past, present, and future events in calendar
   const expandedEvents = useMemo(() => {
     if (events.length === 0) return [];
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const startDate = new Date(today);
+    startDate.setFullYear(startDate.getFullYear() - 1); // Include events from 1 year ago
     const endDate = new Date(today);
     endDate.setFullYear(endDate.getFullYear() + 1); // Show events up to 1 year ahead
 
-    return expandEventsIntoInstances(events, today, endDate);
+    return expandEventsIntoInstances(events, startDate, endDate);
   }, [events]); // Only recalculate when events array changes
 
   // Get the start and end of the current month being displayed (memoized)
@@ -2561,7 +2587,7 @@ function generateRecurringInstances(
   const instances: ExpandedEvent[] = [];
   const repeatInterval = event.repeat_interval || "once";
 
-  // If it's a one-time event, just return the original event
+  // If it's a one-time event, just return the original event if it's in range
   if (repeatInterval === "once") {
     const eventDate = parseLocalDate(event.event_date.split("T")[0]);
     if (eventDate >= startDate && eventDate <= endDate) {
@@ -2578,12 +2604,27 @@ function generateRecurringInstances(
   const originalDate = parseLocalDate(event.event_date.split("T")[0]);
   const timePart = event.event_date.includes("T") ? event.event_date.split("T")[1] : "00:00:00";
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // For recurring events, include the original event date if it's in the past (before today)
+  // This ensures past recurring events are visible in the calendar
+  // We skip adding it if it's today or future since those will be generated below
+  if (originalDate >= startDate && originalDate < today) {
+    const dateStr = formatDateToLocalString(originalDate);
+    const instanceDateTime = `${dateStr}T${timePart}`;
+    instances.push({
+      ...event,
+      event_date: instanceDateTime,
+      instanceDate: dateStr,
+      isRecurring: true,
+    });
+  }
+
   // Generate instances based on repeat interval
   let currentDate = new Date(originalDate);
 
   // For past events, start from today or the original date (whichever is later)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
   if (currentDate < today) {
     // Calculate how many intervals have passed
     if (repeatInterval === "daily") {

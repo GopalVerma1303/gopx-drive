@@ -21,6 +21,7 @@ export interface Note {
   user_id: string;
   title: string;
   content: string;
+  is_archived: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -33,6 +34,7 @@ export interface File {
   file_size: number;
   mime_type: string;
   extension: string;
+  is_archived: boolean;
   created_at: string;
   updated_at: string;
 }

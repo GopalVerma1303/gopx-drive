@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
+import React from "react";
 import type { ViewProps } from "react-native";
 import { View } from "react-native";
-import React from "react";
 
 // Use a type-only import to avoid runtime issues
 type BaseAnimationBuilder = any;

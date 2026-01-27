@@ -3,7 +3,7 @@
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
-import { deleteFile, getFileDownloadUrl, listFiles, uploadFile } from "@/lib/files";
+import { archiveFile, getFileDownloadUrl, listFiles, uploadFile } from "@/lib/files";
 import type { File as FileRecord } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -122,8 +122,8 @@ export default function FilesScreen() {
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [fileToAction, setFileToAction] = useState<FileRecord | null>(null);
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteFile(id),
+  const archiveMutation = useMutation({
+    mutationFn: (id: string) => archiveFile(id),
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       await refetch();
@@ -228,12 +228,12 @@ export default function FilesScreen() {
     }
   };
 
-  const handleDeleteConfirm = () => {
+  const handleArchiveConfirm = () => {
     if (fileToAction) {
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
-      deleteMutation.mutate(fileToAction.id);
+      archiveMutation.mutate(fileToAction.id);
     }
   };
 
@@ -560,10 +560,10 @@ export default function FilesScreen() {
                     alignItems: "center",
                     gap: 8,
                   }}
-                  onPress={handleDeleteConfirm}
+                  onPress={handleArchiveConfirm}
                 >
                   <Text style={{ color: "#ef4444", fontWeight: "600" }}>
-                    Delete
+                    Archive
                   </Text>
                 </Pressable>
               </View>
@@ -654,10 +654,10 @@ export default function FilesScreen() {
                       paddingVertical: 8,
                       borderRadius: 6,
                     }}
-                    onPress={handleDeleteConfirm}
+                    onPress={handleArchiveConfirm}
                   >
                     <Text style={{ color: "#ef4444", fontWeight: "600" }}>
-                      Delete
+                      Archive
                     </Text>
                   </Pressable>
                 </View>
