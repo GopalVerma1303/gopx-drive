@@ -356,7 +356,7 @@ export default function FilesScreen() {
 
         {isLoading ? (
           <View className="flex-1 justify-center items-center">
-            <ActivityIndicator size="large" color="foreground" />
+            <ActivityIndicator size="large" color={colors.foreground} />
           </View>
         ) : (
           <ScrollView

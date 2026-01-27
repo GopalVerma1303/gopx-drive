@@ -20,6 +20,7 @@
     "@rn-primitives/portal": "^1.3.0",
     "@rn-primitives/slot": "^1.2.0",
     "@rn-primitives/switch": "^1.2.0",
+    "@rn-primitives/tabs": "^1.2.0",
     "@rn-primitives/toggle": "^1.2.0",
     "@rn-primitives/toggle-group": "^1.2.0",
     "@stardazed/streams-text-encoding": "^1.0.2",
