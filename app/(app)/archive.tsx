@@ -1,5 +1,6 @@
 "use client";
 
+import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
@@ -1065,6 +1066,13 @@ function ArchivedNoteCard({
     }).start();
   };
 
+  const handleContextMenu = (e: any) => {
+    if (Platform.OS === "web" && onDelete) {
+      e.preventDefault();
+      onDelete();
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -1080,71 +1088,77 @@ function ArchivedNoteCard({
     return date.toLocaleDateString();
   };
 
-  const padding = 16;
+  // Calculate variable card height based on content length for masonry effect
+  const padding = 16; // p-4 = 16px
   const contentLength = note.content?.length || 0;
-  const titleHeight = 24;
-  const dateHeight = 14;
+  const titleHeight = 24; // Approximate title height
+  const dateHeight = 14; // Approximate date height
   const minContentHeight = 40;
   const maxContentHeight = 120;
+
+  // Calculate content height based on text length (rough estimate)
+  // Each character is roughly 6px wide, with line breaks every ~50 chars
   const lines = Math.ceil((contentLength || 0) / 50);
   const contentHeight = Math.min(
     Math.max(minContentHeight, lines * 18),
     maxContentHeight
   );
+
+  // A4 paper aspect ratio: height/width = 297/210 ≈ 1.414
   const a4MaxHeight = cardWidth * 1.414;
-  const calculatedHeight =
-    titleHeight + contentHeight + dateHeight + padding * 2 + 8;
+  const calculatedHeight = titleHeight + contentHeight + dateHeight + padding * 2 + 8; // +8 for spacing
   const cardHeight = Math.min(calculatedHeight, a4MaxHeight);
 
   return (
     <Pressable
+      onPress={onToggleSelect}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      onPress={onToggleSelect}
+      onLongPress={onDelete}
+      {...(Platform.OS === "web" && {
+        onContextMenu: handleContextMenu,
+      })}
     >
       <Animated.View style={{ transform: [{ scale }] }}>
-        <View
+        <Card
+          className="rounded-2xl bg-muted border border-border"
           style={{
-            backgroundColor: colors.muted,
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 16,
             width: cardWidth,
             minHeight: cardHeight,
             maxHeight: a4MaxHeight,
             padding: padding,
-            flexDirection: "row",
-            alignItems: "flex-start",
-            gap: 12,
+            position: "relative",
           }}
         >
-          <View className="mt-1.5">
+          <View
+            style={{
+              position: "absolute",
+              top: padding,
+              right: padding,
+              zIndex: 10,
+            }}
+          >
             <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} />
           </View>
-          <View style={{ flex: 1, justifyContent: "space-between", minHeight: cardHeight - padding * 2 }}>
-            <View style={{ flex: 1 }}>
-              <Text
-                className="text-lg font-semibold text-foreground"
-                numberOfLines={1}
-              >
-                {note.title || "Untitled"}
-              </Text>
-              <Text
-                className="text-sm text-muted-foreground leading-4"
-                numberOfLines={contentLength > 200 ? 8 : 6}
-                style={{ marginTop: 4 }}
-              >
-                {note.content ? note.content : "No content"}
-              </Text>
-            </View>
-            <Text
-              className="text-xs text-muted-foreground/70"
-              style={{ marginTop: 8 }}
-            >
-              {formatDate(note.updated_at)}
-            </Text>
-          </View>
-        </View>
+          <Text
+            className="text-lg font-semibold text-foreground"
+            numberOfLines={1}
+          >
+            {note.title || "Untitled"}
+          </Text>
+          <Text
+            className="text-sm text-muted-foreground leading-4"
+            numberOfLines={contentLength > 200 ? 8 : 6}
+          >
+            {note.content ? note.content : "No content"}
+          </Text>
+          <Text
+            className="text-xs text-muted-foreground/70"
+            style={{ marginTop: 8 }}
+          >
+            {formatDate(note.updated_at)}
+          </Text>
+        </Card>
       </Animated.View>
     </Pressable>
   );
