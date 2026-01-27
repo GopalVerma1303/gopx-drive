@@ -1063,27 +1063,27 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         const normalizePhoneNumber = (phone: string): string => {
           // Remove all non-digit characters except +
           let cleaned = phone.replace(/[^\d+]/g, '');
-          
+
           // If it already starts with +, keep it as is (international format)
           if (cleaned.startsWith('+')) {
             return cleaned;
           }
-          
+
           // Remove leading 0 (trunk prefix) if present
           if (cleaned.startsWith('0') && cleaned.length > 10) {
             cleaned = cleaned.substring(1);
           }
-          
+
           // If it's 10 digits, assume Indian number and add +91
           if (cleaned.length === 10) {
             return `+91${cleaned}`;
           }
-          
+
           // If it's 12 digits and starts with 91, add +
           if (cleaned.length === 12 && cleaned.startsWith('91')) {
             return `+${cleaned}`;
           }
-          
+
           // For other cases, add +91 prefix (default to India)
           return cleaned.length > 0 ? `+91${cleaned}` : phone;
         };
@@ -1364,10 +1364,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     // Custom renderer for links (handles tel: and mailto: with Linking API)
     const renderLink = (node: any, children: any, parent: any, styles: any) => {
       const href = node.attributes?.href || node.href || '';
-      
+
       const handlePress = async () => {
         if (!href) return;
-        
+
         try {
           // Check if we can open the URL
           const canOpen = await Linking.canOpenURL(href);
@@ -1381,12 +1381,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         }
       };
 
+      // Use RNText with onPress directly instead of Pressable to maintain inline alignment
       return (
-        <Pressable key={node.key} onPress={handlePress}>
-          <RNText style={styles.link}>
-            {children}
-          </RNText>
-        </Pressable>
+        <RNText key={node.key} style={styles.link} onPress={handlePress}>
+          {children}
+        </RNText>
       );
     };
 
@@ -1650,6 +1649,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             return (
               <View key={node.key} style={[styles.list_item, { flexDirection: 'row', alignItems: 'flex-start' }]}>
                 <Pressable
+                  key={`checkbox-${lineIndex}`}
                   onPress={() => {
                     toggleCheckbox(lineIndex);
                   }}
