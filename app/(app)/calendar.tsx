@@ -100,9 +100,9 @@ export default function CalendarScreen() {
       event_date: string;
       repeat_interval?: "once" | "daily" | "weekly" | "monthly" | "yearly" | null;
     }) => createEvent(input),
-    onSuccess: async () => {
+    onSuccess: () => {
+      // Remove redundant refetch() - invalidateQueries already triggers refetch
       queryClient.invalidateQueries({ queryKey: ["events"] });
-      await refetch();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setEventModalOpen(false);
       setEditingEvent(null);
@@ -121,9 +121,9 @@ export default function CalendarScreen() {
       id: string;
       updates: Partial<Pick<Event, "title" | "description" | "event_date" | "repeat_interval">>;
     }) => updateEvent(id, updates),
-    onSuccess: async () => {
+    onSuccess: () => {
+      // Remove redundant refetch() - invalidateQueries already triggers refetch
       queryClient.invalidateQueries({ queryKey: ["events"] });
-      await refetch();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setEventModalOpen(false);
       setEditingEvent(null);
@@ -179,11 +179,10 @@ export default function CalendarScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setEventModalOpen(false);
       setEditingEvent(null);
-      // Invalidate and refetch after a brief delay to ensure DB has processed
-      setTimeout(async () => {
+      // Invalidate after a brief delay to ensure DB has processed
+      // Remove redundant refetch() - invalidateQueries already triggers refetch
+      setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["events", user?.id] });
-        const result = await refetch();
-        console.log("Refetch after delete - events count:", result.data?.length || 0);
       }, 200);
     },
   });

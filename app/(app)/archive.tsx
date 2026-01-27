@@ -98,6 +98,7 @@ export default function ArchiveScreen() {
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
   });
 
   const {
@@ -112,42 +113,43 @@ export default function ArchiveScreen() {
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
   });
 
   const restoreNoteMutation = useMutation({
     mutationFn: (id: string) => restoreNote(id),
-    onSuccess: async () => {
+    onSuccess: () => {
+      // Remove redundant refetch() - invalidateQueries already triggers refetch
       queryClient.invalidateQueries({ queryKey: ["archivedNotes"] });
       queryClient.invalidateQueries({ queryKey: ["notes"] });
-      await refetchNotes();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
   });
 
   const deleteNoteMutation = useMutation({
     mutationFn: (id: string) => deleteNote(id),
-    onSuccess: async () => {
+    onSuccess: () => {
+      // Remove redundant refetch() - invalidateQueries already triggers refetch
       queryClient.invalidateQueries({ queryKey: ["archivedNotes"] });
-      await refetchNotes();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
   });
 
   const restoreFileMutation = useMutation({
     mutationFn: (id: string) => restoreFile(id),
-    onSuccess: async () => {
+    onSuccess: () => {
+      // Remove redundant refetch() - invalidateQueries already triggers refetch
       queryClient.invalidateQueries({ queryKey: ["archivedFiles"] });
       queryClient.invalidateQueries({ queryKey: ["files"] });
-      await refetchFiles();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
   });
 
   const deleteFileMutation = useMutation({
     mutationFn: (id: string) => deleteFile(id),
-    onSuccess: async () => {
+    onSuccess: () => {
+      // Remove redundant refetch() - invalidateQueries already triggers refetch
       queryClient.invalidateQueries({ queryKey: ["archivedFiles"] });
-      await refetchFiles();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
   });

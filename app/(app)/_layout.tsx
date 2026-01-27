@@ -107,29 +107,35 @@ export default function AppLayout() {
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
-    // Refetch queries when app comes to foreground
+    // Only refetch stale queries when app comes to foreground
     const subscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
       if (
         appState.current.match(/inactive|background/) &&
         nextAppState === "active"
       ) {
-        // App has come to the foreground, refetch notes and files
-        queryClient.refetchQueries({ queryKey: ["notes"] });
-        queryClient.refetchQueries({ queryKey: ["files"] });
+        // Only refetch queries that are stale (older than staleTime)
+        // This prevents unnecessary API calls if data is still fresh
+        queryClient.refetchQueries({ 
+          queryKey: ["notes"],
+          type: "active",
+          stale: true, // Only refetch if stale
+        });
+        queryClient.refetchQueries({ 
+          queryKey: ["files"],
+          type: "active",
+          stale: true, // Only refetch if stale
+        });
       }
       appState.current = nextAppState;
     });
 
-    // Also refetch on initial mount (when app first opens)
-    if (user) {
-      queryClient.refetchQueries({ queryKey: ["notes"] });
-      queryClient.refetchQueries({ queryKey: ["files"] });
-    }
+    // Remove initial mount refetch - queries will fetch when components mount
+    // This prevents double fetching on app startup
 
     return () => {
       subscription.remove();
     };
-  }, [queryClient, user]);
+  }, [queryClient]);
 
   if (isLoading) {
     return (

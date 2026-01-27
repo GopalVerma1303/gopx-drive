@@ -117,6 +117,7 @@ export default function FilesScreen() {
     queryFn: () => listFiles(user?.id),
     refetchOnMount: false,
     refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
   });
 
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
@@ -124,9 +125,9 @@ export default function FilesScreen() {
 
   const archiveMutation = useMutation({
     mutationFn: (id: string) => archiveFile(id),
-    onSuccess: async () => {
+    onSuccess: () => {
+      // Remove redundant refetch() - invalidateQueries already triggers refetch
       queryClient.invalidateQueries({ queryKey: ["files"] });
-      await refetch();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setActionDialogOpen(false);
       setFileToAction(null);
@@ -173,8 +174,8 @@ export default function FilesScreen() {
         },
       });
 
+      // Remove redundant refetch() - invalidateQueries already triggers refetch
       queryClient.invalidateQueries({ queryKey: ["files"] });
-      await refetch();
 
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

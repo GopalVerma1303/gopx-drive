@@ -63,6 +63,7 @@ export default function NoteEditorScreen() {
       return existingNote;
     },
     enabled: !isNewNote && !!id,
+    staleTime: 2 * 60 * 1000, // 2 minutes - shorter for individual notes since they change more frequently
   });
 
   useEffect(() => {
@@ -124,8 +125,9 @@ export default function NoteEditorScreen() {
       setLastSavedTitle(updatedTitle);
       setLastSavedContent(updatedContent);
 
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-      queryClient.invalidateQueries({ queryKey: ["note", id] });
+      // Optimistically update cache instead of invalidating
+      queryClient.setQueryData(["note", id], savedNote);
+      queryClient.invalidateQueries({ queryKey: ["notes"] }); // Invalidate list to refresh
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     onError: (error: any) => {

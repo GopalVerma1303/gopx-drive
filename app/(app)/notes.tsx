@@ -111,6 +111,7 @@ export default function NotesScreen() {
     queryFn: () => listNotes(user?.id),
     refetchOnMount: false,
     refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
   });
 
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
@@ -121,9 +122,9 @@ export default function NotesScreen() {
 
   const archiveMutation = useMutation({
     mutationFn: (id: string) => archiveNote(id),
-    onSuccess: async () => {
+    onSuccess: () => {
+      // Remove redundant refetch() - invalidateQueries already triggers refetch
       queryClient.invalidateQueries({ queryKey: ["notes"] });
-      await refetch();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setArchiveDialogOpen(false);
       setNoteToArchive(null);
