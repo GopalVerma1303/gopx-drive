@@ -1,5 +1,6 @@
 import { addNetworkStateListener, getNetworkStateAsync } from "expo-network";
 import { useEffect, useState } from "react";
+import { Platform } from "react-native";
 
 export interface NetworkState {
   isConnected: boolean;
@@ -9,16 +10,23 @@ export interface NetworkState {
 
 /**
  * Hook to monitor network status
+ * On web, always returns online status since offline features are disabled on web
  */
 export function useNetworkStatus() {
   const [networkState, setNetworkState] = useState<NetworkState>({
     isConnected: true,
     isInternetReachable: true,
-    type: "UNKNOWN",
+    type: Platform.OS === "web" ? "WEB" : "UNKNOWN",
   });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // On web, offline features are disabled - always return online
+    if (Platform.OS === "web") {
+      setIsLoading(false);
+      return;
+    }
+
     let mounted = true;
 
     // Get initial network state
@@ -60,6 +68,6 @@ export function useNetworkStatus() {
   return {
     ...networkState,
     isLoading,
-    isOffline: !networkState.isConnected || !networkState.isInternetReachable,
+    isOffline: Platform.OS === "web" ? false : (!networkState.isConnected || !networkState.isInternetReachable),
   };
 }

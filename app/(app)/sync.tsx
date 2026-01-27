@@ -58,7 +58,7 @@ export default function SyncScreen() {
 
   const isSmallScreen = screenWidth < 768;
 
-  // Query for pending mutations
+  // Query for pending mutations (disabled on web - offline features not available)
   const {
     data: pendingMutations = [],
     isLoading: mutationsLoading,
@@ -67,30 +67,39 @@ export default function SyncScreen() {
   } = useQuery({
     queryKey: ["pendingMutations"],
     queryFn: async () => {
+      if (Platform.OS === "web") {
+        return []; // Offline features disabled on web
+      }
       const mutations = await getQueuedMutations();
       return mutations;
     },
-    refetchInterval: 2000, // Refetch every 2 seconds to keep it updated
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    refetchInterval: Platform.OS === "web" ? false : 2000, // Disable refetch on web
+    refetchOnMount: Platform.OS !== "web",
+    refetchOnWindowFocus: Platform.OS !== "web",
+    enabled: Platform.OS !== "web", // Disable query on web
   });
 
-  // Query for last sync time
+  // Query for last sync time (disabled on web - offline features not available)
   const {
     data: lastSyncTime,
     refetch: refetchLastSync,
   } = useQuery({
     queryKey: ["lastSyncTime"],
     queryFn: async () => {
+      if (Platform.OS === "web") {
+        return null; // Offline features disabled on web
+      }
       return await getLastSyncTime();
     },
-    refetchInterval: 5000, // Refetch every 5 seconds
+    refetchInterval: Platform.OS === "web" ? false : 5000, // Disable refetch on web
+    enabled: Platform.OS !== "web", // Disable query on web
   });
 
   const [isSyncing, setIsSyncing] = useState(false);
 
   const handleSyncNow = async () => {
-    if (isOffline) {
+    // Skip sync on web - offline features disabled
+    if (Platform.OS === "web" || isOffline) {
       return;
     }
 

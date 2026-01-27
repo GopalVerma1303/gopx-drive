@@ -1,4 +1,5 @@
 import { getNetworkStateAsync } from "expo-network";
+import { Platform } from "react-native";
 
 let cachedNetworkState: { isOffline: boolean; timestamp: number } | null = null;
 const CACHE_DURATION = 5000; // Cache for 5 seconds
@@ -6,8 +7,14 @@ const CACHE_DURATION = 5000; // Cache for 5 seconds
 /**
  * Check if device is offline
  * Uses a short cache to avoid excessive async calls
+ * On web, always returns false (not offline) since offline features are disabled on web
  */
 export async function isOffline(): Promise<boolean> {
+  // On web, offline features are disabled - always return false
+  if (Platform.OS === "web") {
+    return false;
+  }
+
   // Check cache first
   if (cachedNetworkState && Date.now() - cachedNetworkState.timestamp < CACHE_DURATION) {
     return cachedNetworkState.isOffline;

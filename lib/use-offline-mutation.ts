@@ -1,9 +1,11 @@
 import { useMutation, UseMutationOptions, useQueryClient } from "@tanstack/react-query";
+import { Platform } from "react-native";
 import { useNetwork } from "@/contexts/network-context";
 import { queueMutation } from "./offline-storage";
 
 /**
  * Enhanced useMutation hook that queues mutations when offline
+ * Offline features are disabled on web
  */
 export function useOfflineMutation<TData = unknown, TError = unknown, TVariables = void>(
   options: UseMutationOptions<TData, TError, TVariables> & {
@@ -19,7 +21,8 @@ export function useOfflineMutation<TData = unknown, TError = unknown, TVariables
   return useMutation<TData, TError, TVariables>({
     ...restOptions,
     mutationFn: async (variables: TVariables) => {
-      if (isOffline && resource && mutationType) {
+      // Skip offline queue on web - offline features disabled
+      if (Platform.OS !== "web" && isOffline && resource && mutationType) {
         // Queue the mutation
         await queueMutation({
           type: mutationType,
@@ -49,8 +52,8 @@ export function useOfflineMutation<TData = unknown, TError = unknown, TVariables
       try {
         return await mutationFn(variables);
       } catch (error) {
-        // Queue for retry on error
-        if (resource && mutationType) {
+        // Queue for retry on error (only on mobile)
+        if (Platform.OS !== "web" && resource && mutationType) {
           await queueMutation({
             type: mutationType,
             resource,

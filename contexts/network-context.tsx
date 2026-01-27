@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef, ReactNode } from "react";
 import { useNetworkStatus } from "@/lib/use-network-status";
 import { useQueryClient } from "@tanstack/react-query";
 import { syncQueuedMutations } from "@/lib/offline-sync";
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native";
 
 interface NetworkContextType {
   isOffline: boolean;
@@ -19,6 +19,11 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
   const wasOffline = useRef(networkStatus.isOffline);
 
   useEffect(() => {
+    // Skip offline sync on web - offline features are disabled on web
+    if (Platform.OS === "web") {
+      return;
+    }
+
     // When coming back online, sync queued mutations
     if (wasOffline.current && !networkStatus.isOffline) {
       console.log("Network back online, syncing queued mutations...");

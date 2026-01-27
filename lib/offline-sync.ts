@@ -1,4 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
+import { Platform } from "react-native";
 import * as eventsApi from "./events";
 import * as filesApi from "./files";
 import * as notesApi from "./notes";
@@ -90,10 +91,16 @@ async function processMutation(
 
 /**
  * Sync all queued mutations when back online
+ * Offline features are disabled on web - returns empty result
  */
 export async function syncQueuedMutations(
   queryClient: QueryClient
 ): Promise<{ success: number; failed: number }> {
+  // Skip on web - offline features disabled
+  if (Platform.OS === "web") {
+    return { success: 0, failed: 0 };
+  }
+
   const queue = await getQueuedMutations();
   if (queue.length === 0) {
     return { success: 0, failed: 0 };
@@ -117,8 +124,14 @@ export async function syncQueuedMutations(
 
 /**
  * Check if there are pending mutations
+ * Offline features are disabled on web - always returns false
  */
 export async function hasPendingMutations(): Promise<boolean> {
+  // Skip on web - offline features disabled
+  if (Platform.OS === "web") {
+    return false;
+  }
+
   const queue = await getQueuedMutations();
   return queue.length > 0;
 }
