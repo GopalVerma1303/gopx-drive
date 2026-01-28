@@ -362,10 +362,46 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             };
           }
           
-          // If context indicates alphabet, or no context, treat as alphabet
+          // For single characters: check if it's a valid roman numeral first
+          // Common roman numerals: i (1), v (5), x (10), l (50), c (100), d (500), m (1000)
+          // If it's a valid roman numeral, treat as roman (especially for nested lists starting with "i.")
+          if (alpha.length === 1 && isValidRoman(alpha)) {
+            // Check if there's alphabet context - if previous items are clearly alphabet, use alphabet
+            // Otherwise, prefer roman for single-character valid roman numerals (especially "i")
+            if (contextType === 'lowercase-alpha') {
+              // Previous context is alphabet, so continue with alphabet
+              const nextAlpha = incrementAlphabet(alpha);
+              return {
+                isList: true,
+                indent,
+                marker: `${alpha}. `,
+                markerType: 'ordered',
+                markerSubtype: 'lowercase-alpha',
+                nextMarker: `${nextAlpha}. `,
+                currentLine,
+                lineIndex,
+              };
+            } else {
+              // No context or roman context - treat as roman (especially for "i" which is commonly roman)
+              const num = romanToNumber(alpha);
+              const nextRoman = numberToRoman(num + 1, false);
+              return {
+                isList: true,
+                indent,
+                marker: `${alpha}. `,
+                markerType: 'ordered',
+                markerSubtype: 'lowercase-roman',
+                nextMarker: `${nextRoman}. `,
+                currentLine,
+                lineIndex,
+              };
+            }
+          }
+          
+          // If context indicates alphabet, or no context, treat as alphabet (for multi-character or non-roman single chars)
           if (contextType === 'lowercase-alpha' || contextType === null) {
-            // Single-character matches are alphabets when no roman context
-            if (alpha.length === 1) {
+            // Single character: if it's NOT a valid roman numeral, treat as alphabet
+            if (alpha.length === 1 && !isValidRoman(alpha)) {
               const nextAlpha = incrementAlphabet(alpha);
               return {
                 isList: true,
@@ -378,10 +414,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                 lineIndex,
               };
             }
-            
             // Multi-character: check if it's a valid roman numeral pattern
             // If it's NOT a valid roman numeral, treat as alphabet (e.g., "aa", "ab", "ac")
-            if (!isValidRoman(alpha)) {
+            if (alpha.length > 1 && !isValidRoman(alpha)) {
               const nextAlpha = incrementAlphabet(alpha);
               return {
                 isList: true,
@@ -524,6 +559,231 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       if (!isPreview && oldText !== newText) {
         pushUndoSnapshot({ text: oldText, selection: selectionRef.current });
         redoStackRef.current = [];
+      }
+
+      // Helper function to renumber ordered list items after a deletion
+      const renumberOrderedList = (lines: string[], startIndex: number, indent: string, markerSubtype: 'numeric' | 'lowercase-alpha' | 'uppercase-alpha' | 'lowercase-roman' | 'uppercase-roman') => {
+        const updatedLines = [...lines];
+        
+        // Find the previous list item at the same indentation level to determine starting value
+        let currentValue = 1;
+        if (startIndex > 0) {
+          // Build regex pattern based on marker subtype
+          let orderedRegex: RegExp;
+          if (markerSubtype === 'numeric') {
+            orderedRegex = /^(\s*)(\d+)\.\s+(.*)$/;
+          } else if (markerSubtype === 'lowercase-alpha') {
+            orderedRegex = /^(\s*)([a-z]+)\.\s+(.*)$/;
+          } else if (markerSubtype === 'uppercase-alpha') {
+            orderedRegex = /^(\s*)([A-Z]+)\.\s+(.*)$/;
+          } else if (markerSubtype === 'lowercase-roman') {
+            orderedRegex = /^(\s*)([ivxlcdm]+)\.\s+(.*)$/;
+          } else { // uppercase-roman
+            orderedRegex = /^(\s*)([IVXLCDM]+)\.\s+(.*)$/;
+          }
+          
+          // Look backwards for the previous item at the same indentation
+          for (let i = startIndex - 1; i >= 0; i--) {
+            const line = updatedLines[i] ?? '';
+            if (line.trim() === '') continue;
+            
+            const orderedMatch = line.match(orderedRegex);
+            if (orderedMatch) {
+              const lineIndent = orderedMatch[1] ?? '';
+              const lineMarker = orderedMatch[2] ?? '';
+              
+              // Validate marker type matches
+              let isValidMarker = true;
+              if (markerSubtype === 'lowercase-roman' || markerSubtype === 'uppercase-roman') {
+                isValidMarker = isValidRoman(lineMarker);
+              } else if (markerSubtype === 'lowercase-alpha' || markerSubtype === 'uppercase-alpha') {
+                isValidMarker = markerSubtype === 'lowercase-alpha' 
+                  ? /^[a-z]+$/.test(lineMarker)
+                  : /^[A-Z]+$/.test(lineMarker);
+              }
+              
+              if (isValidMarker && lineIndent === indent) {
+                // Extract the value from the previous marker
+                if (markerSubtype === 'numeric') {
+                  currentValue = parseInt(lineMarker, 10) + 1;
+                } else if (markerSubtype === 'lowercase-alpha' || markerSubtype === 'uppercase-alpha') {
+                  currentValue = alphabetToNumber(lineMarker) + 1;
+                } else if (markerSubtype === 'lowercase-roman' || markerSubtype === 'uppercase-roman') {
+                  currentValue = romanToNumber(lineMarker) + 1;
+                }
+                break;
+              }
+              
+              // If indentation is less, we've left this list level
+              if (lineIndent.length < indent.length) {
+                break;
+              }
+            } else {
+              // If indentation is less, we've left this list level
+              const lineIndent = (line.match(/^(\s*)/)?.[1]) ?? '';
+              if (lineIndent.length < indent.length) {
+                break;
+              }
+            }
+          }
+        }
+
+        // Build regex pattern based on marker subtype
+        let orderedRegex: RegExp;
+        if (markerSubtype === 'numeric') {
+          orderedRegex = /^(\s*)(\d+)\.\s+(.*)$/;
+        } else if (markerSubtype === 'lowercase-alpha') {
+          orderedRegex = /^(\s*)([a-z]+)\.\s+(.*)$/;
+        } else if (markerSubtype === 'uppercase-alpha') {
+          orderedRegex = /^(\s*)([A-Z]+)\.\s+(.*)$/;
+        } else if (markerSubtype === 'lowercase-roman') {
+          orderedRegex = /^(\s*)([ivxlcdm]+)\.\s+(.*)$/;
+        } else { // uppercase-roman
+          orderedRegex = /^(\s*)([IVXLCDM]+)\.\s+(.*)$/;
+        }
+
+        for (let i = startIndex; i < updatedLines.length; i++) {
+          const line = updatedLines[i] ?? '';
+
+          // A blank line terminates the list.
+          if (line.trim() === '') break;
+
+          const orderedMatch = line.match(orderedRegex);
+
+          if (!orderedMatch) {
+            // Allow nested content (more-indented) to exist inside a list item without ending the list.
+            const lineIndent = (line.match(/^(\s*)/)?.[1]) ?? '';
+            if (lineIndent.length > indent.length) {
+              continue;
+            }
+            break;
+          }
+
+          const lineIndent = orderedMatch[1] ?? '';
+          const lineMarker = orderedMatch[2] ?? '';
+          const lineContent = orderedMatch[3] ?? '';
+
+          // Validate marker type matches
+          let isValidMarker = true;
+          if (markerSubtype === 'lowercase-roman' || markerSubtype === 'uppercase-roman') {
+            isValidMarker = isValidRoman(lineMarker);
+          } else if (markerSubtype === 'lowercase-alpha' || markerSubtype === 'uppercase-alpha') {
+            isValidMarker = markerSubtype === 'lowercase-alpha' 
+              ? /^[a-z]+$/.test(lineMarker)
+              : /^[A-Z]+$/.test(lineMarker);
+          }
+
+          if (!isValidMarker) {
+            const lineIndent = (line.match(/^(\s*)/)?.[1]) ?? '';
+            if (lineIndent.length > indent.length) {
+              continue;
+            }
+            break;
+          }
+
+          if (lineIndent === indent) {
+            // Generate next marker based on subtype
+            let nextMarkerStr: string;
+            if (markerSubtype === 'numeric') {
+              nextMarkerStr = `${currentValue}. `;
+            } else if (markerSubtype === 'lowercase-alpha') {
+              nextMarkerStr = `${numberToAlphabet(currentValue, false)}. `;
+            } else if (markerSubtype === 'uppercase-alpha') {
+              nextMarkerStr = `${numberToAlphabet(currentValue, true)}. `;
+            } else if (markerSubtype === 'lowercase-roman') {
+              nextMarkerStr = `${numberToRoman(currentValue, false)}. `;
+            } else { // uppercase-roman
+              nextMarkerStr = `${numberToRoman(currentValue, true)}. `;
+            }
+
+            updatedLines[i] = `${indent}${nextMarkerStr}${lineContent}`;
+            currentValue += 1;
+            continue;
+          }
+
+          // Nested ordered list (more-indented) - don't renumber at this level
+          if (lineIndent.length > indent.length) {
+            continue;
+          }
+
+          // Less indentation indicates we've left this list level.
+          break;
+        }
+
+        return updatedLines;
+      };
+
+      // Check if lines were deleted (text decreased)
+      if (newLines.length < oldLines.length && !isProcessingListRef.current) {
+        // Detect deletion and renumber subsequent list items
+        // Find where the deletion occurred by comparing lines
+        let deletionStartIndex = -1;
+        let deletionEndIndex = -1;
+        
+        // Find the first line that differs
+        for (let i = 0; i < Math.min(oldLines.length, newLines.length); i++) {
+          if (oldLines[i] !== newLines[i]) {
+            deletionStartIndex = i;
+            break;
+          }
+        }
+        
+        // If no difference found in common prefix, deletion happened at the end
+        if (deletionStartIndex === -1) {
+          deletionStartIndex = newLines.length;
+        }
+        
+        // Check lines around the deletion point to find list context
+        // Try the line before deletion, then the line at deletion point, then the line after
+        const checkIndices = [
+          Math.max(0, deletionStartIndex - 1),
+          deletionStartIndex,
+          Math.min(newLines.length - 1, deletionStartIndex)
+        ].filter(idx => idx >= 0 && idx < newLines.length);
+        
+        for (const checkLineIndex of checkIndices) {
+          const checkLine = newLines[checkLineIndex];
+          if (!checkLine || checkLine.trim() === '') continue;
+          
+          // Calculate cursor position at the start of this line
+          let lineStartPos = 0;
+          for (let i = 0; i < checkLineIndex; i++) {
+            lineStartPos += (newLines[i]?.length || 0) + 1;
+          }
+          
+          const listInfo = getListInfo(newText, lineStartPos);
+          
+          if (listInfo && listInfo.markerType === 'ordered' && listInfo.markerSubtype) {
+            // Find the first line at the same indentation level after the deletion
+            let renumberStartIndex = checkLineIndex + 1;
+            
+            // If we're checking the line before deletion, start renumbering from deletion point
+            if (checkLineIndex === deletionStartIndex - 1) {
+              renumberStartIndex = deletionStartIndex;
+            }
+            
+            // Renumber subsequent items at the same indentation level
+            isProcessingListRef.current = true;
+            const renumberedLines = renumberOrderedList(
+              newLines,
+              renumberStartIndex,
+              listInfo.indent,
+              listInfo.markerSubtype
+            );
+            const renumberedText = renumberedLines.join('\n');
+            
+            previousValueRef.current = renumberedText;
+            pendingInternalValueRef.current = renumberedText;
+            onChangeText(renumberedText);
+            
+            requestAnimationFrame(() => {
+              setTimeout(() => {
+                isProcessingListRef.current = false;
+              }, Platform.OS === "android" ? 16 : 0);
+            });
+            return;
+          }
+        }
       }
 
       // Check if a newline was just added (text increased by exactly one line)
@@ -894,6 +1154,31 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       applyTextAndSelection(nextText, { start: newCursorPosition, end: newCursorPosition });
     };
 
+    // Helper function to get next marker type in cycle: numeric → roman → alphabetical → numeric
+    const getNextMarkerType = (currentType: 'numeric' | 'lowercase-roman' | 'uppercase-roman' | 'lowercase-alpha' | 'uppercase-alpha'): 'numeric' | 'lowercase-roman' | 'lowercase-alpha' => {
+      if (currentType === 'numeric') return 'lowercase-roman';
+      if (currentType === 'lowercase-roman' || currentType === 'uppercase-roman') return 'lowercase-alpha';
+      return 'numeric'; // lowercase-alpha or uppercase-alpha -> numeric
+    };
+
+    // Helper function to get previous marker type in cycle (for outdent)
+    const getPreviousMarkerType = (currentType: 'numeric' | 'lowercase-roman' | 'uppercase-roman' | 'lowercase-alpha' | 'uppercase-alpha'): 'numeric' | 'lowercase-roman' | 'lowercase-alpha' => {
+      if (currentType === 'numeric') return 'lowercase-alpha';
+      if (currentType === 'lowercase-alpha' || currentType === 'uppercase-alpha') return 'lowercase-roman';
+      return 'numeric'; // lowercase-roman or uppercase-roman -> numeric
+    };
+
+    // Helper function to convert marker type to marker string
+    const getMarkerString = (markerType: 'numeric' | 'lowercase-roman' | 'lowercase-alpha', value: number): string => {
+      if (markerType === 'numeric') {
+        return `${value}. `;
+      } else if (markerType === 'lowercase-roman') {
+        return `${numberToRoman(value, false)}. `;
+      } else { // lowercase-alpha
+        return `${numberToAlphabet(value, false)}. `;
+      }
+    };
+
     const indentAtSelection = () => {
       if (isPreview || !inputRef.current) return;
 
@@ -901,6 +1186,171 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       const end = selection.end;
       const currentText = previousValueRef.current;
 
+      // Check if we're in a list at the cursor position
+      const listInfo = getListInfo(currentText, start);
+      
+      if (listInfo && listInfo.isList) {
+        // Handle list indentation
+        const lines = currentText.split('\n');
+        const beforeCursor = currentText.substring(0, start);
+        const lineIndex = beforeCursor.split('\n').length - 1;
+        const currentLine = lines[lineIndex] || '';
+
+        // Determine which lines to indent (single line or selection)
+        const blockStart = currentText.lastIndexOf("\n", start - 1) + 1;
+        let blockEnd = currentText.indexOf("\n", end);
+        if (blockEnd === -1) blockEnd = currentText.length;
+        
+        const affectedLines: number[] = [];
+        let lineStartPos = blockStart;
+        for (let i = lineIndex; i < lines.length; i++) {
+          if (lineStartPos > blockEnd) break;
+          affectedLines.push(i);
+          lineStartPos += (lines[i]?.length || 0) + 1;
+        }
+
+        const updatedLines = [...lines];
+        let startOffset = 0;
+        let endOffset = 0;
+        let cumulativeOffset = 0;
+
+        for (const idx of affectedLines) {
+          const line = updatedLines[idx] || '';
+          // Calculate cursor position at the start of this line
+          let lineStartPos = 0;
+          for (let i = 0; i < idx; i++) {
+            lineStartPos += (lines[i]?.length || 0) + 1;
+          }
+          const lineListInfo = getListInfo(currentText, lineStartPos);
+          
+          const oldLineLength = line.length;
+          let newLineLength = oldLineLength;
+          
+            if (lineListInfo && lineListInfo.isList) {
+            if (lineListInfo.markerType === 'ordered' && lineListInfo.markerSubtype) {
+              // Ordered list: increase indentation and cycle marker type
+              // Be aware of nested level - continue from existing items at that level if they exist
+              const newIndent = lineListInfo.indent + TAB_SPACES;
+              const nextMarkerType = getNextMarkerType(lineListInfo.markerSubtype);
+              
+              // Check if there are already items at this nested level
+              // If yes, continue from the last item; if no, start from 1/i/a
+              let currentValue = 1;
+              
+              // Build regex pattern for the new marker type at the new indentation level
+              let nestedRegex: RegExp;
+              if (nextMarkerType === 'numeric') {
+                nestedRegex = /^(\s*)(\d+)\.\s+(.*)$/;
+              } else if (nextMarkerType === 'lowercase-roman') {
+                nestedRegex = /^(\s*)([ivxlcdm]+)\.\s+(.*)$/;
+              } else { // lowercase-alpha
+                nestedRegex = /^(\s*)([a-z]+)\.\s+(.*)$/;
+              }
+              
+              // Look backwards to find the LAST item at the new nested indentation level
+              // This ensures we continue the sequence correctly at any nested level
+              let lastNestedValue = 0;
+              for (let i = idx - 1; i >= 0; i--) {
+                const prevLine = lines[i] ?? '';
+                if (prevLine.trim() === '') continue;
+                
+                const lineIndent = (prevLine.match(/^(\s*)/)?.[1]) ?? '';
+                
+                // If indentation is less than the new nested level, we've left that level
+                if (lineIndent.length < newIndent.length) {
+                  break;
+                }
+                
+                // Check if this line is at the new nested indentation level
+                if (lineIndent === newIndent) {
+                  const nestedMatch = prevLine.match(nestedRegex);
+                  if (nestedMatch) {
+                    const nestedMarker = nestedMatch[2] ?? '';
+                    let markerValue = 0;
+                    
+                    // Extract the value from the marker
+                    if (nextMarkerType === 'numeric') {
+                      markerValue = parseInt(nestedMarker, 10);
+                    } else if (nextMarkerType === 'lowercase-roman') {
+                      if (isValidRoman(nestedMarker)) {
+                        markerValue = romanToNumber(nestedMarker);
+                      }
+                    } else { // lowercase-alpha
+                      if (/^[a-z]+$/.test(nestedMarker) && !isValidRoman(nestedMarker)) {
+                        markerValue = alphabetToNumber(nestedMarker);
+                      }
+                    }
+                    
+                    // Keep track of the last (highest) value we find at this nested level
+                    if (markerValue > lastNestedValue) {
+                      lastNestedValue = markerValue;
+                    }
+                  }
+                }
+              }
+              
+              // If we found items at this nested level, continue from the last value + 1
+              // Otherwise, start from 1 (or i, or a)
+              if (lastNestedValue > 0) {
+                currentValue = lastNestedValue + 1;
+              }
+              
+              // Extract content after marker
+              const contentMatch = line.match(/^(\s*)([-*+]|\d+|[a-zA-Z]+|[ivxlcdmIVXLCDM]+)\.\s+(.*)$/);
+              const content = contentMatch ? contentMatch[3] : '';
+              
+              // Create new marker - dynamically continue from existing items at this nested level
+              const newMarker = getMarkerString(nextMarkerType, currentValue);
+              updatedLines[idx] = newIndent + newMarker + content;
+              newLineLength = updatedLines[idx].length;
+              
+              // Track offset for cursor adjustment
+              const lineOffset = newLineLength - oldLineLength;
+              if (idx === lineIndex) {
+                startOffset = cumulativeOffset + lineOffset;
+              }
+              cumulativeOffset += lineOffset;
+            } else if (lineListInfo.markerType === 'unordered') {
+              // Unordered list: just increase indentation
+              const newIndent = lineListInfo.indent + TAB_SPACES;
+              const contentMatch = line.match(/^(\s*)([-*+])\s+(.*)$/);
+              const marker = contentMatch ? contentMatch[2] : '-';
+              const content = contentMatch ? contentMatch[3] : '';
+              updatedLines[idx] = newIndent + marker + ' ' + content;
+              newLineLength = updatedLines[idx].length;
+              
+              const lineOffset = TAB_SPACES.length;
+              if (idx === lineIndex) {
+                startOffset = cumulativeOffset + lineOffset;
+              }
+              cumulativeOffset += lineOffset;
+            }
+          } else {
+            // Not a list line, use default behavior
+            updatedLines[idx] = TAB_SPACES + line;
+            newLineLength = updatedLines[idx].length;
+            
+            const lineOffset = TAB_SPACES.length;
+            if (idx === lineIndex) {
+              startOffset = cumulativeOffset + lineOffset;
+            }
+            cumulativeOffset += lineOffset;
+          }
+          
+          // Calculate end offset for multi-line selections
+          if (idx === affectedLines[affectedLines.length - 1]) {
+            endOffset = cumulativeOffset;
+          }
+        }
+
+        const nextText = updatedLines.join('\n');
+        const newStart = start + startOffset;
+        const newEnd = end + endOffset;
+        applyTextAndSelection(nextText, { start: newStart, end: newEnd });
+        return;
+      }
+
+      // Not in a list: use default behavior
       // No selection: behave like inserting TAB_SPACES at cursor
       if (start === end) {
         insertTextAtSelection(TAB_SPACES, TAB_SPACES.length);
@@ -946,6 +1396,171 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       const end = selection.end;
       const currentText = previousValueRef.current;
 
+      // Check if we're in a list at the cursor position
+      const listInfo = getListInfo(currentText, start);
+      
+      if (listInfo && listInfo.isList && listInfo.indent.length >= TAB_SPACES.length) {
+        // Handle list outdentation
+        const lines = currentText.split('\n');
+        const beforeCursor = currentText.substring(0, start);
+        const lineIndex = beforeCursor.split('\n').length - 1;
+        const currentLine = lines[lineIndex] || '';
+
+        // Determine which lines to outdent (single line or selection)
+        const blockStart = currentText.lastIndexOf("\n", start - 1) + 1;
+        let blockEnd = currentText.indexOf("\n", end);
+        if (blockEnd === -1) blockEnd = currentText.length;
+        
+        const affectedLines: number[] = [];
+        let lineStartPos = blockStart;
+        for (let i = lineIndex; i < lines.length; i++) {
+          if (lineStartPos > blockEnd) break;
+          affectedLines.push(i);
+          lineStartPos += (lines[i]?.length || 0) + 1;
+        }
+
+        const updatedLines = [...lines];
+        let startOffset = 0;
+        let endOffset = 0;
+        let cumulativeOffset = 0;
+
+        for (const idx of affectedLines) {
+          const line = updatedLines[idx] || '';
+          // Calculate cursor position at the start of this line
+          let lineStartPos = 0;
+          for (let i = 0; i < idx; i++) {
+            lineStartPos += (lines[i]?.length || 0) + 1;
+          }
+          const lineListInfo = getListInfo(currentText, lineStartPos);
+          
+          const oldLineLength = line.length;
+          let newLineLength = oldLineLength;
+          
+          if (lineListInfo && lineListInfo.isList && lineListInfo.indent.length >= TAB_SPACES.length) {
+            if (lineListInfo.markerType === 'ordered' && lineListInfo.markerSubtype) {
+              // Ordered list: decrease indentation and cycle marker type backwards
+              const newIndent = lineListInfo.indent.slice(TAB_SPACES.length);
+              const prevMarkerType = getPreviousMarkerType(lineListInfo.markerSubtype);
+              
+              // When outdenting, we need to find the LAST item at the parent indentation level
+              // This ensures we continue the sequence correctly (e.g., iv. -> v., not i.)
+              // Professional markdown editors continue the parent sequence when outdenting
+              let currentValue = 1;
+              
+              // Build regex pattern for the parent marker type
+              let parentRegex: RegExp;
+              if (prevMarkerType === 'numeric') {
+                parentRegex = /^(\s*)(\d+)\.\s+(.*)$/;
+              } else if (prevMarkerType === 'lowercase-roman') {
+                parentRegex = /^(\s*)([ivxlcdm]+)\.\s+(.*)$/;
+              } else { // lowercase-alpha
+                parentRegex = /^(\s*)([a-z]+)\.\s+(.*)$/;
+              }
+              
+              // Look backwards to find the LAST item at the parent indentation level
+              // This is the item we should continue from
+              let lastParentValue = 0;
+              for (let i = idx - 1; i >= 0; i--) {
+                const prevLine = lines[i] ?? '';
+                if (prevLine.trim() === '') continue;
+                
+                const lineIndent = (prevLine.match(/^(\s*)/)?.[1]) ?? '';
+                
+                // If indentation is less than parent, we've left the parent list
+                if (lineIndent.length < newIndent.length) {
+                  break;
+                }
+                
+                // Check if this line is at the parent indentation level
+                if (lineIndent === newIndent) {
+                  const parentMatch = prevLine.match(parentRegex);
+                  if (parentMatch) {
+                    const prevMarker = parentMatch[2] ?? '';
+                    let markerValue = 0;
+                    
+                    // Extract the value from the marker
+                    if (prevMarkerType === 'numeric') {
+                      markerValue = parseInt(prevMarker, 10);
+                    } else if (prevMarkerType === 'lowercase-roman') {
+                      if (isValidRoman(prevMarker)) {
+                        markerValue = romanToNumber(prevMarker);
+                      }
+                    } else { // lowercase-alpha
+                      if (/^[a-z]+$/.test(prevMarker) && !isValidRoman(prevMarker)) {
+                        markerValue = alphabetToNumber(prevMarker);
+                      }
+                    }
+                    
+                    // Keep track of the last (highest) value we find
+                    if (markerValue > lastParentValue) {
+                      lastParentValue = markerValue;
+                    }
+                  }
+                }
+              }
+              
+              // If we found a parent item, continue from its value + 1
+              // Otherwise, start from 1
+              if (lastParentValue > 0) {
+                currentValue = lastParentValue + 1;
+              }
+              
+              // Extract content after marker
+              const contentMatch = line.match(/^(\s*)([-*+]|\d+|[a-zA-Z]+|[ivxlcdmIVXLCDM]+)\.\s+(.*)$/);
+              const content = contentMatch ? contentMatch[3] : '';
+              
+              // Create new marker with the correct value at parent level
+              const newMarker = getMarkerString(prevMarkerType, currentValue);
+              updatedLines[idx] = newIndent + newMarker + content;
+              newLineLength = updatedLines[idx].length;
+              
+              // Track offset for cursor adjustment
+              const lineOffset = newLineLength - oldLineLength;
+              if (idx === lineIndex) {
+                startOffset = cumulativeOffset + lineOffset;
+              }
+              cumulativeOffset += lineOffset;
+            } else if (lineListInfo.markerType === 'unordered') {
+              // Unordered list: just decrease indentation
+              const newIndent = lineListInfo.indent.slice(TAB_SPACES.length);
+              const contentMatch = line.match(/^(\s*)([-*+])\s+(.*)$/);
+              const marker = contentMatch ? contentMatch[2] : '-';
+              const content = contentMatch ? contentMatch[3] : '';
+              updatedLines[idx] = newIndent + marker + ' ' + content;
+              newLineLength = updatedLines[idx].length;
+              
+              const lineOffset = -TAB_SPACES.length;
+              if (idx === lineIndex) {
+                startOffset = cumulativeOffset + lineOffset;
+              }
+              cumulativeOffset += lineOffset;
+            }
+          } else if (line.startsWith(TAB_SPACES)) {
+            // Not a list line but has TAB_SPACES, use default behavior
+            updatedLines[idx] = line.slice(TAB_SPACES.length);
+            newLineLength = updatedLines[idx].length;
+            
+            const lineOffset = -TAB_SPACES.length;
+            if (idx === lineIndex) {
+              startOffset = cumulativeOffset + lineOffset;
+            }
+            cumulativeOffset += lineOffset;
+          }
+          
+          // Calculate end offset for multi-line selections
+          if (idx === affectedLines[affectedLines.length - 1]) {
+            endOffset = cumulativeOffset;
+          }
+        }
+
+        const nextText = updatedLines.join('\n');
+        const newStart = Math.max(0, start + startOffset);
+        const newEnd = Math.max(0, end + endOffset);
+        applyTextAndSelection(nextText, { start: newStart, end: newEnd });
+        return;
+      }
+
+      // Not in a list or can't outdent: use default behavior
       // No selection: remove one indent level immediately before cursor if present
       if (start === end) {
         if (start >= TAB_SPACES.length && currentText.substring(start - TAB_SPACES.length, start) === TAB_SPACES) {
