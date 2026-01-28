@@ -236,6 +236,7 @@ export default function NoteEditorScreen() {
                 onChangeText={setContent}
                 placeholder="Start writing in markdown..."
                 isPreview={isPreview}
+                onSave={handleSave}
               />
             </ScrollView>
           </View>
