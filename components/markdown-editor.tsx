@@ -2377,13 +2377,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     const renderStrikeThrough = (node: any, children: any) => {
       const parts = Array.isArray(children) ? children : [children];
       return (
-        <RNText key={node.key}>
+        <RNText key={node.key} selectable={true}>
           {parts.map((child, index) => {
             if (child === null || child === undefined || child === false) return null;
 
             if (typeof child === "string" || typeof child === "number") {
               return (
-                <RNText key={`${node.key}-del-${index}`} style={{ textDecorationLine: "line-through" as const }}>
+                <RNText key={`${node.key}-del-${index}`} style={{ textDecorationLine: "line-through" as const }} selectable={true}>
                   {child}
                 </RNText>
               );
@@ -2396,9 +2396,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                 return React.cloneElement(element, {
                   key: `${node.key}-del-${index}`,
                   style: withLineThrough(childProps.style),
+                  selectable: true,
                 });
               }
-              return React.cloneElement(element, { key: `${node.key}-del-${index}` });
+              return React.cloneElement(element, { key: `${node.key}-del-${index}`, selectable: true });
             }
 
             return null;
@@ -2481,7 +2482,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
       // Use RNText with onPress directly instead of Pressable to maintain inline alignment
       return (
-        <RNText key={node.key} style={styles.link} onPress={handlePress}>
+        <RNText key={node.key} style={styles.link} onPress={handlePress} selectable={true}>
           {children}
         </RNText>
       );
@@ -2582,7 +2583,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         // since padding doesn't work on Text components in React Native
         // Use RNText directly to ensure style prop (especially color) is properly applied on web
         return (
-          <RNText key={node.key} style={styles.code_inline}>
+          <RNText key={node.key} style={styles.code_inline} selectable={true}>
             {' '}{codeText}{' '}
           </RNText>
         );
@@ -2760,9 +2761,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                     }}
                   />
                 </Pressable>
-                <View style={{ flex: 1 }}>
+                <RNText style={{ flex: 1 }} selectable={true}>
                   {childrenWithKeys}
-                </View>
+                </RNText>
               </View>
             );
           }
@@ -2791,10 +2792,16 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           return rendered;
         }
         // Fallback to default rendering with row layout
+        // Wrap text content in a selectable Text component to enable better selection
         const childrenWithKeys = ensureChildrenKeys(children);
+        
+        // Render list item text in a Text component for better selection
+        // Note: We still need View for layout, but wrap text content in Text
         return (
           <View key={node.key} style={[styles.list_item, { flexDirection: 'row', alignItems: 'flex-start' }]}>
-            {childrenWithKeys}
+            <RNText style={{ flex: 1 }} selectable={true}>
+              {childrenWithKeys}
+            </RNText>
           </View>
         );
       },
@@ -2868,9 +2875,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               }
             ]}
           >
-            <Text style={{ fontWeight: 'bold', color: colors.foreground, fontSize: 14 }}>
+            <RNText style={{ fontWeight: 'bold', color: colors.foreground, fontSize: 14 }} selectable={true}>
               {children}
-            </Text>
+            </RNText>
           </View>
         );
       },
@@ -2889,9 +2896,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               }
             ]}
           >
-            <Text style={{ color: colors.foreground, fontSize: 14 }}>
+            <RNText style={{ color: colors.foreground, fontSize: 14 }} selectable={true}>
               {children}
-            </Text>
+            </RNText>
           </View>
         );
       },
@@ -2910,6 +2917,333 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               },
             ]}
           />
+        );
+      },
+      // Make body selectable - ensure all text children are selectable
+      body: (node: any, children: any, parent: any, styles: any) => {
+        const defaultRenderer = renderRules?.body;
+        if (defaultRenderer) {
+          const rendered = defaultRenderer(node, children, parent, styles);
+          if (rendered && React.isValidElement(rendered)) {
+            return rendered;
+          }
+        }
+        return (
+          <View key={node.key} style={styles._VIEW_SAFE_body || styles.body}>
+            {children}
+          </View>
+        );
+      },
+      // Make paragraphs selectable - wrap text content in selectable Text
+      paragraph: (node: any, children: any, parent: any, styles: any) => {
+        // Helper to check if a child is a text-like component
+        const isTextLike = (child: any): boolean => {
+          if (child === null || child === undefined || child === false) return false;
+          if (typeof child === 'string' || typeof child === 'number') return true;
+          if (React.isValidElement(child)) {
+            const childType = child.type;
+            // Check if it's a Text component (RNText or custom Text)
+            if (childType === RNText || (childType as any)?.displayName === 'Text') return true;
+            // Check component name
+            const typeName = (childType as any)?.name || (childType as any)?.displayName || '';
+            if (typeName === 'Text' || typeName === 'RNText') return true;
+            // Check if props indicate it's text-like
+            const childProps = (child.props || {}) as { children?: any };
+            if (childProps.children && (typeof childProps.children === 'string' || typeof childProps.children === 'number')) {
+              return true;
+            }
+          }
+          return false;
+        };
+
+        // Check if children contain only text (no Views, Images, etc.)
+        const childrenArray = React.Children.toArray(children);
+        const hasOnlyText = childrenArray.length > 0 && childrenArray.every(isTextLike);
+
+        // If paragraph contains only text, wrap in a single selectable Text
+        // This allows selecting the entire paragraph as one unit
+        if (hasOnlyText) {
+          return (
+            <RNText key={node.key} style={styles._VIEW_SAFE_paragraph || styles.paragraph} selectable={true}>
+              {children}
+            </RNText>
+          );
+        }
+
+        // Otherwise, render as View but ensure text children are selectable
+        // Make sure all text children have selectable prop
+        const makeChildrenSelectable = (children: any): any => {
+          if (typeof children === 'string' || typeof children === 'number') {
+            return <RNText selectable={true}>{children}</RNText>;
+          }
+          if (Array.isArray(children)) {
+            return React.Children.map(children, (child, index) => {
+              if (typeof child === 'string' || typeof child === 'number') {
+                return <RNText key={index} selectable={true}>{child}</RNText>;
+              }
+              if (React.isValidElement(child)) {
+                const childType = child.type;
+                if (childType === RNText || (childType as any)?.displayName === 'Text') {
+                  return React.cloneElement(child as React.ReactElement<any>, { 
+                    selectable: true, 
+                    key: child.key || index 
+                  });
+                }
+                // Recursively process children
+                const childProps = (child.props || {}) as { children?: any };
+                if (childProps.children !== undefined) {
+                  return React.cloneElement(child as React.ReactElement<any>, {
+                    key: child.key || index,
+                    children: makeChildrenSelectable(childProps.children),
+                  });
+                }
+              }
+              return child;
+            });
+          }
+          if (React.isValidElement(children)) {
+            const childType = children.type;
+            if (childType === RNText || (childType as any)?.displayName === 'Text') {
+              return React.cloneElement(children as React.ReactElement<any>, { selectable: true });
+            }
+            const childrenProps = (children.props || {}) as { children?: any };
+            if (childrenProps.children !== undefined) {
+              return React.cloneElement(children as React.ReactElement<any>, {
+                children: makeChildrenSelectable(childrenProps.children),
+              });
+            }
+          }
+          return children;
+        };
+
+        const defaultRenderer = renderRules?.paragraph;
+        if (defaultRenderer) {
+          const rendered = defaultRenderer(node, children, parent, styles);
+          if (rendered && React.isValidElement(rendered)) {
+            const element = rendered as React.ReactElement<{ children?: any }>;
+            return React.cloneElement(element, {
+              children: makeChildrenSelectable(element.props.children || children),
+            });
+          }
+        }
+        return (
+          <View key={node.key} style={styles._VIEW_SAFE_paragraph || styles.paragraph}>
+            {makeChildrenSelectable(children)}
+          </View>
+        );
+      },
+      // Make headings selectable
+      heading1: (node: any, children: any, parent: any, styles: any) => {
+        const hasOnlyText = React.Children.toArray(children).every((child: any) => {
+          if (typeof child === 'string' || typeof child === 'number') return true;
+          if (React.isValidElement(child)) {
+            const childType = (child.type as any)?.displayName || (child.type as any)?.name || '';
+            return childType === 'Text' || childType === 'RNText';
+          }
+          return false;
+        });
+        if (hasOnlyText && React.Children.count(children) > 0) {
+          return (
+            <RNText key={node.key} style={styles._VIEW_SAFE_heading1 || styles.heading1} selectable={true}>
+              {children}
+            </RNText>
+          );
+        }
+        const defaultRenderer = renderRules?.heading1;
+        if (defaultRenderer) {
+          return defaultRenderer(node, children, parent, styles);
+        }
+        return (
+          <View key={node.key} style={styles._VIEW_SAFE_heading1 || styles.heading1}>
+            {children}
+          </View>
+        );
+      },
+      heading2: (node: any, children: any, parent: any, styles: any) => {
+        const hasOnlyText = React.Children.toArray(children).every((child: any) => {
+          if (typeof child === 'string' || typeof child === 'number') return true;
+          if (React.isValidElement(child)) {
+            const childType = (child.type as any)?.displayName || (child.type as any)?.name || '';
+            return childType === 'Text' || childType === 'RNText';
+          }
+          return false;
+        });
+        if (hasOnlyText && React.Children.count(children) > 0) {
+          return (
+            <RNText key={node.key} style={styles._VIEW_SAFE_heading2 || styles.heading2} selectable={true}>
+              {children}
+            </RNText>
+          );
+        }
+        const defaultRenderer = renderRules?.heading2;
+        if (defaultRenderer) {
+          return defaultRenderer(node, children, parent, styles);
+        }
+        return (
+          <View key={node.key} style={styles._VIEW_SAFE_heading2 || styles.heading2}>
+            {children}
+          </View>
+        );
+      },
+      heading3: (node: any, children: any, parent: any, styles: any) => {
+        const hasOnlyText = React.Children.toArray(children).every((child: any) => {
+          if (typeof child === 'string' || typeof child === 'number') return true;
+          if (React.isValidElement(child)) {
+            const childType = (child.type as any)?.displayName || (child.type as any)?.name || '';
+            return childType === 'Text' || childType === 'RNText';
+          }
+          return false;
+        });
+        if (hasOnlyText && React.Children.count(children) > 0) {
+          return (
+            <RNText key={node.key} style={styles._VIEW_SAFE_heading3 || styles.heading3} selectable={true}>
+              {children}
+            </RNText>
+          );
+        }
+        const defaultRenderer = renderRules?.heading3;
+        if (defaultRenderer) {
+          return defaultRenderer(node, children, parent, styles);
+        }
+        return (
+          <View key={node.key} style={styles._VIEW_SAFE_heading3 || styles.heading3}>
+            {children}
+          </View>
+        );
+      },
+      heading4: (node: any, children: any, parent: any, styles: any) => {
+        const hasOnlyText = React.Children.toArray(children).every((child: any) => {
+          if (typeof child === 'string' || typeof child === 'number') return true;
+          if (React.isValidElement(child)) {
+            const childType = (child.type as any)?.displayName || (child.type as any)?.name || '';
+            return childType === 'Text' || childType === 'RNText';
+          }
+          return false;
+        });
+        if (hasOnlyText && React.Children.count(children) > 0) {
+          return (
+            <RNText key={node.key} style={styles._VIEW_SAFE_heading4 || styles.heading4} selectable={true}>
+              {children}
+            </RNText>
+          );
+        }
+        const defaultRenderer = renderRules?.heading4;
+        if (defaultRenderer) {
+          return defaultRenderer(node, children, parent, styles);
+        }
+        return (
+          <View key={node.key} style={styles._VIEW_SAFE_heading4 || styles.heading4}>
+            {children}
+          </View>
+        );
+      },
+      heading5: (node: any, children: any, parent: any, styles: any) => {
+        const hasOnlyText = React.Children.toArray(children).every((child: any) => {
+          if (typeof child === 'string' || typeof child === 'number') return true;
+          if (React.isValidElement(child)) {
+            const childType = (child.type as any)?.displayName || (child.type as any)?.name || '';
+            return childType === 'Text' || childType === 'RNText';
+          }
+          return false;
+        });
+        if (hasOnlyText && React.Children.count(children) > 0) {
+          return (
+            <RNText key={node.key} style={styles._VIEW_SAFE_heading5 || styles.heading5} selectable={true}>
+              {children}
+            </RNText>
+          );
+        }
+        const defaultRenderer = renderRules?.heading5;
+        if (defaultRenderer) {
+          return defaultRenderer(node, children, parent, styles);
+        }
+        return (
+          <View key={node.key} style={styles._VIEW_SAFE_heading5 || styles.heading5}>
+            {children}
+          </View>
+        );
+      },
+      heading6: (node: any, children: any, parent: any, styles: any) => {
+        const hasOnlyText = React.Children.toArray(children).every((child: any) => {
+          if (typeof child === 'string' || typeof child === 'number') return true;
+          if (React.isValidElement(child)) {
+            const childType = (child.type as any)?.displayName || (child.type as any)?.name || '';
+            return childType === 'Text' || childType === 'RNText';
+          }
+          return false;
+        });
+        if (hasOnlyText && React.Children.count(children) > 0) {
+          return (
+            <RNText key={node.key} style={styles._VIEW_SAFE_heading6 || styles.heading6} selectable={true}>
+              {children}
+            </RNText>
+          );
+        }
+        const defaultRenderer = renderRules?.heading6;
+        if (defaultRenderer) {
+          return defaultRenderer(node, children, parent, styles);
+        }
+        return (
+          <View key={node.key} style={styles._VIEW_SAFE_heading6 || styles.heading6}>
+            {children}
+          </View>
+        );
+      },
+      // Make text selectable on mobile
+      text: (node: any, children: any, parent: any, styles: any, inheritedStyles: any = {}) => {
+        const defaultRenderer = renderRules?.text;
+        if (defaultRenderer) {
+          const rendered = defaultRenderer(node, children, parent, styles, inheritedStyles);
+          if (rendered && React.isValidElement(rendered)) {
+            return React.cloneElement(rendered as React.ReactElement<any>, { selectable: true });
+          }
+        }
+        return (
+          <RNText key={node.key} style={[inheritedStyles, styles.text]} selectable={true}>
+            {node.content}
+          </RNText>
+        );
+      },
+      textgroup: (node: any, children: any, parent: any, styles: any) => {
+        const defaultRenderer = renderRules?.textgroup;
+        if (defaultRenderer) {
+          const rendered = defaultRenderer(node, children, parent, styles);
+          if (rendered && React.isValidElement(rendered)) {
+            return React.cloneElement(rendered as React.ReactElement<any>, { selectable: true });
+          }
+        }
+        return (
+          <RNText key={node.key} style={styles.textgroup} selectable={true}>
+            {children}
+          </RNText>
+        );
+      },
+      strong: (node: any, children: any, parent: any, styles: any) => {
+        const defaultRenderer = renderRules?.strong;
+        if (defaultRenderer) {
+          const rendered = defaultRenderer(node, children, parent, styles);
+          if (rendered && React.isValidElement(rendered)) {
+            return React.cloneElement(rendered as React.ReactElement<any>, { selectable: true });
+          }
+        }
+        return (
+          <RNText key={node.key} style={styles.strong} selectable={true}>
+            {children}
+          </RNText>
+        );
+      },
+      em: (node: any, children: any, parent: any, styles: any) => {
+        const defaultRenderer = renderRules?.em;
+        if (defaultRenderer) {
+          const rendered = defaultRenderer(node, children, parent, styles);
+          if (rendered && React.isValidElement(rendered)) {
+            return React.cloneElement(rendered as React.ReactElement<any>, { selectable: true });
+          }
+        }
+        return (
+          <RNText key={node.key} style={styles.em} selectable={true}>
+            {children}
+          </RNText>
         );
       },
     };
@@ -2935,6 +3269,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               paddingTop: 20,
               paddingBottom: 80,
             }}
+            removeClippedSubviews={false}
+            nestedScrollEnabled={true}
           >
             {value ? (
               <Markdown
