@@ -528,10 +528,10 @@ export default function FilesScreen() {
                 {fileToAction?.name}
               </Text>
               <View
-                className="flex-row justify-end gap-3"
+                className="flex-row justify-between gap-3"
                 style={{
                   flexDirection: "row",
-                  justifyContent: "flex-end",
+                  justifyContent: "space-between",
                   gap: 12,
                 }}
               >
@@ -541,25 +541,6 @@ export default function FilesScreen() {
                     paddingHorizontal: 16,
                     paddingVertical: 8,
                     borderRadius: 6,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                  onPress={handleDownload}
-                >
-                  <Text style={{ color: "#3b82f6", fontWeight: "600" }}>
-                    Preview
-                  </Text>
-                </Pressable>
-                <Pressable
-                  className="px-4 py-2 rounded-md"
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 6,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 8,
                   }}
                   onPress={handleArchiveConfirm}
                 >
@@ -567,6 +548,39 @@ export default function FilesScreen() {
                     Archive
                   </Text>
                 </Pressable>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: 12,
+                  }}
+                >
+                  <Pressable
+                    className="px-4 py-2"
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                    }}
+                    onPress={() => {
+                      setActionDialogOpen(false);
+                      setFileToAction(null);
+                    }}
+                  >
+                    <Text style={{ color: colors.foreground }}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    className="px-4 py-2 rounded-md"
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      borderRadius: 6,
+                    }}
+                    onPress={handleDownload}
+                  >
+                    <Text style={{ color: "#3b82f6", fontWeight: "600" }}>
+                      Preview
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
           </View>
@@ -633,22 +647,10 @@ export default function FilesScreen() {
                 <View
                   style={{
                     flexDirection: "row",
-                    justifyContent: "flex-end",
+                    justifyContent: "space-between",
                     gap: 12,
                   }}
                 >
-                  <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 6,
-                    }}
-                    onPress={handleDownload}
-                  >
-                    <Text style={{ color: "#3b82f6", fontWeight: "600" }}>
-                      Preview
-                    </Text>
-                  </Pressable>
                   <Pressable
                     style={{
                       paddingHorizontal: 16,
@@ -661,6 +663,37 @@ export default function FilesScreen() {
                       Archive
                     </Text>
                   </Pressable>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      gap: 12,
+                    }}
+                  >
+                    <Pressable
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                      }}
+                      onPress={() => {
+                        setActionDialogOpen(false);
+                        setFileToAction(null);
+                      }}
+                    >
+                      <Text style={{ color: colors.foreground }}>Cancel</Text>
+                    </Pressable>
+                    <Pressable
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        borderRadius: 6,
+                      }}
+                      onPress={handleDownload}
+                    >
+                      <Text style={{ color: "#3b82f6", fontWeight: "600" }}>
+                        Preview
+                      </Text>
+                    </Pressable>
+                  </View>
                 </View>
               </View>
             </BlurView>
