@@ -19,6 +19,7 @@ import {
   Quote,
   RotateCcw,
   RotateCw,
+  Sparkles,
   Strikethrough,
   Table
 } from "lucide-react-native";
@@ -102,6 +103,7 @@ interface MarkdownToolbarProps {
   canUndo?: boolean;
   canRedo?: boolean;
   isPreview?: boolean;
+  onAIAssistant?: () => void;
 }
 
 export function MarkdownToolbar({
@@ -115,6 +117,7 @@ export function MarkdownToolbar({
   canUndo,
   canRedo,
   isPreview = false,
+  onAIAssistant,
 }: MarkdownToolbarProps) {
   const { colors } = useThemeColors();
   const TAB_SPACES = "   ";
@@ -237,6 +240,11 @@ export function MarkdownToolbar({
     const year = String(today.getFullYear()).slice(-2);
     const dateString = `${day}/${month}/${year}`;
     onInsertText(dateString, dateString.length);
+  };
+
+  const handleAIAssistant = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onAIAssistant?.();
   };
 
 
@@ -377,12 +385,25 @@ export function MarkdownToolbar({
           }}
         />
 
+        {/* Divider */}
+        <View
+          style={{
+            width: 1,
+            height: 32,
+            backgroundColor: colors.border,
+            marginHorizontal: 4,
+          }}
+        />
+
         {/* Advanced Actions */}
         <View style={{ flexDirection: "row", gap: 4 }}>
           <ToolbarButton onPress={handleCodeBlock} ariaLabel="Code Block" IconComponent={Code2} />
           <ToolbarButton onPress={handleTable} ariaLabel="Table" IconComponent={Table} />
           <ToolbarButton onPress={handleHorizontalRule} ariaLabel="Horizontal Rule" IconComponent={Minus} />
           <ToolbarButton onPress={handleDate} ariaLabel="Insert Date" IconComponent={Calendar} />
+          {onAIAssistant && (
+            <ToolbarButton onPress={handleAIAssistant} ariaLabel="AI Assistant" IconComponent={Sparkles} />
+          )}
         </View>
       </ScrollView>
     </View>

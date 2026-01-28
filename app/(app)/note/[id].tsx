@@ -1,9 +1,11 @@
 "use client";
 
+import { AIPromptModal } from "@/components/ai-prompt-modal";
 import { NoteDetailHeader } from "@/components/headers/note-detail-header";
 import { MarkdownEditor, MarkdownEditorRef } from "@/components/markdown-editor";
 import { MarkdownToolbar } from "@/components/markdown-toolbar";
 import { useAuth } from "@/contexts/auth-context";
+import { generateAIContent } from "@/lib/ai-providers";
 import { createNote, getNoteById, updateNote } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -35,6 +37,9 @@ export default function NoteEditorScreen() {
   const [lastSavedTitle, setLastSavedTitle] = useState("");
   const [lastSavedContent, setLastSavedContent] = useState("");
   const [isPreview, setIsPreview] = useState(!isNewNote);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [selectedText, setSelectedText] = useState("");
   const editorRef = useRef<MarkdownEditorRef>(null);
 
   const containerAnimatedStyle = useAnimatedStyle(() => {
@@ -168,6 +173,62 @@ export default function NoteEditorScreen() {
 
   const canSave = isDirty && !saveMutation.isPending;
 
+  const handleOpenAIModal = () => {
+    if (editorRef.current) {
+      const selection = editorRef.current.getSelection();
+
+      // Get selected text if there's a selection
+      if (selection.start !== selection.end) {
+        const selected = content.substring(selection.start, selection.end);
+        setSelectedText(selected);
+      } else {
+        setSelectedText("");
+      }
+    }
+    setAiModalOpen(true);
+  };
+
+  const handleAIGenerate = async (prompt: string) => {
+    if (!prompt.trim()) return;
+
+    setAiLoading(true);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      // Get current selection right before generating (in case user changed it)
+      let contextText = "";
+      if (editorRef.current) {
+        const selection = editorRef.current.getSelection();
+        if (selection.start !== selection.end) {
+          contextText = content.substring(selection.start, selection.end);
+        }
+      }
+
+      const generatedText = await generateAIContent({
+        prompt,
+        selectedText: contextText || undefined,
+      });
+
+      if (editorRef.current && generatedText) {
+        // insertText will automatically replace selected text if there's a selection
+        // or insert at cursor position if there's no selection
+        editorRef.current.insertText(generatedText, generatedText.length);
+      }
+
+      setAiModalOpen(false);
+      setSelectedText("");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      RNAlert.alert(
+        "AI Generation Failed",
+        error.message || "Failed to generate content. Please check your AI provider configuration and API key."
+      );
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   if (isLoading && !isNewNote) {
     return (
       <View
@@ -221,6 +282,7 @@ export default function NoteEditorScreen() {
                 onRedo={() => {
                   editorRef.current?.redo();
                 }}
+                onAIAssistant={handleOpenAIModal}
                 isPreview={isPreview}
               />
             )}
@@ -265,6 +327,7 @@ export default function NoteEditorScreen() {
                   onRedo={() => {
                     editorRef.current?.redo();
                   }}
+                  onAIAssistant={handleOpenAIModal}
                   isPreview={isPreview}
                 />
               )}
@@ -287,6 +350,16 @@ export default function NoteEditorScreen() {
           </View>
         </Animated.View>
       )}
+      <AIPromptModal
+        visible={aiModalOpen}
+        onClose={() => {
+          setAiModalOpen(false);
+          setSelectedText("");
+        }}
+        onGenerate={handleAIGenerate}
+        initialPrompt={selectedText ? `Improve or rewrite: "${selectedText}" ` : ""}
+        isLoading={aiLoading}
+      />
     </>
   );
 }
