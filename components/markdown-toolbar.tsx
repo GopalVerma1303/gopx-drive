@@ -385,16 +385,6 @@ export function MarkdownToolbar({
           }}
         />
 
-        {/* Divider */}
-        <View
-          style={{
-            width: 1,
-            height: 32,
-            backgroundColor: colors.border,
-            marginHorizontal: 4,
-          }}
-        />
-
         {/* Advanced Actions */}
         <View style={{ flexDirection: "row", gap: 4 }}>
           <ToolbarButton onPress={handleCodeBlock} ariaLabel="Code Block" IconComponent={Code2} />
