@@ -59,6 +59,105 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     const redoStackRef = useRef<Snapshot[]>([]);
     const pendingInternalValueRef = useRef<string | null>(null);
 
+    // Helper functions for ordered list markers
+    const numberToRoman = (num: number, uppercase: boolean = true): string => {
+      if (num < 1 || num > 3999) return num.toString();
+      const lookup: [string, number][] = [
+        ['M', 1000], ['CM', 900], ['D', 500], ['CD', 400],
+        ['C', 100], ['XC', 90], ['L', 50], ['XL', 40],
+        ['X', 10], ['IX', 9], ['V', 5], ['IV', 4], ['I', 1]
+      ];
+      let roman = '';
+      for (const [symbol, value] of lookup) {
+        while (num >= value) {
+          roman += symbol;
+          num -= value;
+        }
+      }
+      return uppercase ? roman : roman.toLowerCase();
+    };
+
+    const romanToNumber = (roman: string): number => {
+      const upperRoman = roman.toUpperCase();
+      const lookup: Record<string, number> = {
+        'M': 1000, 'CM': 900, 'D': 500, 'CD': 400,
+        'C': 100, 'XC': 90, 'L': 50, 'XL': 40,
+        'X': 10, 'IX': 9, 'V': 5, 'IV': 4, 'I': 1
+      };
+      let num = 0;
+      let i = 0;
+      while (i < upperRoman.length) {
+        if (i + 1 < upperRoman.length && lookup[upperRoman.substring(i, i + 2)]) {
+          num += lookup[upperRoman.substring(i, i + 2)];
+          i += 2;
+        } else if (lookup[upperRoman[i]]) {
+          num += lookup[upperRoman[i]];
+          i += 1;
+        } else {
+          return 0; // Invalid roman numeral
+        }
+      }
+      return num;
+    };
+
+    const isValidRoman = (str: string): boolean => {
+      const upperStr = str.toUpperCase();
+      const romanRegex = /^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/;
+      return romanRegex.test(upperStr) && upperStr.length > 0;
+    };
+
+    const incrementAlphabet = (str: string): string => {
+      if (!str || str.length === 0) return 'a';
+      const isUppercase = str === str.toUpperCase();
+      const base = isUppercase ? 'A' : 'a';
+      const baseCode = base.charCodeAt(0);
+      
+      // Convert string to number (a=1, b=2, ..., z=26, aa=27, etc.)
+      let num = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str[i].toLowerCase();
+        const charCode = char.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
+        num = num * 26 + charCode;
+      }
+      
+      // Increment
+      num += 1;
+      
+      // Convert back to alphabet string
+      let result = '';
+      while (num > 0) {
+        num -= 1;
+        result = String.fromCharCode(baseCode + (num % 26)) + result;
+        num = Math.floor(num / 26);
+      }
+      
+      return result;
+    };
+
+    const alphabetToNumber = (str: string): number => {
+      if (!str || str.length === 0) return 0;
+      let num = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str[i].toLowerCase();
+        const charCode = char.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
+        num = num * 26 + charCode;
+      }
+      return num;
+    };
+
+    const numberToAlphabet = (num: number, uppercase: boolean = false): string => {
+      if (num < 1) return uppercase ? 'A' : 'a';
+      const base = uppercase ? 'A' : 'a';
+      const baseCode = base.charCodeAt(0);
+      let result = '';
+      let n = num - 1;
+      while (n >= 0) {
+        result = String.fromCharCode(baseCode + (n % 26)) + result;
+        n = Math.floor(n / 26) - 1;
+      }
+      return result;
+    };
+
     const setSelectionBoth = (nextSelection: { start: number; end: number }) => {
       selectionRef.current = nextSelection;
       setSelection(nextSelection);
@@ -91,12 +190,102 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       }
     };
 
+    // Helper function to detect marker type from previous list items (context-aware detection)
+    // Production-grade approach: look at the most recent list item with same indentation to determine marker type
+    // This solves the ambiguity: "xcix. gopal" followed by "c. mango" - "c" should be roman (100), not alphabet
+    const detectMarkerTypeFromContext = (
+      lines: string[],
+      currentLineIndex: number,
+      currentIndent: string
+    ): 'numeric' | 'lowercase-alpha' | 'uppercase-alpha' | 'lowercase-roman' | 'uppercase-roman' | null => {
+      // Look backwards at previous lines with the same indentation level
+      for (let i = currentLineIndex - 1; i >= 0; i--) {
+        const line = lines[i] || '';
+        
+        // Skip blank lines (they don't break list context)
+        if (line.trim() === '') continue;
+        
+        // Check if this line has the same indentation (same list level)
+        const lineIndentMatch = line.match(/^(\s*)/);
+        const lineIndent = lineIndentMatch ? lineIndentMatch[1] : '';
+        
+        // If indentation is less, we've left the list
+        if (lineIndent.length < currentIndent.length) break;
+        
+        // If indentation is more, it's nested - skip it
+        if (lineIndent.length > currentIndent.length) continue;
+        
+        // Same indentation - check for ordered list markers
+        // Return the FIRST matching marker type found (most recent list item)
+        
+        // Check for numeric: 1., 2., 3., etc.
+        const numericMatch = line.match(/^(\s*)(\d+)\.\s+/);
+        if (numericMatch && numericMatch[1] === currentIndent) {
+          return 'numeric';
+        }
+        
+        // Check for uppercase alphabet: A., B., C., etc.
+        const upperAlphaMatch = line.match(/^(\s*)([A-Z]+)\.\s+/);
+        if (upperAlphaMatch && upperAlphaMatch[1] === currentIndent && /^[A-Z]+$/.test(upperAlphaMatch[2])) {
+          return 'uppercase-alpha';
+        }
+        
+        // Check for uppercase roman: I., II., III., etc. (check before lowercase to avoid ambiguity)
+        const upperRomanMatch = line.match(/^(\s*)([IVXLCDM]+)\.\s+/);
+        if (upperRomanMatch && upperRomanMatch[1] === currentIndent && isValidRoman(upperRomanMatch[2])) {
+          return 'uppercase-roman';
+        }
+        
+        // Check for lowercase roman: i., ii., iii., xcix., etc.
+        // This is critical: if previous item was "xcix" (roman), then "c" should be roman too
+        const lowerRomanMatch = line.match(/^(\s*)([ivxlcdm]+)\.\s+/);
+        if (lowerRomanMatch && lowerRomanMatch[1] === currentIndent && isValidRoman(lowerRomanMatch[2])) {
+          // Multi-character roman numerals are definitely roman
+          if (lowerRomanMatch[2].length > 1) {
+            return 'lowercase-roman';
+          }
+          // Single character "i" - check if there are more roman numerals further back
+          // If we find multi-character roman numerals, this is a roman list
+          for (let j = i - 1; j >= Math.max(0, i - 5); j--) {
+            const prevLine = lines[j] || '';
+            if (prevLine.trim() === '') continue;
+            const prevIndentMatch = prevLine.match(/^(\s*)/);
+            const prevIndent = prevIndentMatch ? prevIndentMatch[1] : '';
+            if (prevIndent.length !== currentIndent.length) break;
+            const prevRomanMatch = prevLine.match(/^(\s*)([ivxlcdm]+)\.\s+/);
+            if (prevRomanMatch && prevRomanMatch[1] === currentIndent && isValidRoman(prevRomanMatch[2]) && prevRomanMatch[2].length > 1) {
+              return 'lowercase-roman';
+            }
+          }
+          // Single "i" without clear roman context - ambiguous, return null
+          return null;
+        }
+        
+        // Check for lowercase alphabet: a., b., c., etc.
+        const lowerAlphaMatch = line.match(/^(\s*)([a-z]+)\.\s+/);
+        if (lowerAlphaMatch && lowerAlphaMatch[1] === currentIndent) {
+          const marker = lowerAlphaMatch[2];
+          // If it's NOT a valid roman numeral, it's alphabet
+          if (/^[a-z]+$/.test(marker) && !isValidRoman(marker)) {
+            return 'lowercase-alpha';
+          }
+          // If it IS a valid roman numeral, we need to check further back
+          // This handles cases where "c" could be alphabet or roman
+          // Continue searching for more context
+          continue;
+        }
+      }
+      
+      return null; // No previous context found
+    };
+
     // Helper function to detect list patterns and get next list marker
     const getListInfo = (text: string, cursorPosition: number): {
       isList: boolean;
       indent: string;
       marker: string;
       markerType: 'ordered' | 'unordered' | 'checkbox' | null;
+      markerSubtype?: 'numeric' | 'lowercase-alpha' | 'uppercase-alpha' | 'lowercase-roman' | 'uppercase-roman';
       nextMarker: string;
       currentLine: string;
       lineIndex: number;
@@ -121,7 +310,167 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         };
       }
 
-      // Match ordered list: "1. ", "2. ", etc. (with optional indentation)
+      // Match ordered list with various marker types
+      // IMPORTANT: Check alphabets BEFORE roman numerals to avoid false matches
+      // Single letters like "c" are alphabets, not roman numerals (c=100 in roman)
+      
+      // Uppercase alphabet: A., B., C., etc.
+      const uppercaseAlphaMatch = currentLine.match(/^(\s*)([A-Z]+)\.\s+(.*)$/);
+      if (uppercaseAlphaMatch) {
+        const [, indent, alpha, content] = uppercaseAlphaMatch;
+        // Verify it's a valid alphabet sequence (not mixed with numbers or other chars)
+        if (/^[A-Z]+$/.test(alpha)) {
+          const nextAlpha = incrementAlphabet(alpha);
+          return {
+            isList: true,
+            indent,
+            marker: `${alpha}. `,
+            markerType: 'ordered',
+            markerSubtype: 'uppercase-alpha',
+            nextMarker: `${nextAlpha}. `,
+            currentLine,
+            lineIndex,
+          };
+        }
+      }
+
+      // Lowercase alphabet: a., b., c., etc.
+      // Check this BEFORE lowercase roman to prevent single letters like "c" from being treated as roman
+      // Production-grade: Use context-aware detection to determine marker type
+      const lowercaseAlphaMatch = currentLine.match(/^(\s*)([a-z]+)\.\s+(.*)$/);
+      if (lowercaseAlphaMatch) {
+        const [, indent, alpha, content] = lowercaseAlphaMatch;
+        // Verify it's a valid alphabet sequence (not mixed with numbers or other chars)
+        if (/^[a-z]+$/.test(alpha)) {
+          // Production-grade approach: Check context from previous list items first
+          const contextType = detectMarkerTypeFromContext(lines, lineIndex, indent);
+          
+          // If context indicates roman numerals, treat ambiguous single chars as roman
+          if (contextType === 'lowercase-roman' && alpha.length === 1 && isValidRoman(alpha)) {
+            // Single character "c" in roman context (after "xcix") should be roman numeral 100
+            const num = romanToNumber(alpha);
+            const nextRoman = numberToRoman(num + 1, false);
+            return {
+              isList: true,
+              indent,
+              marker: `${alpha}. `,
+              markerType: 'ordered',
+              markerSubtype: 'lowercase-roman',
+              nextMarker: `${nextRoman}. `,
+              currentLine,
+              lineIndex,
+            };
+          }
+          
+          // If context indicates alphabet, or no context, treat as alphabet
+          if (contextType === 'lowercase-alpha' || contextType === null) {
+            // Single-character matches are alphabets when no roman context
+            if (alpha.length === 1) {
+              const nextAlpha = incrementAlphabet(alpha);
+              return {
+                isList: true,
+                indent,
+                marker: `${alpha}. `,
+                markerType: 'ordered',
+                markerSubtype: 'lowercase-alpha',
+                nextMarker: `${nextAlpha}. `,
+                currentLine,
+                lineIndex,
+              };
+            }
+            
+            // Multi-character: check if it's a valid roman numeral pattern
+            // If it's NOT a valid roman numeral, treat as alphabet (e.g., "aa", "ab", "ac")
+            if (!isValidRoman(alpha)) {
+              const nextAlpha = incrementAlphabet(alpha);
+              return {
+                isList: true,
+                indent,
+                marker: `${alpha}. `,
+                markerType: 'ordered',
+                markerSubtype: 'lowercase-alpha',
+                nextMarker: `${nextAlpha}. `,
+                currentLine,
+                lineIndex,
+              };
+            }
+          }
+          // If it IS a valid roman numeral (multi-character) and no alphabet context, fall through to roman handler
+        }
+      }
+
+      // Uppercase roman: I., II., III., etc.
+      // Check AFTER alphabets to avoid false matches
+      const uppercaseRomanMatch = currentLine.match(/^(\s*)([IVXLCDM]+)\.\s+(.*)$/);
+      if (uppercaseRomanMatch) {
+        const [, indent, roman, content] = uppercaseRomanMatch;
+        // Only treat as roman if it's a valid roman numeral AND not a single letter that could be alphabet
+        // Single uppercase letters like "I", "V", "X", "C" are ambiguous, but "I" is typically roman
+        // For multi-character or known roman patterns, prefer roman interpretation
+        if (isValidRoman(roman) && (roman.length > 1 || roman === 'I' || roman === 'V' || roman === 'X')) {
+          const num = romanToNumber(roman);
+          const nextRoman = numberToRoman(num + 1, true);
+          return {
+            isList: true,
+            indent,
+            marker: `${roman}. `,
+            markerType: 'ordered',
+            markerSubtype: 'uppercase-roman',
+            nextMarker: `${nextRoman}. `,
+            currentLine,
+            lineIndex,
+          };
+        }
+      }
+
+      // Lowercase roman: i., ii., iii., etc.
+      // Check AFTER alphabets to avoid false matches with single letters like "c"
+      // Production-grade: Use context-aware detection - if previous items are roman, single chars are roman too
+      const lowercaseRomanMatch = currentLine.match(/^(\s*)([ivxlcdm]+)\.\s+(.*)$/);
+      if (lowercaseRomanMatch) {
+        const [, indent, roman, content] = lowercaseRomanMatch;
+        if (isValidRoman(roman)) {
+          // Check context from previous list items
+          const contextType = detectMarkerTypeFromContext(lines, lineIndex, indent);
+          
+          // If context indicates roman numerals, treat single characters as roman too
+          // This handles cases like: xcix. (99) -> c. (100) -> ci. (101)
+          if (contextType === 'lowercase-roman') {
+            const num = romanToNumber(roman);
+            const nextRoman = numberToRoman(num + 1, false);
+            return {
+              isList: true,
+              indent,
+              marker: `${roman}. `,
+              markerType: 'ordered',
+              markerSubtype: 'lowercase-roman',
+              nextMarker: `${nextRoman}. `,
+              currentLine,
+              lineIndex,
+            };
+          }
+          
+          // If no context or alphabet context, only treat multi-character as roman
+          // Single characters without roman context are handled by alphabet handler above
+          if (roman.length > 1 && (contextType === null || contextType === 'lowercase-alpha')) {
+            const num = romanToNumber(roman);
+            const nextRoman = numberToRoman(num + 1, false);
+            return {
+              isList: true,
+              indent,
+              marker: `${roman}. `,
+              markerType: 'ordered',
+              markerSubtype: 'lowercase-roman',
+              nextMarker: `${nextRoman}. `,
+              currentLine,
+              lineIndex,
+            };
+          }
+        }
+      }
+
+      // Match numeric ordered list: "1. ", "2. ", etc. (with optional indentation)
+      // This comes last to avoid matching single digits that might be part of roman numerals
       const orderedMatch = currentLine.match(/^(\s*)(\d+)\.\s+(.*)$/);
       if (orderedMatch) {
         const [, indent, number, content] = orderedMatch;
@@ -131,6 +480,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           indent,
           marker: `${number}. `,
           markerType: 'ordered',
+          markerSubtype: 'numeric',
           nextMarker: `${nextNumber}. `,
           currentLine,
           lineIndex,
@@ -240,7 +590,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         const listInfo = getListInfo(oldText, cursorBeforeSplit);
 
         if (listInfo) {
-          const { indent, marker, markerType, nextMarker, currentLine, lineIndex: splitLineIndex } = listInfo;
+          const { indent, marker, markerType, markerSubtype, nextMarker, currentLine, lineIndex: splitLineIndex } = listInfo;
 
           const newLineAfterSplit = newLines[splitLineIndex + 1] || '';
 
@@ -258,7 +608,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
           // Check if the old line (before split) was empty (only marker, no content)
           const oldLineContent = currentLine.replace(/^\s*[-*+]\s*\[[\s*xX*]\]\s*/, '') // Remove checkbox
-            .replace(/^\s*\d+\.\s+/, '') // Remove ordered marker
+            .replace(/^\s*\d+\.\s+/, '') // Remove numeric ordered marker
+            .replace(/^\s*[a-z]+\.\s+/, '') // Remove lowercase alphabet ordered marker
+            .replace(/^\s*[A-Z]+\.\s+/, '') // Remove uppercase alphabet ordered marker
+            .replace(/^\s*[ivxlcdm]+\.\s+/, '') // Remove lowercase roman ordered marker
+            .replace(/^\s*[IVXLCDM]+\.\s+/, '') // Remove uppercase roman ordered marker
             .replace(/^\s*[-*+]\s+/, '') // Remove unordered marker
             .trim();
 
@@ -315,45 +669,100 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
             // If we're inserting into an ordered list, renumber subsequent siblings (+1) until the list ends.
             // Stop at the first blank line; also stop when we encounter a line that isn't part of this list level.
-            if (markerType === 'ordered') {
-              const insertedNumber = parseInt(nextMarker, 10);
-              if (Number.isFinite(insertedNumber)) {
-                let nextNumber = insertedNumber + 1;
+            if (markerType === 'ordered' && markerSubtype) {
+              // Extract the current marker value for incrementing
+              let currentValue: number = 0;
+              if (markerSubtype === 'numeric') {
+                currentValue = parseInt(nextMarker.replace('.', ''), 10);
+              } else if (markerSubtype === 'lowercase-alpha' || markerSubtype === 'uppercase-alpha') {
+                currentValue = alphabetToNumber(nextMarker.replace('.', '').replace(/\s+/, ''));
+              } else if (markerSubtype === 'lowercase-roman' || markerSubtype === 'uppercase-roman') {
+                currentValue = romanToNumber(nextMarker.replace('.', '').replace(/\s+/, ''));
+              }
 
-                for (let i = splitLineIndex + 2; i < updatedLines.length; i++) {
-                  const line = updatedLines[i] ?? '';
+              let nextValue = currentValue + 1;
 
-                  // A blank line terminates the list.
-                  if (line.trim() === '') break;
+              // Build regex pattern based on marker subtype
+              let orderedRegex: RegExp;
+              if (markerSubtype === 'numeric') {
+                orderedRegex = /^(\s*)(\d+)\.\s+(.*)$/;
+              } else if (markerSubtype === 'lowercase-alpha') {
+                orderedRegex = /^(\s*)([a-z]+)\.\s+(.*)$/;
+              } else if (markerSubtype === 'uppercase-alpha') {
+                orderedRegex = /^(\s*)([A-Z]+)\.\s+(.*)$/;
+              } else if (markerSubtype === 'lowercase-roman') {
+                orderedRegex = /^(\s*)([ivxlcdm]+)\.\s+(.*)$/;
+              } else { // uppercase-roman
+                orderedRegex = /^(\s*)([IVXLCDM]+)\.\s+(.*)$/;
+              }
 
-                  const orderedMatch = line.match(/^(\s*)(\d+)\.\s+(.*)$/);
+              for (let i = splitLineIndex + 2; i < updatedLines.length; i++) {
+                const line = updatedLines[i] ?? '';
 
-                  if (!orderedMatch) {
-                    // Allow nested content (more-indented) to exist inside a list item without ending the list.
-                    const lineIndent = (line.match(/^(\s*)/)?.[1]) ?? '';
-                    if (lineIndent.length > indent.length) {
-                      continue;
-                    }
-                    break;
-                  }
+                // A blank line terminates the list.
+                if (line.trim() === '') break;
 
-                  const lineIndent = orderedMatch[1] ?? '';
-                  const lineContent = orderedMatch[3] ?? '';
+                const orderedMatch = line.match(orderedRegex);
 
-                  if (lineIndent === indent) {
-                    updatedLines[i] = `${indent}${nextNumber}. ${lineContent}`;
-                    nextNumber += 1;
-                    continue;
-                  }
-
-                  // Nested ordered list (more-indented) - don't renumber at this level, but don't end the list either.
+                if (!orderedMatch) {
+                  // Allow nested content (more-indented) to exist inside a list item without ending the list.
+                  const lineIndent = (line.match(/^(\s*)/)?.[1]) ?? '';
                   if (lineIndent.length > indent.length) {
                     continue;
                   }
-
-                  // Less indentation indicates we've left this list level.
                   break;
                 }
+
+                const lineIndent = orderedMatch[1] ?? '';
+                const lineMarker = orderedMatch[2] ?? '';
+                const lineContent = orderedMatch[3] ?? '';
+
+                // Validate marker type matches (e.g., roman numerals must be valid)
+                let isValidMarker = true;
+                if (markerSubtype === 'lowercase-roman' || markerSubtype === 'uppercase-roman') {
+                  isValidMarker = isValidRoman(lineMarker);
+                } else if (markerSubtype === 'lowercase-alpha' || markerSubtype === 'uppercase-alpha') {
+                  isValidMarker = markerSubtype === 'lowercase-alpha' 
+                    ? /^[a-z]+$/.test(lineMarker)
+                    : /^[A-Z]+$/.test(lineMarker);
+                }
+
+                if (!isValidMarker) {
+                  // Allow nested content (more-indented) to exist inside a list item without ending the list.
+                  const lineIndent = (line.match(/^(\s*)/)?.[1]) ?? '';
+                  if (lineIndent.length > indent.length) {
+                    continue;
+                  }
+                  break;
+                }
+
+                if (lineIndent === indent) {
+                  // Generate next marker based on subtype
+                  let nextMarkerStr: string;
+                  if (markerSubtype === 'numeric') {
+                    nextMarkerStr = `${nextValue}. `;
+                  } else if (markerSubtype === 'lowercase-alpha') {
+                    nextMarkerStr = `${numberToAlphabet(nextValue, false)}. `;
+                  } else if (markerSubtype === 'uppercase-alpha') {
+                    nextMarkerStr = `${numberToAlphabet(nextValue, true)}. `;
+                  } else if (markerSubtype === 'lowercase-roman') {
+                    nextMarkerStr = `${numberToRoman(nextValue, false)}. `;
+                  } else { // uppercase-roman
+                    nextMarkerStr = `${numberToRoman(nextValue, true)}. `;
+                  }
+
+                  updatedLines[i] = `${indent}${nextMarkerStr}${lineContent}`;
+                  nextValue += 1;
+                  continue;
+                }
+
+                // Nested ordered list (more-indented) - don't renumber at this level, but don't end the list either.
+                if (lineIndent.length > indent.length) {
+                  continue;
+                }
+
+                // Less indentation indicates we've left this list level.
+                break;
               }
             }
 
