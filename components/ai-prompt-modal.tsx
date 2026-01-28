@@ -45,6 +45,7 @@ export function AIPromptModal({
               right: 0,
               bottom: 0,
               backgroundColor: "rgba(0, 0, 0, 0.5)",
+              backdropFilter: "blur(8px)",
               zIndex: 10000,
               justifyContent: "center",
               alignItems: "center",
@@ -139,13 +140,17 @@ export function AIPromptModal({
                     paddingHorizontal: 16,
                     paddingVertical: 8,
                     borderRadius: 6,
-                    backgroundColor: prompt.trim() && !isLoading ? "#3b82f6" : colors.muted,
                     opacity: prompt.trim() && !isLoading ? 1 : 0.5,
                   }}
                   onPress={handleGenerate}
                   disabled={!prompt.trim() || isLoading}
                 >
-                  <Text style={{ color: "#fff", fontWeight: "600" }}>
+                  <Text
+                    style={{
+                      color: prompt.trim() && !isLoading ? "#3b82f6" : colors.mutedForeground,
+                      fontWeight: "600",
+                    }}
+                  >
                     {isLoading ? "Generating..." : "Generate"}
                   </Text>
                 </Pressable>
@@ -264,13 +269,17 @@ export function AIPromptModal({
                       paddingHorizontal: 16,
                       paddingVertical: 8,
                       borderRadius: 6,
-                      backgroundColor: prompt.trim() && !isLoading ? "#3b82f6" : colors.muted,
                       opacity: prompt.trim() && !isLoading ? 1 : 0.5,
                     }}
                     onPress={handleGenerate}
                     disabled={!prompt.trim() || isLoading}
                   >
-                    <Text style={{ color: "#fff", fontWeight: "600" }}>
+                    <Text
+                      style={{
+                        color: prompt.trim() && !isLoading ? "#3b82f6" : colors.mutedForeground,
+                        fontWeight: "600",
+                      }}
+                    >
                       {isLoading ? "Generating..." : "Generate"}
                     </Text>
                   </Pressable>
