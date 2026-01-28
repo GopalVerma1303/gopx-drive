@@ -2761,7 +2761,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                     }}
                   />
                 </Pressable>
-                <RNText style={{ flex: 1 }} selectable={true}>
+                <RNText key={`list-item-text-${node.key}`} style={{ flex: 1 }} selectable={true}>
                   {childrenWithKeys}
                 </RNText>
               </View>
@@ -2794,7 +2794,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         // Fallback to default rendering with row layout
         // Wrap text content in a selectable Text component to enable better selection
         const childrenWithKeys = ensureChildrenKeys(children);
-        
+
         // Render list item text in a Text component for better selection
         // Note: We still need View for layout, but wrap text content in Text
         return (
@@ -2984,9 +2984,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               if (React.isValidElement(child)) {
                 const childType = child.type;
                 if (childType === RNText || (childType as any)?.displayName === 'Text') {
-                  return React.cloneElement(child as React.ReactElement<any>, { 
-                    selectable: true, 
-                    key: child.key || index 
+                  return React.cloneElement(child as React.ReactElement<any>, {
+                    selectable: true,
+                    key: child.key || index
                   });
                 }
                 // Recursively process children
