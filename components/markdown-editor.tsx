@@ -690,6 +690,21 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                 startOffset = cumulativeOffset + lineOffset;
               }
               cumulativeOffset += lineOffset;
+            } else if (lineListInfo.markerType === 'checkbox') {
+              // Checkbox list: increase indentation and keep checkbox marker (nested checkbox)
+              const newIndent = lineListInfo.indent + TAB_SPACES;
+              const contentMatch = line.match(/^(\s*)([-*+])\s+\[([\s*xX*])\]\s*(.*)$/);
+              const marker = contentMatch ? contentMatch[2] : '-';
+              const checkboxState = contentMatch ? contentMatch[3] : ' ';
+              const content = contentMatch ? contentMatch[4] : '';
+              updatedLines[idx] = newIndent + marker + ' [' + checkboxState + '] ' + content;
+              newLineLength = updatedLines[idx].length;
+
+              const lineOffset = TAB_SPACES.length;
+              if (idx === lineIndex) {
+                startOffset = cumulativeOffset + lineOffset;
+              }
+              cumulativeOffset += lineOffset;
             }
           } else {
             // Not a list line, use default behavior
@@ -896,6 +911,21 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               newLineLength = updatedLines[idx].length;
 
               const lineOffset = -TAB_SPACES.length;
+              if (idx === lineIndex) {
+                startOffset = cumulativeOffset + lineOffset;
+              }
+              cumulativeOffset += lineOffset;
+            } else if (lineListInfo.markerType === 'checkbox') {
+              // Checkbox list: decrease indentation and keep checkbox marker
+              const newIndent = lineListInfo.indent.slice(TAB_SPACES.length);
+              const contentMatch = line.match(/^(\s*)([-*+])\s+\[([\s*xX*])\]\s*(.*)$/);
+              const marker = contentMatch ? contentMatch[2] : '-';
+              const checkboxState = contentMatch ? contentMatch[3] : ' ';
+              const content = contentMatch ? contentMatch[4] : '';
+              updatedLines[idx] = newIndent + marker + ' [' + checkboxState + '] ' + content;
+              newLineLength = updatedLines[idx].length;
+
+              const lineOffset = newLineLength - oldLineLength;
               if (idx === lineIndex) {
                 startOffset = cumulativeOffset + lineOffset;
               }

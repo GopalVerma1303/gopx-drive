@@ -21,7 +21,8 @@ export const linkifyMarkdown = (markdown: string): string => {
   // - International: +1234567890, +1 234 567 8900
   // - US formats: (123) 456-7890, 123-456-7890, 123.456.7890, 1234567890
   // - With optional country code: +1-123-456-7890
-  const PHONE_RE = /(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b|\+\d{1,3}[-.\s]?\d{1,14}\b/gi;
+  const PHONE_RE =
+    /(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b|\+\d{1,3}[-.\s]?\d{1,14}\b/gi;
   const URL_RE = /\b(?:https?:\/\/|www\.|mailto:|tel:)[^\s<>()]+/gi;
 
   const linkifyPlainText = (text: string): string => {
@@ -33,14 +34,17 @@ export const linkifyMarkdown = (markdown: string): string => {
         return tokenFor(idx);
       });
     const unmask = (input: string) =>
-      input.replace(/\u0000(\d+)\u0000/g, (_m, n) => placeholders[Number(n)] ?? _m);
+      input.replace(
+        /\u0000(\d+)\u0000/g,
+        (_m, n) => placeholders[Number(n)] ?? _m,
+      );
 
     // Protect existing markdown link constructs so we don't double-linkify.
     let masked = text;
-    masked = mask(/!\[[^\]]*\]\([^)]+\)/g, masked);      // images
-    masked = mask(/\[[^\]]+\]\([^)]+\)/g, masked);       // inline links
-    masked = mask(/\[[^\]]+\]\[[^\]]*\]/g, masked);      // reference links
-    masked = mask(/<[^>\s]+>/g, masked);                 // autolinks / html-ish
+    masked = mask(/!\[[^\]]*\]\([^)]+\)/g, masked); // images
+    masked = mask(/\[[^\]]+\]\([^)]+\)/g, masked); // inline links
+    masked = mask(/\[[^\]]+\]\[[^\]]*\]/g, masked); // reference links
+    masked = mask(/<[^>\s]+>/g, masked); // autolinks / html-ish
 
     const stripTrailingPunctuation = (raw: string) => {
       let core = raw;
@@ -55,15 +59,15 @@ export const linkifyMarkdown = (markdown: string): string => {
     // Normalize phone number: remove formatting characters and add country code if needed
     const normalizePhoneNumber = (phone: string): string => {
       // Remove all non-digit characters except +
-      let cleaned = phone.replace(/[^\d+]/g, '');
+      let cleaned = phone.replace(/[^\d+]/g, "");
 
       // If it already starts with +, keep it as is (international format)
-      if (cleaned.startsWith('+')) {
+      if (cleaned.startsWith("+")) {
         return cleaned;
       }
 
       // Remove leading 0 (trunk prefix) if present
-      if (cleaned.startsWith('0') && cleaned.length > 10) {
+      if (cleaned.startsWith("0") && cleaned.length > 10) {
         cleaned = cleaned.substring(1);
       }
 
@@ -73,7 +77,7 @@ export const linkifyMarkdown = (markdown: string): string => {
       }
 
       // If it's 12 digits and starts with 91, add +
-      if (cleaned.length === 12 && cleaned.startsWith('91')) {
+      if (cleaned.length === 12 && cleaned.startsWith("91")) {
         return `+${cleaned}`;
       }
 
@@ -142,8 +146,8 @@ export const linkifyMarkdown = (markdown: string): string => {
 export const normalizeText = (text: string): string => {
   return text
     .toLowerCase()
-    .replace(/[^\w\s]/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 };
 
@@ -153,13 +157,15 @@ export const normalizeText = (text: string): string => {
  * checkbox line matching (children render as "Google", but the source includes the URL).
  */
 export const stripLinksForMatching = (text: string): string => {
-  return text
-    // Images: ![alt](url) -> alt
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '$1')
-    // Inline links: [text](url "title") -> text
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
-    // Reference links: [text][id] or [text][] -> text
-    .replace(/\[([^\]]+)\]\[[^\]]*\]/g, '$1')
-    // Autolinks: <https://example.com> -> https://example.com
-    .replace(/<((?:https?:\/\/|mailto:)[^>\s]+)>/g, '$1');
+  return (
+    text
+      // Images: ![alt](url) -> alt
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "$1")
+      // Inline links: [text](url "title") -> text
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
+      // Reference links: [text][id] or [text][] -> text
+      .replace(/\[([^\]]+)\]\[[^\]]*\]/g, "$1")
+      // Autolinks: <https://example.com> -> https://example.com
+      .replace(/<((?:https?:\/\/|mailto:)[^>\s]+)>/g, "$1")
+  );
 };
