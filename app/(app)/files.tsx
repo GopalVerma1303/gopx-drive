@@ -197,15 +197,13 @@ export default function FilesScreen() {
     setActionDialogOpen(true);
   };
 
-  const handleDownload = async () => {
-    if (!fileToAction) return;
-
+  const handleFilePress = async (file: FileRecord) => {
     try {
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
 
-      const downloadUrl = await getFileDownloadUrl(fileToAction.file_path);
+      const downloadUrl = await getFileDownloadUrl(file.file_path);
 
       if (Platform.OS === "web") {
         // For web, open in new tab
@@ -221,11 +219,8 @@ export default function FilesScreen() {
           Alert.alert("Error", "Cannot open file URL");
         }
       }
-
-      setActionDialogOpen(false);
-      setFileToAction(null);
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to download file");
+      Alert.alert("Error", error.message || "Failed to open file");
     }
   };
 
@@ -425,6 +420,7 @@ export default function FilesScreen() {
                           >
                             <FileCard
                               file={file}
+                              onPress={() => handleFilePress(file)}
                               onDelete={() => handleRightClickAction(file)}
                               onRightClickAction={
                                 Platform.OS === "web"
@@ -462,6 +458,7 @@ export default function FilesScreen() {
                         >
                           <FileListCard
                             file={file}
+                            onPress={() => handleFilePress(file)}
                             onDelete={() => handleRightClickAction(file)}
                             onRightClickAction={
                               Platform.OS === "web"
@@ -517,24 +514,47 @@ export default function FilesScreen() {
               }}
             >
               <Text
-                className="text-lg font-semibold mb-4"
+                className="text-lg font-semibold mb-2"
                 style={{
                   color: colors.foreground,
                   fontSize: 18,
                   fontWeight: "600",
-                  marginBottom: 16,
+                  marginBottom: 8,
                 }}
               >
-                {fileToAction?.name}
+                Archive File
+              </Text>
+              <Text
+                className="text-sm mb-6"
+                style={{
+                  color: colors.mutedForeground,
+                  fontSize: 14,
+                  marginBottom: 24,
+                }}
+              >
+                Are you sure you want to archive "{fileToAction?.name}"? You can restore it from the archive later.
               </Text>
               <View
-                className="flex-row justify-between gap-3"
+                className="flex-row justify-end gap-3"
                 style={{
                   flexDirection: "row",
-                  justifyContent: "space-between",
+                  justifyContent: "flex-end",
                   gap: 12,
                 }}
               >
+                <Pressable
+                  className="px-4 py-2"
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                  }}
+                  onPress={() => {
+                    setActionDialogOpen(false);
+                    setFileToAction(null);
+                  }}
+                >
+                  <Text style={{ color: colors.foreground }}>Cancel</Text>
+                </Pressable>
                 <Pressable
                   className="px-4 py-2 rounded-md"
                   style={{
@@ -548,39 +568,6 @@ export default function FilesScreen() {
                     Archive
                   </Text>
                 </Pressable>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    gap: 12,
-                  }}
-                >
-                  <Pressable
-                    className="px-4 py-2"
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                    }}
-                    onPress={() => {
-                      setActionDialogOpen(false);
-                      setFileToAction(null);
-                    }}
-                  >
-                    <Text style={{ color: colors.foreground }}>Cancel</Text>
-                  </Pressable>
-                  <Pressable
-                    className="px-4 py-2 rounded-md"
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 6,
-                    }}
-                    onPress={handleDownload}
-                  >
-                    <Text style={{ color: "#3b82f6", fontWeight: "600" }}>
-                      Preview
-                    </Text>
-                  </Pressable>
-                </View>
               </View>
             </View>
           </View>
@@ -639,18 +626,39 @@ export default function FilesScreen() {
                     color: colors.foreground,
                     fontSize: 18,
                     fontWeight: "600",
-                    marginBottom: 16,
+                    marginBottom: 8,
                   }}
                 >
-                  {fileToAction?.name}
+                  Archive File
+                </Text>
+                <Text
+                  style={{
+                    color: colors.mutedForeground,
+                    fontSize: 14,
+                    marginBottom: 24,
+                  }}
+                >
+                  Are you sure you want to archive "{fileToAction?.name}"? You can restore it from the archive later.
                 </Text>
                 <View
                   style={{
                     flexDirection: "row",
-                    justifyContent: "space-between",
+                    justifyContent: "flex-end",
                     gap: 12,
                   }}
                 >
+                  <Pressable
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                    }}
+                    onPress={() => {
+                      setActionDialogOpen(false);
+                      setFileToAction(null);
+                    }}
+                  >
+                    <Text style={{ color: colors.foreground }}>Cancel</Text>
+                  </Pressable>
                   <Pressable
                     style={{
                       paddingHorizontal: 16,
@@ -663,37 +671,6 @@ export default function FilesScreen() {
                       Archive
                     </Text>
                   </Pressable>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      gap: 12,
-                    }}
-                  >
-                    <Pressable
-                      style={{
-                        paddingHorizontal: 16,
-                        paddingVertical: 8,
-                      }}
-                      onPress={() => {
-                        setActionDialogOpen(false);
-                        setFileToAction(null);
-                      }}
-                    >
-                      <Text style={{ color: colors.foreground }}>Cancel</Text>
-                    </Pressable>
-                    <Pressable
-                      style={{
-                        paddingHorizontal: 16,
-                        paddingVertical: 8,
-                        borderRadius: 6,
-                      }}
-                      onPress={handleDownload}
-                    >
-                      <Text style={{ color: "#3b82f6", fontWeight: "600" }}>
-                        Preview
-                      </Text>
-                    </Pressable>
-                  </View>
                 </View>
               </View>
             </BlurView>
@@ -706,6 +683,7 @@ export default function FilesScreen() {
 
 interface FileCardProps {
   file: FileRecord;
+  onPress: () => void;
   onDelete: () => void;
   onRightClickAction?: () => void;
   formatFileSize: (bytes: number) => string;
@@ -714,6 +692,7 @@ interface FileCardProps {
 
 function FileCard({
   file,
+  onPress,
   onDelete,
   onRightClickAction,
   formatFileSize,
@@ -769,7 +748,8 @@ function FileCard({
     <Pressable
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      onPress={onDelete}
+      onPress={onPress}
+      onLongPress={onDelete}
       {...(Platform.OS === "web" && {
         onContextMenu: handleContextMenu,
       })}
@@ -898,6 +878,7 @@ function FileCard({
 
 interface FileListCardProps {
   file: FileRecord;
+  onPress: () => void;
   onDelete: () => void;
   onRightClickAction?: () => void;
   formatFileSize: (bytes: number) => string;
@@ -906,6 +887,7 @@ interface FileListCardProps {
 
 function FileListCard({
   file,
+  onPress,
   onDelete,
   onRightClickAction,
   formatFileSize,
@@ -961,7 +943,8 @@ function FileListCard({
     <Pressable
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      onPress={onDelete}
+      onPress={onPress}
+      onLongPress={onDelete}
       {...(Platform.OS === "web" && {
         onContextMenu: handleContextMenu,
       })}
