@@ -29,7 +29,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  KeyboardAvoidingView,
+  Keyboard,
   Modal,
   Platform,
   Pressable,
@@ -37,6 +37,7 @@ import {
   ScrollView,
   View
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function CalendarScreen() {
@@ -1628,6 +1629,7 @@ function EventModal({
   const [dateError, setDateError] = useState("");
   const [timeError, setTimeError] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   // Reset form when modal opens/closes or event changes
   useEffect(() => {
@@ -1663,8 +1665,21 @@ function EventModal({
       }
       setDateError("");
       setTimeError("");
+    } else {
+      setKeyboardVisible(false);
     }
   }, [open, event, prefillDate]);
+
+  // Only enable KeyboardAvoidingView when keyboard is visible; avoids extra space / shifted layout when keyboard closes
+  useEffect(() => {
+    if (Platform.OS === "web" || !open) return;
+    const showSub = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [open]);
 
   const validateDate = (dateString: string): boolean => {
     // Check if the date string matches YYYY-MM-DD format
@@ -2064,11 +2079,10 @@ function EventModal({
           onRequestClose={onClose}
         >
           <KeyboardAvoidingView
-            style={{
-              flex: 1,
-            }}
+            style={{ flex: 1 }}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={Platform.OS === "android" ? 0 : 0}
+            keyboardVerticalOffset={0}
+            enabled={keyboardVisible}
           >
             <View
               style={{

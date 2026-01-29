@@ -1,7 +1,8 @@
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { BlurView } from "expo-blur";
 import * as React from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Keyboard, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Svg, { Defs, Stop, LinearGradient as SvgLinearGradient, Text as SvgText, TSpan } from "react-native-svg";
 
 interface AIPromptModalProps {
@@ -119,12 +120,28 @@ export function AIPromptModal({
 }: AIPromptModalProps) {
   const { colors } = useThemeColors();
   const [prompt, setPrompt] = React.useState(initialPrompt);
+  const [keyboardVisible, setKeyboardVisible] = React.useState(false);
 
   React.useEffect(() => {
     if (visible) {
       setPrompt(initialPrompt);
+    } else {
+      setKeyboardVisible(false);
     }
   }, [visible, initialPrompt]);
+
+  // Only enable KeyboardAvoidingView when keyboard is actually visible.
+  // When keyboard closes, RN's KAV often leaves extra space / shifted layout;
+  // disabling it on keyboardDidHide ensures the modal fills the screen again.
+  React.useEffect(() => {
+    if (Platform.OS === "web" || !visible) return;
+    const showSub = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [visible]);
 
   const handleGenerate = () => {
     if (prompt.trim() && !isLoading) {
@@ -267,11 +284,10 @@ export function AIPromptModal({
           onRequestClose={onClose}
         >
           <KeyboardAvoidingView
-            style={{
-              flex: 1,
-            }}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={{ flex: 1 }}
+            behavior="padding"
             keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+            enabled={keyboardVisible}
           >
             <View
               style={{
