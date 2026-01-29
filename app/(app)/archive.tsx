@@ -82,7 +82,7 @@ export default function ArchiveScreen() {
     id?: string;
   } | null>(null);
   const [restoreAction, setRestoreAction] = useState<{
-    type: "all" | "single";
+    type: "all" | "selected" | "single";
     id?: string;
   } | null>(null);
 
@@ -159,6 +159,11 @@ export default function ArchiveScreen() {
     setRestoreDialogOpen(true);
   };
 
+  const handleRestoreSelected = () => {
+    setRestoreAction({ type: "selected" });
+    setRestoreDialogOpen(true);
+  };
+
   const handleDeleteAll = () => {
     setDeleteAction({ type: "all" });
     setDeleteDialogOpen(true);
@@ -230,6 +235,18 @@ export default function ArchiveScreen() {
       } else {
         for (const file of archivedFiles) {
           await restoreFileMutation.mutateAsync(file.id);
+        }
+        setSelectedFiles(new Set());
+      }
+    } else if (restoreAction.type === "selected") {
+      if (activeTab === "notes") {
+        for (const id of selectedNotes) {
+          await restoreNoteMutation.mutateAsync(id);
+        }
+        setSelectedNotes(new Set());
+      } else {
+        for (const id of selectedFiles) {
+          await restoreFileMutation.mutateAsync(id);
         }
         setSelectedFiles(new Set());
       }
@@ -357,7 +374,7 @@ export default function ArchiveScreen() {
                         Haptics.ImpactFeedbackStyle.Medium
                       );
                     }
-                    handleRestoreAll();
+                    hasSelection ? handleRestoreSelected() : handleRestoreAll();
                   }}
                   style={{ padding: 8 }}
                 >
@@ -868,7 +885,9 @@ export default function ArchiveScreen() {
               >
                 {restoreAction?.type === "all"
                   ? `Restore All ${activeTab === "notes" ? "Notes" : "Files"}`
-                  : `Restore ${activeTab === "notes" ? "Note" : "File"}`}
+                  : restoreAction?.type === "selected"
+                    ? `Restore Selected ${activeTab === "notes" ? "Notes" : "Files"}`
+                    : `Restore ${activeTab === "notes" ? "Note" : "File"}`}
               </Text>
               <Text
                 className="text-sm mb-6"
@@ -883,8 +902,18 @@ export default function ArchiveScreen() {
                     ? archivedNotes.length
                     : archivedFiles.length
                   } archived ${activeTab}?`
-                  : `Are you sure you want to restore this ${activeTab === "notes" ? "note" : "file"
-                  }?`}
+                  : restoreAction?.type === "selected"
+                    ? `Are you sure you want to restore ${activeTab === "notes"
+                      ? selectedNotes.size
+                      : selectedFiles.size
+                    } selected ${activeTab === "notes" ? "note" : "file"}${(activeTab === "notes"
+                      ? selectedNotes.size
+                      : selectedFiles.size) > 1
+                      ? "s"
+                      : ""
+                    }?`
+                    : `Are you sure you want to restore this ${activeTab === "notes" ? "note" : "file"
+                    }?`}
               </Text>
               <View
                 className="flex-row justify-end gap-3"
@@ -980,7 +1009,9 @@ export default function ArchiveScreen() {
                 >
                   {restoreAction?.type === "all"
                     ? `Restore All ${activeTab === "notes" ? "Notes" : "Files"}`
-                    : `Restore ${activeTab === "notes" ? "Note" : "File"}`}
+                    : restoreAction?.type === "selected"
+                      ? `Restore Selected ${activeTab === "notes" ? "Notes" : "Files"}`
+                      : `Restore ${activeTab === "notes" ? "Note" : "File"}`}
                 </Text>
                 <Text
                   style={{
@@ -994,8 +1025,18 @@ export default function ArchiveScreen() {
                       ? archivedNotes.length
                       : archivedFiles.length
                     } archived ${activeTab}?`
-                    : `Are you sure you want to restore this ${activeTab === "notes" ? "note" : "file"
-                    }?`}
+                    : restoreAction?.type === "selected"
+                      ? `Are you sure you want to restore ${activeTab === "notes"
+                        ? selectedNotes.size
+                        : selectedFiles.size
+                      } selected ${activeTab === "notes" ? "note" : "file"}${(activeTab === "notes"
+                        ? selectedNotes.size
+                        : selectedFiles.size) > 1
+                        ? "s"
+                        : ""
+                      }?`
+                      : `Are you sure you want to restore this ${activeTab === "notes" ? "note" : "file"
+                      }?`}
                 </Text>
                 <View
                   style={{
