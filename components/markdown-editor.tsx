@@ -10,23 +10,22 @@ import { Image, Linking, Platform, Pressable, Text as RNText, ScrollView, TextIn
 import Markdown, { renderRules } from "react-native-markdown-display";
 
 // Import extracted modules
-import type { MarkdownEditorProps, MarkdownEditorRef, Snapshot } from "./markdown-editor/types";
-import { useUndoRedo } from "./markdown-editor/hooks/useUndoRedo";
 import { useSelection } from "./markdown-editor/hooks/useSelection";
+import { useUndoRedo } from "./markdown-editor/hooks/useUndoRedo";
+import type { MarkdownEditorProps, MarkdownEditorRef } from "./markdown-editor/types";
 import { getListInfo } from "./markdown-editor/utils/list-detection";
-import { renumberOrderedList, TAB_SPACES } from "./markdown-editor/utils/list-processing";
 import {
-  isValidRoman,
-  romanToNumber,
-  numberToRoman,
-  incrementAlphabet,
   alphabetToNumber,
-  numberToAlphabet,
+  getMarkerString,
   getNextMarkerType,
   getPreviousMarkerType,
-  getMarkerString,
+  isValidRoman,
+  numberToAlphabet,
+  numberToRoman,
+  romanToNumber
 } from "./markdown-editor/utils/list-markers";
-import { linkifyMarkdown, normalizeText, stripLinksForMatching } from "./markdown-editor/utils/text-helpers";
+import { renumberOrderedList, TAB_SPACES } from "./markdown-editor/utils/list-processing";
+import { linkifyMarkdown } from "./markdown-editor/utils/text-helpers";
 
 // Re-export types for backward compatibility
 export type { MarkdownEditorProps, MarkdownEditorRef };
@@ -1332,6 +1331,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         alignItems: "flex-start" as const,
         // fontFamily: "monospace",
       },
+      list_item_content: {
+        flex: 1,
+        minWidth: 0,
+      },
       link: {
         color: "#3b82f6",
         textDecorationLine: "underline" as const,
@@ -1980,6 +1983,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
             const childrenToRender = cleanedChildren || children;
             const childrenWithKeys = ensureChildrenKeys(childrenToRender);
+            // Use View for content area so nested lists (Views) render correctly on native.
+            // RNText cannot contain View children—causes jumbled/hidden nested items on mobile.
             return (
               <View key={node.key} style={[styles.list_item, { flexDirection: 'row', alignItems: 'flex-start' }]}>
                 <Pressable
@@ -1996,9 +2001,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                     }}
                   />
                 </Pressable>
-                <RNText key={`list-item-text-${node.key}`} style={{ flex: 1 }} selectable={true}>
+                <View key={`list-item-content-${node.key}`} style={styles.list_item_content}>
                   {childrenWithKeys}
-                </RNText>
+                </View>
               </View>
             );
           }
@@ -2027,16 +2032,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           return rendered;
         }
         // Fallback to default rendering with row layout
-        // Wrap text content in a selectable Text component to enable better selection
+        // Use View for content so nested lists (Views) render correctly on native.
         const childrenWithKeys = ensureChildrenKeys(children);
-
-        // Render list item text in a Text component for better selection
-        // Note: We still need View for layout, but wrap text content in Text
         return (
           <View key={node.key} style={[styles.list_item, { flexDirection: 'row', alignItems: 'flex-start' }]}>
-            <RNText style={{ flex: 1 }} selectable={true}>
+            <View style={styles.list_item_content}>
               {childrenWithKeys}
-            </RNText>
+            </View>
           </View>
         );
       },
