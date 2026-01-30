@@ -22,7 +22,7 @@ import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import { Archive, ArrowLeft, Trash2, Undo2 } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -1092,7 +1092,7 @@ function ArchivedNoteCard({
   onDelete,
 }: ArchivedNoteCardProps) {
   const { colors } = useThemeColors();
-  const scale = new Animated.Value(1);
+  const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
     Animated.spring(scale, {
@@ -1223,7 +1223,7 @@ function ArchivedFileCard({
   onToggleSelect,
 }: ArchivedFileCardProps) {
   const { colors } = useThemeColors();
-  const scale = new Animated.Value(1);
+  const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
     Animated.spring(scale, {
@@ -1415,7 +1415,7 @@ function ArchivedFileListCard({
   onDelete,
 }: ArchivedFileListCardProps) {
   const { colors } = useThemeColors();
-  const scale = new Animated.Value(1);
+  const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
     Animated.spring(scale, {
