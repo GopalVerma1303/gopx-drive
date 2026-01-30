@@ -735,7 +735,7 @@ function FileCard({
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
+    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
   };
 
   // File icon dimensions - scale to fill card width
@@ -930,7 +930,7 @@ function FileListCard({
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
+    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
   };
 
   // List card dimensions - horizontal rectangle
