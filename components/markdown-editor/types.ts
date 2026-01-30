@@ -5,6 +5,8 @@ export interface MarkdownEditorProps {
   className?: string;
   isPreview?: boolean;
   onSave?: () => void;
+  /** Called whenever selection changes so parent can preserve it (e.g. before opening a modal that steals focus). */
+  onSelectionChange?: (selection: { start: number; end: number }) => void;
 }
 
 export interface MarkdownEditorRef {
@@ -18,13 +20,23 @@ export interface MarkdownEditorRef {
   canRedo: () => boolean;
   focus: () => void;
   getSelection: () => { start: number; end: number };
+  /** Replace the range [start, end) with text and place cursor after it. Use when selection was lost (e.g. after opening a modal). */
+  replaceRange: (start: number, end: number, text: string) => void;
 }
 
-export type Snapshot = { text: string; selection: { start: number; end: number } };
+export type Snapshot = {
+  text: string;
+  selection: { start: number; end: number };
+};
 
-export type MarkerType = 'numeric' | 'lowercase-alpha' | 'uppercase-alpha' | 'lowercase-roman' | 'uppercase-roman';
+export type MarkerType =
+  | "numeric"
+  | "lowercase-alpha"
+  | "uppercase-alpha"
+  | "lowercase-roman"
+  | "uppercase-roman";
 
-export type ListMarkerType = 'ordered' | 'unordered' | 'checkbox' | null;
+export type ListMarkerType = "ordered" | "unordered" | "checkbox" | null;
 
 export interface ListInfo {
   isList: boolean;

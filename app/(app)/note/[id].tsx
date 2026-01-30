@@ -40,6 +40,10 @@ export default function NoteEditorScreen() {
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [selectedText, setSelectedText] = useState("");
+  /** Last selection from editor (updated on every selection change). Preserved when AI button steals focus. */
+  const lastSelectionRef = useRef({ start: 0, end: 0 });
+  /** Range to replace with AI output when modal was opened with a selection (so we don't rely on getSelection() after focus is lost). */
+  const [aiReplaceRange, setAiReplaceRange] = useState<{ start: number; end: number } | null>(null);
   const editorRef = useRef<MarkdownEditorRef>(null);
 
   const containerAnimatedStyle = useAnimatedStyle(() => {
@@ -174,16 +178,15 @@ export default function NoteEditorScreen() {
   const canSave = isDirty && !saveMutation.isPending;
 
   const handleOpenAIModal = () => {
-    if (editorRef.current) {
-      const selection = editorRef.current.getSelection();
-
-      // Get selected text if there's a selection
-      if (selection.start !== selection.end) {
-        const selected = content.substring(selection.start, selection.end);
-        setSelectedText(selected);
-      } else {
-        setSelectedText("");
-      }
+    // Use last known selection (from onSelectionChange); getSelection() is already collapsed once the toolbar button takes focus.
+    const { start, end } = lastSelectionRef.current;
+    if (start !== end) {
+      const selected = content.substring(start, end);
+      setSelectedText(selected);
+      setAiReplaceRange({ start, end });
+    } else {
+      setSelectedText("");
+      setAiReplaceRange(null);
     }
     setAiModalOpen(true);
   };
@@ -195,14 +198,9 @@ export default function NoteEditorScreen() {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-      // Get current selection right before generating (in case user changed it)
-      let contextText = "";
-      if (editorRef.current) {
-        const selection = editorRef.current.getSelection();
-        if (selection.start !== selection.end) {
-          contextText = content.substring(selection.start, selection.end);
-        }
-      }
+      // Use stored range from when modal was opened (selection is lost after focus moved to toolbar/modal)
+      const range = aiReplaceRange;
+      const contextText = range ? content.substring(range.start, range.end) : "";
 
       const generatedText = await generateAIContent({
         prompt,
@@ -210,9 +208,12 @@ export default function NoteEditorScreen() {
       });
 
       if (editorRef.current && generatedText) {
-        // insertText will automatically replace selected text if there's a selection
-        // or insert at cursor position if there's no selection
-        editorRef.current.insertText(generatedText, generatedText.length);
+        if (range) {
+          editorRef.current.replaceRange(range.start, range.end, generatedText);
+          setAiReplaceRange(null);
+        } else {
+          editorRef.current.insertText(generatedText, generatedText.length);
+        }
       }
 
       setAiModalOpen(false);
@@ -296,6 +297,9 @@ export default function NoteEditorScreen() {
                 ref={editorRef}
                 value={content}
                 onChangeText={setContent}
+                onSelectionChange={(sel) => {
+                  lastSelectionRef.current = sel;
+                }}
                 placeholder="Start writing in markdown..."
                 isPreview={isPreview}
                 onSave={handleSave}
@@ -342,6 +346,9 @@ export default function NoteEditorScreen() {
                   ref={editorRef}
                   value={content}
                   onChangeText={setContent}
+                  onSelectionChange={(sel) => {
+                    lastSelectionRef.current = sel;
+                  }}
                   placeholder="Start writing in markdown..."
                   isPreview={isPreview}
                 />
@@ -355,6 +362,7 @@ export default function NoteEditorScreen() {
         onClose={() => {
           setAiModalOpen(false);
           setSelectedText("");
+          setAiReplaceRange(null);
         }}
         onGenerate={handleAIGenerate}
         initialPrompt={selectedText ? `Improve or rewrite: "${selectedText}" ` : ""}

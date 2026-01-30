@@ -39,6 +39,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       className,
       isPreview = false,
       onSave,
+      onSelectionChange,
     },
     ref
   ) {
@@ -1233,6 +1234,15 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         inputRef.current?.focus();
       },
       getSelection: () => selection,
+      replaceRange: (start: number, end: number, text: string) => {
+        if (isPreview || !inputRef.current) return;
+        const currentText = previousValueRef.current;
+        const nextText = currentText.substring(0, start) + text + currentText.substring(end);
+        const newCursorPosition = start + text.length;
+        pushUndoSnapshot({ text: currentText, selection: selectionRef.current });
+        redoStackRef.current = [];
+        applyTextAndSelection(nextText, { start: newCursorPosition, end: newCursorPosition });
+      },
     }));
 
     const markdownStyles = {
@@ -2573,7 +2583,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                 }
               }
 
-              setSelectionBoth({ start: next.start, end: next.end });
+              const sel = { start: next.start, end: next.end };
+              setSelectionBoth(sel);
+              onSelectionChange?.(sel);
             }}
             multiline
             blurOnSubmit={false}
