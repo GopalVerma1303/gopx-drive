@@ -162,13 +162,45 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             );
             const renumberedText = renumberedLines.join('\n');
 
+            // When user backspaces from an empty/new list line, place cursor at end of previous line.
+            // Otherwise the controlled input (especially on web) jumps cursor to end of file.
+            let newCursorPosition: number;
+            if (deletionStartIndex > 0) {
+              newCursorPosition = 0;
+              for (let i = 0; i < deletionStartIndex - 1; i++) {
+                newCursorPosition += (renumberedLines[i]?.length || 0) + 1;
+              }
+              newCursorPosition += renumberedLines[deletionStartIndex - 1]?.length ?? 0;
+            } else {
+              newCursorPosition = 0;
+            }
+
+            beginProgrammaticSelection({
+              start: newCursorPosition,
+              end: newCursorPosition,
+            });
+
             previousValueRef.current = renumberedText;
             pendingInternalValueRef.current = renumberedText;
             onChangeText(renumberedText);
 
             requestAnimationFrame(() => {
               setTimeout(() => {
+                const input = inputRef.current as any;
+                if (input) {
+                  if (Platform.OS === "web") {
+                    if (input.setSelectionRange) {
+                      input.setSelectionRange(newCursorPosition, newCursorPosition);
+                    }
+                  } else if (typeof input.setNativeProps === "function") {
+                    input.setNativeProps({
+                      selection: { start: newCursorPosition, end: newCursorPosition },
+                    });
+                  }
+                  input.focus?.();
+                }
                 isProcessingListRef.current = false;
+                endProgrammaticSelection();
               }, Platform.OS === "android" ? 16 : 0);
             });
             return;
