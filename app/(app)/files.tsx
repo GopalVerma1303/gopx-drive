@@ -744,14 +744,12 @@ export default function FilesScreen() {
                     if (url) Linking.openURL(url);
                   }}
                   style={{ padding: 8 }}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 >
                   <ExternalLink color={colors.foreground} size={22} strokeWidth={2} />
                 </Pressable>
                 <Pressable
                   onPress={closePreview}
                   style={{ padding: 8 }}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 >
                   <X color={colors.foreground} size={24} strokeWidth={2} />
                 </Pressable>
