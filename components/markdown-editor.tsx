@@ -1870,6 +1870,35 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       del: (node: any, children: any) => renderStrikeThrough(node, children),
       s: (node: any, children: any) => renderStrikeThrough(node, children),
       list_item: (node: any, children: any, parent: any, styles: any) => {
+        // Ordered list items (1. 2. 3. or a. b. c. etc.) are never checkboxes in markdown.
+        // Skip checkbox matching only when this list_item's immediate parent is ordered_list,
+        // so that "2. Second item" doesn't get a checkbox. Nested checklist items (under
+        // bullet_list) must still get checkboxes — parent[0] is the immediate parent.
+        const immediateParent = Array.isArray(parent) && parent.length > 0 ? parent[0] : null;
+        if (immediateParent?.type === "ordered_list") {
+          const defaultRenderer = renderRules?.list_item;
+          if (defaultRenderer) {
+            const rendered = defaultRenderer(node, children, parent, styles);
+            if (rendered && React.isValidElement(rendered)) {
+              const element = rendered as React.ReactElement<{ style?: any; children?: any }>;
+              const existingStyle = Array.isArray(element.props.style)
+                ? element.props.style
+                : element.props.style ? [element.props.style] : [];
+              const childrenWithKeys = element.props.children ? ensureChildrenKeys(element.props.children) : element.props.children;
+              return React.cloneElement(element, {
+                style: [...(Array.isArray(existingStyle) ? existingStyle : [existingStyle]), { flexDirection: "row" as const, alignItems: "flex-start" as const }],
+                children: childrenWithKeys,
+              });
+            }
+            return rendered;
+          }
+          return (
+            <View key={node.key} style={[styles.list_item, { flexDirection: "row", alignItems: "flex-start" }]}>
+              <View style={styles.list_item_content}>{ensureChildrenKeys(children)}</View>
+            </View>
+          );
+        }
+
         // Extract text content from children, removing checkbox syntax for matching
         let childrenText = normalizeText(stripLinksForMatching(extractTextFromChildren(children)));
         // Remove all checkbox patterns from extracted text for better matching
@@ -1944,9 +1973,15 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         const childrenRawText = extractTextFromChildren(children);
         const hasCheckboxPattern = /\[[\s*xX*]\]/.test(childrenRawText) || /[-*+]\s*\[[\s*xX*]\]/.test(childrenRawText);
 
-        if (bestMatch || hasCheckboxPattern) {
-          // If we have a best match, use it; otherwise find the first unmatched checkbox
-          let checkboxToRender = bestMatch;
+        // Only show a checkbox when we have a confident match or the children actually contain checkbox syntax.
+        // When children don't contain checkbox syntax (e.g. "2. Second item" under ordered list was already skipped above),
+        // require a strong content match (score >= 60) so we don't assign a checkbox to the wrong list item.
+        const minScoreForContentMatch = hasCheckboxPattern ? 30 : 60;
+        const hasConfidentMatch = bestMatch && bestMatch.score >= minScoreForContentMatch;
+
+        if (hasConfidentMatch || hasCheckboxPattern) {
+          // If we have a best match, use it; otherwise find the first unmatched checkbox (only when children have checkbox syntax)
+          let checkboxToRender = hasConfidentMatch ? bestMatch : null;
 
           if (!checkboxToRender && hasCheckboxPattern) {
             // Find the first unmatched checkbox line
