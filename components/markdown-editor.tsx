@@ -2067,6 +2067,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                   onPress={() => {
                     toggleCheckbox(lineIndex);
                   }}
+                  hitSlop={0}
                   style={{ marginRight: 8, marginTop: 4 }}
                 >
                   <Checkbox
@@ -2074,6 +2075,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                     onCheckedChange={() => {
                       toggleCheckbox(lineIndex);
                     }}
+                    hitSlop={0}
                   />
                 </Pressable>
                 <View key={`list-item-content-${node.key}`} style={styles.list_item_content}>
