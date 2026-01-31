@@ -145,13 +145,12 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           const listInfo = getListInfoLocal(newText, lineStartPos);
 
           if (listInfo && listInfo.markerType === 'ordered' && listInfo.markerSubtype) {
-            // Find the first line at the same indentation level after the deletion
-            let renumberStartIndex = checkLineIndex + 1;
-
-            // If we're checking the line before deletion, start renumbering from deletion point
-            if (checkLineIndex === deletionStartIndex - 1) {
-              renumberStartIndex = deletionStartIndex;
-            }
+            // Start renumbering from the deletion point so the line that moved up (and any
+            // following ordered siblings) gets renumbered. When the first ordered line we find
+            // is at deletionStartIndex (e.g. "3. Third" after nested checklist lines), we must
+            // start there; when we found ordered context on the line before, starting at
+            // deletionStartIndex is also correct.
+            const renumberStartIndex = deletionStartIndex;
 
             // Renumber subsequent items at the same indentation level
             isProcessingListRef.current = true;
