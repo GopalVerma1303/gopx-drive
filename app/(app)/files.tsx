@@ -37,6 +37,13 @@ const WebView =
 
 const FILES_VIEW_MODE_STORAGE_KEY = "@files_view_mode";
 
+/** Mobile user agents so Google Docs viewer serves mobile-responsive layout instead of desktop. */
+const MOBILE_USER_AGENT = Platform.select({
+  ios: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+  android: "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+  default: "",
+});
+
 export default function FilesScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -745,6 +752,21 @@ export default function FilesScreen() {
                 contentInsetAdjustmentBehavior="automatic"
                 source={{ uri: previewUrl }}
                 style={{ flex: 1 }}
+                userAgent={MOBILE_USER_AGENT || undefined}
+                scalesPageToFit={true}
+                injectedJavaScriptBeforeContentLoaded={`
+                  (function() {
+                    var meta = document.querySelector('meta[name="viewport"]');
+                    if (!meta) {
+                      meta = document.createElement('meta');
+                      meta.name = 'viewport';
+                      var head = document.getElementsByTagName('head')[0];
+                      if (head) head.appendChild(meta);
+                    }
+                    if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=0.85, maximum-scale=5.0, user-scalable=yes');
+                  })();
+                  true;
+                `}
                 onError={() => {
                   Alert.alert("Error", "Failed to load preview");
                   closePreview();
