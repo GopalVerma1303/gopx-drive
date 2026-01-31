@@ -716,7 +716,7 @@ export default function FilesScreen() {
           <View style={{ flex: 1, backgroundColor: colors.background }}>
             <View
               style={{
-                paddingTop: 12,
+                paddingTop: insets.top,
                 paddingBottom: 12,
                 paddingHorizontal: 16,
                 flexDirection: "row",
