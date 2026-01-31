@@ -13,13 +13,14 @@ import { BlurView } from "expo-blur";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
 import { Stack } from "expo-router";
-import { LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
+import { ExternalLink, LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -36,13 +37,6 @@ const WebView =
     : require("react-native-webview").WebView;
 
 const FILES_VIEW_MODE_STORAGE_KEY = "@files_view_mode";
-
-/** Mobile user agents so Google Docs viewer serves mobile-responsive layout instead of desktop. */
-const MOBILE_USER_AGENT = Platform.select({
-  ios: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-  android: "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
-  default: "",
-});
 
 export default function FilesScreen() {
   const { user } = useAuth();
@@ -136,6 +130,8 @@ export default function FilesScreen() {
   const [fileToAction, setFileToAction] = useState<FileRecord | null>(null);
   /** In-app preview URL (native only). When set, a modal WebView is shown instead of opening the browser. */
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  /** Original Supabase bucket URL; used for "open in browser" redirect (not Google viewer). */
+  const [previewRawUrl, setPreviewRawUrl] = useState<string | null>(null);
   const [previewFileName, setPreviewFileName] = useState<string | null>(null);
 
   const archiveMutation = useMutation({
@@ -239,6 +235,7 @@ export default function FilesScreen() {
       } else {
         // For native (iOS/Android), open in-app WebView with a viewer URL when needed so content previews instead of downloading
         setPreviewFileName(file.name);
+        setPreviewRawUrl(downloadUrl);
         setPreviewUrl(getPreviewUrlForWebView(downloadUrl, file.name));
       }
     } catch (error: any) {
@@ -248,6 +245,7 @@ export default function FilesScreen() {
 
   const closePreview = () => {
     setPreviewUrl(null);
+    setPreviewRawUrl(null);
     setPreviewFileName(null);
   };
 
@@ -739,34 +737,30 @@ export default function FilesScreen() {
               >
                 {previewFileName ?? "Preview"}
               </Text>
-              <Pressable
-                onPress={closePreview}
-                style={{ padding: 8 }}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              >
-                <X color={colors.foreground} size={24} strokeWidth={2} />
-              </Pressable>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Pressable
+                  onPress={() => {
+                    const url = previewRawUrl ?? previewUrl;
+                    if (url) Linking.openURL(url);
+                  }}
+                  style={{ padding: 8 }}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <ExternalLink color={colors.foreground} size={22} strokeWidth={2} />
+                </Pressable>
+                <Pressable
+                  onPress={closePreview}
+                  style={{ padding: 8 }}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <X color={colors.foreground} size={24} strokeWidth={2} />
+                </Pressable>
+              </View>
             </View>
             {WebView ? (
               <WebView
-                contentInsetAdjustmentBehavior="automatic"
                 source={{ uri: previewUrl }}
                 style={{ flex: 1 }}
-                userAgent={MOBILE_USER_AGENT || undefined}
-                scalesPageToFit={true}
-                injectedJavaScriptBeforeContentLoaded={`
-                  (function() {
-                    var meta = document.querySelector('meta[name="viewport"]');
-                    if (!meta) {
-                      meta = document.createElement('meta');
-                      meta.name = 'viewport';
-                      var head = document.getElementsByTagName('head')[0];
-                      if (head) head.appendChild(meta);
-                    }
-                    if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=0.85, maximum-scale=5.0, user-scalable=yes');
-                  })();
-                  true;
-                `}
                 onError={() => {
                   Alert.alert("Error", "Failed to load preview");
                   closePreview();
