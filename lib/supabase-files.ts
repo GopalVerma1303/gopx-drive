@@ -304,12 +304,16 @@ export const deleteFile = async (id: string): Promise<void> => {
   }
 };
 
-export const getFileDownloadUrl = async (filePath: string): Promise<string> => {
+export const getFileDownloadUrl = async (
+  filePath: string,
+  options?: { download?: boolean }
+): Promise<string> => {
   // For private buckets, we need to use signed URLs
   // Signed URLs expire after a certain time (default 3600 seconds = 1 hour)
+  // Pass download: true only when we want the browser/OS to save the file; omit for inline preview
   const { data, error } = await supabase.storage
     .from("files")
-    .createSignedUrl(filePath, 3600); // URL valid for 1 hour
+    .createSignedUrl(filePath, 3600, options?.download ? { download: true } : undefined);
 
   if (error) {
     throw new Error(`Failed to create download URL: ${error.message}`);

@@ -13,22 +13,27 @@ import { BlurView } from "expo-blur";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
 import { Stack } from "expo-router";
-import { LayoutGrid, Plus, Rows2, Search } from "lucide-react-native";
+import { LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
-  Linking,
   Modal,
   Platform,
   Pressable,
   RefreshControl,
   ScrollView,
-  View,
+  View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+// WebView is native-only; avoid importing on web to prevent native-module errors
+const WebView =
+  Platform.OS === "web"
+    ? null
+    : require("react-native-webview").WebView;
 
 const FILES_VIEW_MODE_STORAGE_KEY = "@files_view_mode";
 
@@ -122,6 +127,9 @@ export default function FilesScreen() {
 
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [fileToAction, setFileToAction] = useState<FileRecord | null>(null);
+  /** In-app preview URL (native only). When set, a modal WebView is shown instead of opening the browser. */
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewFileName, setPreviewFileName] = useState<string | null>(null);
 
   const archiveMutation = useMutation({
     mutationFn: (id: string) => archiveFile(id),
@@ -197,6 +205,17 @@ export default function FilesScreen() {
     setActionDialogOpen(true);
   };
 
+  /** On mobile WebView, use a viewer URL for PDFs (and similar) so content displays inline instead of downloading.
+   *  Use embedded=false so the full Google Docs viewer UI is shown (Add to Drive, Print, Share, menu). */
+  const getPreviewUrlForWebView = (rawUrl: string, fileName: string): string => {
+    const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+    const viewableDocs = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"];
+    if (viewableDocs.includes(ext)) {
+      return `https://docs.google.com/gview?url=${encodeURIComponent(rawUrl)}&embedded=false`;
+    }
+    return rawUrl;
+  };
+
   const handleFilePress = async (file: FileRecord) => {
     try {
       if (Platform.OS !== "web") {
@@ -206,22 +225,23 @@ export default function FilesScreen() {
       const downloadUrl = await getFileDownloadUrl(file.file_path);
 
       if (Platform.OS === "web") {
-        // For web, open in new tab
+        // For web, open in new tab (browser)
         if (typeof window !== "undefined") {
           window.open(downloadUrl, "_blank");
         }
       } else {
-        // For native, use Linking to open the URL
-        const canOpen = await Linking.canOpenURL(downloadUrl);
-        if (canOpen) {
-          await Linking.openURL(downloadUrl);
-        } else {
-          Alert.alert("Error", "Cannot open file URL");
-        }
+        // For native (iOS/Android), open in-app WebView with a viewer URL when needed so content previews instead of downloading
+        setPreviewFileName(file.name);
+        setPreviewUrl(getPreviewUrlForWebView(downloadUrl, file.name));
       }
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to open file");
     }
+  };
+
+  const closePreview = () => {
+    setPreviewUrl(null);
+    setPreviewFileName(null);
   };
 
   const handleArchiveConfirm = () => {
@@ -674,6 +694,63 @@ export default function FilesScreen() {
                 </View>
               </View>
             </BlurView>
+          </View>
+        </Modal>
+      )}
+
+      {/* In-app WebView preview (native only; web keeps opening in browser tab) */}
+      {Platform.OS !== "web" && previewUrl !== null && (
+        <Modal
+          visible={true}
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={closePreview}
+        >
+          <View style={{ flex: 1, backgroundColor: colors.background }}>
+            <View
+              style={{
+                paddingTop: 12,
+                paddingBottom: 12,
+                paddingHorizontal: 16,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                borderBottomWidth: 1,
+                borderBottomColor: colors.border,
+                backgroundColor: colors.background,
+              }}
+            >
+              <Text
+                numberOfLines={1}
+                style={{
+                  flex: 1,
+                  fontSize: 16,
+                  fontWeight: "600",
+                  color: colors.foreground,
+                  marginRight: 8,
+                }}
+              >
+                {previewFileName ?? "Preview"}
+              </Text>
+              <Pressable
+                onPress={closePreview}
+                style={{ padding: 8 }}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <X color={colors.foreground} size={24} strokeWidth={2} />
+              </Pressable>
+            </View>
+            {WebView ? (
+              <WebView
+                contentInsetAdjustmentBehavior="automatic"
+                source={{ uri: previewUrl }}
+                style={{ flex: 1 }}
+                onError={() => {
+                  Alert.alert("Error", "Failed to load preview");
+                  closePreview();
+                }}
+              />
+            ) : null}
           </View>
         </Modal>
       )}
