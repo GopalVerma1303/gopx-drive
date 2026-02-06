@@ -4,7 +4,13 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
-import { archiveNote, listNotes } from "@/lib/notes";
+import {
+  archiveNote,
+  getNotesSyncStatus,
+  getUnsyncedNoteIds,
+  listNotes,
+  syncNotesFromSupabase,
+} from "@/lib/notes";
 import type { Note } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -13,7 +19,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { LayoutGrid, Plus, Rows2, Search } from "lucide-react-native";
+import { Check, CheckCheck, LayoutGrid, Plus, Rows2, Search } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -48,6 +54,11 @@ export default function NotesScreen() {
     }
     return Dimensions.get("window").width;
   });
+
+  // Sync notes from Supabase into local SQLite when screen mounts (local-first)
+  useEffect(() => {
+    syncNotesFromSupabase(user?.id);
+  }, [user?.id]);
 
   // Load saved view mode preference on mount
   useEffect(() => {
@@ -114,6 +125,21 @@ export default function NotesScreen() {
     staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
   });
 
+  const { data: syncStatus } = useQuery({
+    queryKey: ["notes-sync-status", user?.id],
+    queryFn: () => getNotesSyncStatus(user?.id),
+    refetchInterval: (query) =>
+      query.state.data?.pendingCount ? 3000 : 10000,
+    enabled: !!user?.id,
+  });
+
+  const { data: unsyncedNoteIds = [] } = useQuery({
+    queryKey: ["notes-unsynced-ids", user?.id],
+    queryFn: () => getUnsyncedNoteIds(user?.id),
+    refetchInterval: syncStatus?.pendingCount ? 3000 : 10000,
+    enabled: !!user?.id,
+  });
+
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [noteToArchive, setNoteToArchive] = useState<{
     id: string;
@@ -123,8 +149,9 @@ export default function NotesScreen() {
   const archiveMutation = useMutation({
     mutationFn: (id: string) => archiveNote(id),
     onSuccess: () => {
-      // Remove redundant refetch() - invalidateQueries already triggers refetch
       queryClient.invalidateQueries({ queryKey: ["notes"] });
+      queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
+      queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setArchiveDialogOpen(false);
       setNoteToArchive(null);
@@ -366,6 +393,7 @@ export default function NotesScreen() {
                               <NoteCard
                                 note={note}
                                 cardWidth={cardWidth}
+                                isSynced={!unsyncedNoteIds.includes(note.id)}
                                 onPress={() => router.push(`/(app)/note/${note.id}`)}
                                 onDelete={() => handleRightClickArchive(note.id, note.title)}
                                 onRightClickDelete={
@@ -404,6 +432,7 @@ export default function NotesScreen() {
                           <NoteCard
                             note={note}
                             cardWidth={cardWidth}
+                            isSynced={!unsyncedNoteIds.includes(note.id)}
                             onPress={() => router.push(`/(app)/note/${note.id}`)}
                             onDelete={() => handleRightClickArchive(note.id, note.title)}
                             onRightClickDelete={
@@ -622,6 +651,8 @@ export default function NotesScreen() {
 interface NoteCardProps {
   note: Note;
   cardWidth: number;
+  /** True when note is synced with Supabase (show double check); false = single check. */
+  isSynced: boolean;
   onPress: () => void;
   onDelete: () => void;
   onRightClickDelete?: () => void;
@@ -630,10 +661,12 @@ interface NoteCardProps {
 function NoteCard({
   note,
   cardWidth,
+  isSynced,
   onPress,
   onDelete,
   onRightClickDelete,
 }: NoteCardProps) {
+  const { colors } = useThemeColors();
   const scale = new Animated.Value(1);
 
   const handlePressIn = () => {
@@ -726,12 +759,34 @@ function NoteCard({
           >
             {note.content ? note.content : "No content"}
           </Text>
-          <Text
-            className="text-xs text-muted-foreground/70"
-            style={{ marginTop: 8 }}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              marginTop: 8,
+              gap: 4,
+            }}
           >
-            {formatDate(note.updated_at)}
-          </Text>
+            <Text
+              className="text-xs text-muted-foreground/70"
+            >
+              {formatDate(note.updated_at)}
+            </Text>
+            {isSynced ? (
+              <CheckCheck
+                size={14}
+                color={colors.mutedForeground + "90"}
+                strokeWidth={2.5}
+              />
+            ) : (
+              <Check
+                size={14}
+                color={colors.mutedForeground + "90"}
+                strokeWidth={2.5}
+              />
+            )}
+          </View>
         </Card>
       </Animated.View>
     </Pressable>

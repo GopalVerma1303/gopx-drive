@@ -136,7 +136,9 @@ export default function NoteEditorScreen() {
 
       // Optimistically update cache instead of invalidating
       queryClient.setQueryData(["note", id], savedNote);
-      queryClient.invalidateQueries({ queryKey: ["notes"] }); // Invalidate list to refresh
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
+      queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     onError: (error: any) => {

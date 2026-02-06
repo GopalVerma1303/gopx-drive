@@ -1,6 +1,7 @@
 import { Navigation } from "@/components/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { NavigationProvider, useNavigation } from "@/contexts/navigation-context";
+import { syncNotesFromSupabase } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQueryClient } from "@tanstack/react-query";
 import { Redirect, Stack, usePathname } from "expo-router";
@@ -115,6 +116,7 @@ export default function AppLayout() {
       ) {
         // Only refetch queries that are stale (older than staleTime)
         // This prevents unnecessary API calls if data is still fresh
+        syncNotesFromSupabase(user?.id);
         queryClient.refetchQueries({ 
           queryKey: ["notes"],
           type: "active",
@@ -135,7 +137,7 @@ export default function AppLayout() {
     return () => {
       subscription.remove();
     };
-  }, [queryClient]);
+  }, [queryClient, user?.id]);
 
   if (isLoading) {
     return (
