@@ -69,10 +69,10 @@ export const deleteNote = async (id: string): Promise<void> => {
   return notesReservoir.deleteNote(id);
 };
 
-/** Trigger background sync of notes from Supabase into local SQLite. Call on notes screen focus or app foreground. */
-export const syncNotesFromSupabase = (userId: string | undefined) => {
-  if (UI_DEV || !userId) return;
-  notesReservoir.syncFromSupabase(userId).catch(() => {});
+/** Trigger sync of notes from Supabase into local SQLite. Returns a promise that resolves when sync finishes (for invalidating queries). */
+export const syncNotesFromSupabase = (userId: string | undefined): Promise<void> | undefined => {
+  if (UI_DEV || !userId) return undefined;
+  return notesReservoir.syncFromSupabase(userId).catch(() => {});
 };
 
 /** Check if notes are synced with Supabase: pendingCount (unsynced changes) and isSyncing. On web or UI_DEV always returns { pendingCount: 0, isSyncing: false }. */

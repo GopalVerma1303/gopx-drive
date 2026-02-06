@@ -55,10 +55,15 @@ export default function NotesScreen() {
     return Dimensions.get("window").width;
   });
 
-  // Sync notes from Supabase into local SQLite when screen mounts (local-first)
+  // Sync notes from Supabase when screen mounts; invalidate so lists refresh after sync
   useEffect(() => {
-    syncNotesFromSupabase(user?.id);
-  }, [user?.id]);
+    syncNotesFromSupabase(user?.id)?.then(() => {
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      queryClient.invalidateQueries({ queryKey: ["archivedNotes"] });
+      queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
+      queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
+    });
+  }, [user?.id, queryClient]);
 
   // Load saved view mode preference on mount
   useEffect(() => {

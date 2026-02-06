@@ -122,6 +122,9 @@ export async function syncFromSupabase(userId: string): Promise<void> {
             title: note.title,
             content: note.content,
           });
+          if (note.is_archived) {
+            await supabaseNotes.archiveNote(created.id);
+          }
           await db.runAsync(`DELETE FROM ${TABLE} WHERE id = ?`, note.id);
           await db.runAsync(
             `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty)
@@ -130,7 +133,7 @@ export async function syncFromSupabase(userId: string): Promise<void> {
             created.user_id,
             created.title,
             created.content,
-            created.is_archived ? 1 : 0,
+            note.is_archived ? 1 : 0,
             created.created_at,
             created.updated_at
           );

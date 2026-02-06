@@ -114,18 +114,16 @@ export default function AppLayout() {
         appState.current.match(/inactive|background/) &&
         nextAppState === "active"
       ) {
-        // Only refetch queries that are stale (older than staleTime)
-        // This prevents unnecessary API calls if data is still fresh
-        syncNotesFromSupabase(user?.id);
-        queryClient.refetchQueries({ 
-          queryKey: ["notes"],
-          type: "active",
-          stale: true, // Only refetch if stale
+        syncNotesFromSupabase(user?.id)?.then(() => {
+          queryClient.invalidateQueries({ queryKey: ["notes"] });
+          queryClient.invalidateQueries({ queryKey: ["archivedNotes"] });
+          queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
+          queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
         });
-        queryClient.refetchQueries({ 
+        queryClient.refetchQueries({
           queryKey: ["files"],
           type: "active",
-          stale: true, // Only refetch if stale
+          stale: true,
         });
       }
       appState.current = nextAppState;

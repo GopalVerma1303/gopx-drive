@@ -84,6 +84,19 @@ export default function NoteEditorScreen() {
     }
   }, [note]);
 
+  // Reset form when navigating to "new" so previous note content is cleared
+  useEffect(() => {
+    if (id === "new") {
+      setTitle("");
+      setContent("");
+      setLastSavedTitle("");
+      setLastSavedContent("");
+      setIsPreview(false); // open new note in edit mode
+      setAiReplaceRange(null);
+      setSelectedText("");
+    }
+  }, [id]);
+
   useEffect(() => {
     if (Platform.OS !== "android") return;
 
