@@ -12,8 +12,10 @@ import {
 } from "@/lib/files";
 import {
   deleteNote,
+  getUnsyncedNoteIds,
   listArchivedNotes,
   restoreNote,
+  syncNotesFromSupabase,
 } from "@/lib/notes";
 import type { File as FileRecord, Note } from "@/lib/supabase";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -21,7 +23,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Archive, ArrowLeft, Trash2, Undo2 } from "lucide-react-native";
+import { Archive, ArrowLeft, Check, CheckCheck, Trash2, Undo2 } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -86,6 +88,16 @@ export default function ArchiveScreen() {
     id?: string;
   } | null>(null);
 
+  // Sync notes from Supabase when archive screen mounts; invalidate so lists refresh after sync
+  useEffect(() => {
+    syncNotesFromSupabase(user?.id)?.then(() => {
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      queryClient.invalidateQueries({ queryKey: ["archivedNotes"] });
+      queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
+      queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
+    });
+  }, [user?.id, queryClient]);
+
   const {
     data: archivedNotes = [],
     isLoading: notesLoading,
@@ -99,6 +111,13 @@ export default function ArchiveScreen() {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
+  });
+
+  const { data: unsyncedNoteIds = [] } = useQuery({
+    queryKey: ["notes-unsynced-ids", user?.id],
+    queryFn: () => getUnsyncedNoteIds(user?.id),
+    refetchInterval: 10000,
+    enabled: !!user?.id && activeTab === "notes",
   });
 
   const {
@@ -119,9 +138,10 @@ export default function ArchiveScreen() {
   const restoreNoteMutation = useMutation({
     mutationFn: (id: string) => restoreNote(id),
     onSuccess: () => {
-      // Remove redundant refetch() - invalidateQueries already triggers refetch
       queryClient.invalidateQueries({ queryKey: ["archivedNotes"] });
       queryClient.invalidateQueries({ queryKey: ["notes"] });
+      queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
+      queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
   });
@@ -129,8 +149,9 @@ export default function ArchiveScreen() {
   const deleteNoteMutation = useMutation({
     mutationFn: (id: string) => deleteNote(id),
     onSuccess: () => {
-      // Remove redundant refetch() - invalidateQueries already triggers refetch
       queryClient.invalidateQueries({ queryKey: ["archivedNotes"] });
+      queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
+      queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
   });
@@ -508,6 +529,7 @@ export default function ArchiveScreen() {
                               <ArchivedNoteCard
                                 note={note}
                                 cardWidth={cardWidth}
+                                isSynced={!unsyncedNoteIds.includes(note.id)}
                                 isSelected={selectedNotes.has(note.id)}
                                 onToggleSelect={() =>
                                   toggleNoteSelection(note.id)
@@ -1079,6 +1101,8 @@ export default function ArchiveScreen() {
 interface ArchivedNoteCardProps {
   note: Note;
   cardWidth: number;
+  /** True when note is synced with Supabase (double check); false = single check. */
+  isSynced: boolean;
   isSelected: boolean;
   onToggleSelect: () => void;
   onDelete: () => void;
@@ -1087,6 +1111,7 @@ interface ArchivedNoteCardProps {
 function ArchivedNoteCard({
   note,
   cardWidth,
+  isSynced,
   isSelected,
   onToggleSelect,
   onDelete,
@@ -1195,12 +1220,32 @@ function ArchivedNoteCard({
           >
             {note.content ? note.content : "No content"}
           </Text>
-          <Text
-            className="text-xs text-muted-foreground/70"
-            style={{ marginTop: 8 }}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              marginTop: 8,
+              gap: 4,
+            }}
           >
-            {formatDate(note.updated_at)}
-          </Text>
+            <Text className="text-xs text-muted-foreground/70">
+              {formatDate(note.updated_at)}
+            </Text>
+            {isSynced ? (
+              <CheckCheck
+                size={14}
+                color={colors.mutedForeground + "90"}
+                strokeWidth={2.5}
+              />
+            ) : (
+              <Check
+                size={14}
+                color={colors.mutedForeground + "90"}
+                strokeWidth={2.5}
+              />
+            )}
+          </View>
         </Card>
       </Animated.View>
     </Pressable>

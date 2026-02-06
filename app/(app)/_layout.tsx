@@ -1,6 +1,7 @@
 import { Navigation } from "@/components/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { NavigationProvider, useNavigation } from "@/contexts/navigation-context";
+import { syncNotesFromSupabase } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQueryClient } from "@tanstack/react-query";
 import { Redirect, Stack, usePathname } from "expo-router";
@@ -113,17 +114,16 @@ export default function AppLayout() {
         appState.current.match(/inactive|background/) &&
         nextAppState === "active"
       ) {
-        // Only refetch queries that are stale (older than staleTime)
-        // This prevents unnecessary API calls if data is still fresh
-        queryClient.refetchQueries({ 
-          queryKey: ["notes"],
-          type: "active",
-          stale: true, // Only refetch if stale
+        syncNotesFromSupabase(user?.id)?.then(() => {
+          queryClient.invalidateQueries({ queryKey: ["notes"] });
+          queryClient.invalidateQueries({ queryKey: ["archivedNotes"] });
+          queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
+          queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
         });
-        queryClient.refetchQueries({ 
+        queryClient.refetchQueries({
           queryKey: ["files"],
           type: "active",
-          stale: true, // Only refetch if stale
+          stale: true,
         });
       }
       appState.current = nextAppState;
@@ -135,7 +135,7 @@ export default function AppLayout() {
     return () => {
       subscription.remove();
     };
-  }, [queryClient]);
+  }, [queryClient, user?.id]);
 
   if (isLoading) {
     return (

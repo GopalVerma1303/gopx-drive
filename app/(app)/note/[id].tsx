@@ -84,6 +84,19 @@ export default function NoteEditorScreen() {
     }
   }, [note]);
 
+  // Reset form when navigating to "new" so previous note content is cleared
+  useEffect(() => {
+    if (id === "new") {
+      setTitle("");
+      setContent("");
+      setLastSavedTitle("");
+      setLastSavedContent("");
+      setIsPreview(false); // open new note in edit mode
+      setAiReplaceRange(null);
+      setSelectedText("");
+    }
+  }, [id]);
+
   useEffect(() => {
     if (Platform.OS !== "android") return;
 
@@ -136,7 +149,9 @@ export default function NoteEditorScreen() {
 
       // Optimistically update cache instead of invalidating
       queryClient.setQueryData(["note", id], savedNote);
-      queryClient.invalidateQueries({ queryKey: ["notes"] }); // Invalidate list to refresh
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
+      queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     onError: (error: any) => {
