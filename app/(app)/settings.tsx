@@ -5,10 +5,19 @@ import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import { Archive, LogOut } from "lucide-react-native";
-import { Alert, Pressable, ScrollView, View } from "react-native";
+import { useState } from "react";
+import {
+  Alert,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
@@ -18,8 +27,11 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+
   const handleSignOut = async () => {
     try {
+      setLogoutDialogOpen(false);
       await signOut();
     } catch (error: any) {
       Alert.alert("Error", error.message);
@@ -27,24 +39,17 @@ export default function SettingsScreen() {
   };
 
   const handleLogoutPress = () => {
-    Alert.alert(
-      "Sign Out",
-      "Are you sure you want to sign out?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Sign Out",
-          style: "destructive",
-          onPress: () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            handleSignOut();
-          },
-        },
-      ]
-    );
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    setLogoutDialogOpen(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    handleSignOut();
   };
 
   return (
@@ -271,6 +276,182 @@ export default function SettingsScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Sign Out confirmation dialog — same style as notes archive dialog for web + native */}
+      {Platform.OS === "web" ? (
+        logoutDialogOpen && (
+          <View
+            style={{
+              position: "fixed" as any,
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 50,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              backdropFilter: "blur(8px)",
+              justifyContent: "center",
+              alignItems: "center",
+              padding: 16,
+            }}
+          >
+            <Pressable
+              style={{ position: "absolute" as any, top: 0, left: 0, right: 0, bottom: 0 }}
+              onPress={() => setLogoutDialogOpen(false)}
+            />
+            <View
+              style={{
+                backgroundColor: colors.muted,
+                borderColor: colors.border,
+                borderRadius: 8,
+                borderWidth: 1,
+                padding: 24,
+                width: "100%",
+                maxWidth: 400,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+              }}
+            >
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontSize: 18,
+                  fontWeight: "600",
+                  marginBottom: 8,
+                }}
+              >
+                Sign Out
+              </Text>
+              <Text
+                style={{
+                  color: colors.mutedForeground,
+                  fontSize: 14,
+                  marginBottom: 24,
+                }}
+              >
+                Are you sure you want to sign out?
+              </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "flex-end",
+                  gap: 12,
+                }}
+              >
+                <Pressable
+                  style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                  onPress={() => setLogoutDialogOpen(false)}
+                >
+                  <Text style={{ color: colors.foreground }}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: 6,
+                  }}
+                  onPress={handleLogoutConfirm}
+                >
+                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>Sign Out</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )
+      ) : (
+        <Modal
+          visible={logoutDialogOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setLogoutDialogOpen(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)" }}>
+            <BlurView
+              intensity={20}
+              tint="dark"
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                padding: 16,
+              }}
+            >
+              <Pressable
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+                onPress={() => setLogoutDialogOpen(false)}
+              />
+              <View
+                style={{
+                  backgroundColor: colors.muted,
+                  borderColor: colors.border,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  padding: 24,
+                  width: "100%",
+                  maxWidth: 400,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  elevation: 5,
+                }}
+              >
+                <Text
+                  style={{
+                    color: colors.foreground,
+                    fontSize: 18,
+                    fontWeight: "600",
+                    marginBottom: 8,
+                  }}
+                >
+                  Sign Out
+                </Text>
+                <Text
+                  style={{
+                    color: colors.mutedForeground,
+                    fontSize: 14,
+                    marginBottom: 24,
+                  }}
+                >
+                  Are you sure you want to sign out?
+                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "flex-end",
+                    gap: 12,
+                  }}
+                >
+                  <Pressable
+                    style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                    onPress={() => setLogoutDialogOpen(false)}
+                  >
+                    <Text style={{ color: colors.foreground }}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      borderRadius: 6,
+                    }}
+                    onPress={handleLogoutConfirm}
+                  >
+                    <Text style={{ color: "#ef4444", fontWeight: "600" }}>Sign Out</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </BlurView>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
