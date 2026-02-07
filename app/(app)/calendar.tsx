@@ -65,6 +65,7 @@ export default function CalendarScreen() {
     refetch,
     isFetching,
   } = useQuery({
+    // Stable key so calendar stays visible when month changes (we refetch in background, keep showing previous data)
     queryKey: ["events", user?.id],
     queryFn: () => listEvents(user?.id),
     refetchOnMount: true, // Fetch on initial mount
@@ -148,16 +149,17 @@ export default function CalendarScreen() {
     },
     onMutate: async (id: string) => {
       console.log("deleteMutation.onMutate called with id:", id);
+      const eventsQueryKey = ["events", user?.id];
       // Cancel any outgoing refetches to avoid overwriting optimistic update
-      await queryClient.cancelQueries({ queryKey: ["events", user?.id] });
+      await queryClient.cancelQueries({ queryKey: eventsQueryKey });
 
       // Snapshot the previous value
-      const previousEvents = queryClient.getQueryData<Event[]>(["events", user?.id]);
+      const previousEvents = queryClient.getQueryData<Event[]>(eventsQueryKey);
       console.log("Previous events count:", previousEvents?.length || 0);
 
       // Optimistically update to the new value
       if (previousEvents) {
-        queryClient.setQueryData<Event[]>(["events", user?.id], (old) => {
+        queryClient.setQueryData<Event[]>(eventsQueryKey, (old) => {
           const filtered = old ? old.filter((event) => event.id !== id) : [];
           console.log("Optimistic update - new events count:", filtered.length);
           return filtered;
@@ -181,9 +183,8 @@ export default function CalendarScreen() {
       setEventModalOpen(false);
       setEditingEvent(null);
       // Invalidate after a brief delay to ensure DB has processed
-      // Remove redundant refetch() - invalidateQueries already triggers refetch
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["events", user?.id] });
+        queryClient.invalidateQueries({ queryKey: ["events"] });
       }, 200);
     },
   });
@@ -393,27 +394,22 @@ export default function CalendarScreen() {
           </View>
         </View>
 
-        {isLoading ? (
-          <View className="flex-1 justify-center items-center">
-            <ActivityIndicator size="large" color={colors.foreground} />
-          </View>
-        ) : (
-          <ScrollView
-            className="flex-1"
-            contentContainerClassName="p-4 pb-32"
-            refreshControl={
-              <RefreshControl
-                progressBackgroundColor={colors.background}
-                refreshing={isFetching}
-                onRefresh={onRefresh}
-                tintColor={colors.foreground}
-                colors={[colors.foreground]}
-              />
-            }
-          >
-            {/* Calendar Component */}
-            <View className="w-full max-w-2xl mx-auto mb-6">
-              <CustomCalendar
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="p-4 pb-32"
+          refreshControl={
+            <RefreshControl
+              progressBackgroundColor={colors.background}
+              refreshing={isFetching}
+              onRefresh={onRefresh}
+              tintColor={colors.foreground}
+              colors={[colors.foreground]}
+            />
+          }
+        >
+          {/* Calendar always visible */}
+          <View className="w-full max-w-2xl mx-auto mb-6">
+            <CustomCalendar
                 events={expandedEvents}
                 selectedDate={selectedDate}
                 onDateSelect={setSelectedDate}
@@ -453,7 +449,14 @@ export default function CalendarScreen() {
             )}
 
             {/* Events List */}
-            {filteredEvents.length === 0 ? (
+            {isLoading ? (
+              <View className="w-full max-w-2xl mx-auto flex-1 justify-center items-center pt-12">
+                <ActivityIndicator size="small" color={colors.foreground} />
+                <Text className="text-sm text-muted-foreground mt-2">
+                  Loading events...
+                </Text>
+              </View>
+            ) : filteredEvents.length === 0 ? (
               <View className="w-full max-w-2xl mx-auto flex-1 justify-center items-center pt-24">
                 <Text className="text-xl font-semibold text-muted-foreground mb-2">
                   {searchQuery || selectedDate
@@ -484,8 +487,7 @@ export default function CalendarScreen() {
                 ))}
               </View>
             )}
-          </ScrollView>
-        )}
+        </ScrollView>
       </View>
 
       {/* Event Modal */}
