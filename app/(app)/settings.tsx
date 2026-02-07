@@ -260,7 +260,7 @@ export default function SettingsScreen() {
                 <LogOut
                   color={"#ef4444"}
                   size={20}
-                  strokeWidth={2.5}
+                  strokeWidth={2}
                 />
                 <Text
                   style={{
