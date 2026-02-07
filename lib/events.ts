@@ -1,14 +1,22 @@
 import { UI_DEV } from "@/lib/config";
+import { getCachedEvents, setCachedEvents } from "@/lib/events-cache";
 import * as mockEvents from "@/lib/mock-events";
 import type { Event } from "@/lib/supabase";
 import * as supabaseEvents from "@/lib/supabase-events";
 
-// Unified events API that switches between mock and Supabase based on UI_DEV config
+// Unified events API. When offline, returns full cached event list so calendar can show all events (including current month).
 export const listEvents = async (userId?: string): Promise<Event[]> => {
   if (UI_DEV) {
     return mockEvents.listEvents(userId);
   }
-  return supabaseEvents.listEvents(userId);
+  if (!userId) return [];
+  try {
+    const events = await supabaseEvents.listEvents(userId);
+    await setCachedEvents(userId, events);
+    return events;
+  } catch {
+    return getCachedEvents(userId);
+  }
 };
 
 export const getEventById = async (id: string): Promise<Event | null> => {
