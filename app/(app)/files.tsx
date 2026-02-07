@@ -124,6 +124,7 @@ export default function FilesScreen() {
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
+    retry: false, // When offline, fail once and show cached file list from listFiles() fallback
   });
 
   const [actionDialogOpen, setActionDialogOpen] = useState(false);

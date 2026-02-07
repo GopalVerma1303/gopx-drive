@@ -133,6 +133,7 @@ export default function ArchiveScreen() {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
+    retry: false, // When offline, fail once and show cached archived files from listArchivedFiles() fallback
   });
 
   const restoreNoteMutation = useMutation({

@@ -1,7 +1,7 @@
 import { UI_DEV } from "@/lib/config";
 import * as mockEvents from "@/lib/mock-events";
-import * as supabaseEvents from "@/lib/supabase-events";
 import type { Event } from "@/lib/supabase";
+import * as supabaseEvents from "@/lib/supabase-events";
 
 // Unified events API that switches between mock and Supabase based on UI_DEV config
 export const listEvents = async (userId?: string): Promise<Event[]> => {
@@ -33,7 +33,9 @@ export const createEvent = async (input: {
 
 export const updateEvent = async (
   id: string,
-  updates: Partial<Pick<Event, "title" | "description" | "event_date" | "repeat_interval">>
+  updates: Partial<
+    Pick<Event, "title" | "description" | "event_date" | "repeat_interval">
+  >
 ): Promise<Event | null> => {
   if (UI_DEV) {
     return mockEvents.updateEvent(id, updates);
