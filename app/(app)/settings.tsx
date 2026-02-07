@@ -221,7 +221,7 @@ export default function SettingsScreen() {
                 <Archive
                   color={colors.foreground}
                   size={20}
-                  strokeWidth={2.5}
+                  strokeWidth={2}
                 />
                 <Text
                   style={{
@@ -253,24 +253,24 @@ export default function SettingsScreen() {
           </Text>
           <View className="bg-muted border border-border rounded-2xl overflow-hidden">
             <Pressable
-            className="flex flex-row  p-4 gap-12"
+              className="flex flex-row  p-4 gap-12"
               onPress={handleLogoutPress}
             >
               <View className="flex flex-row items-center gap-2">
-              <LogOut
-                color={"#ef4444"}
-                size={20}
-                strokeWidth={2.5}
-              />
-              <Text
-                style={{
-                  fontSize: 16,
-                  color:"#ef4444",
-                  fontWeight: "500",
-                }}
-              >
-                Sign Out
-              </Text>
+                <LogOut
+                  color={"#ef4444"}
+                  size={20}
+                  strokeWidth={2.5}
+                />
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: "#ef4444",
+                    fontWeight: "500",
+                  }}
+                >
+                  Sign Out
+                </Text>
               </View>
             </Pressable>
           </View>

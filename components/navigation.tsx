@@ -82,7 +82,7 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
   const screenSize = useScreenSize();
-  
+
   const isLg = screenSize === "lg";
   const isMd = screenSize === "md";
   const isSm = screenSize === "sm";
@@ -98,7 +98,7 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
 
   // Render navigation items
   const renderNavItems = (iconOnly: boolean = false, horizontal: boolean = false) => (
-    <View style={{ 
+    <View style={{
       flexDirection: horizontal ? "row" : "column",
       gap: horizontal ? 0 : 4,
       alignItems: horizontal ? "center" : "stretch",
@@ -109,7 +109,7 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
     }}>
       {navItems.map((item) => {
         const Icon = item.icon;
-        
+
         // Extract the final route segment (e.g., "/(app)/notes" -> "notes")
         const getFinalSegment = (path: string) => {
           if (!path) return "";
@@ -122,10 +122,10 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
           }
           return segments[segments.length - 1] || "";
         };
-        
+
         const currentSegment = getFinalSegment(pathname || "");
         const itemSegment = getFinalSegment(item.href);
-        
+
         // Check if active using multiple strategies
         const isActive =
           // Direct pathname match
@@ -134,10 +134,11 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
           (pathname && pathname.startsWith(item.href + "/")) ||
           // Final segment match (handles different path formats)
           (currentSegment && itemSegment && currentSegment === itemSegment);
-        
+
         return (
           <Pressable
             key={item.href}
+            hitSlop={{ top: 0, bottom: 0, left: 50, right: 50 }}
             onPress={() => handleNavPress(item.href)}
             style={({ pressed }) => ({
               flex: horizontal ? 1 : undefined,
@@ -299,8 +300,8 @@ export function NavigationToggle({ onPress }: { onPress: () => void }) {
     <Pressable
       onPress={handlePress}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      style={({ pressed }) => ({ 
-        padding: 8, 
+      style={({ pressed }) => ({
+        padding: 8,
         marginLeft: -8,
         opacity: pressed ? 0.7 : 1,
         zIndex: 10000,
