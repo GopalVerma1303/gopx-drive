@@ -9,6 +9,7 @@ import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { invalidateFilesQueries } from "@/lib/query-utils";
 import { BlurView } from "expo-blur";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
@@ -141,8 +142,7 @@ export default function FilesScreen() {
   const archiveMutation = useMutation({
     mutationFn: (id: string) => archiveFile(id),
     onSuccess: () => {
-      // Remove redundant refetch() - invalidateQueries already triggers refetch
-      queryClient.invalidateQueries({ queryKey: ["files"] });
+      invalidateFilesQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setActionDialogOpen(false);
       setFileToAction(null);
@@ -189,8 +189,7 @@ export default function FilesScreen() {
         },
       });
 
-      // Remove redundant refetch() - invalidateQueries already triggers refetch
-      queryClient.invalidateQueries({ queryKey: ["files"] });
+      invalidateFilesQueries(queryClient, user.id);
 
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

@@ -16,6 +16,7 @@ import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { invalidateNotesQueries } from "@/lib/query-utils";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
@@ -60,10 +61,7 @@ export default function NotesScreen() {
     if (!user?.id) return;
     // Sync in background without blocking UI
     syncNotesFromSupabase(user.id)?.then(() => {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-      queryClient.invalidateQueries({ queryKey: ["archivedNotes"] });
-      queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
-      queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
+      invalidateNotesQueries(queryClient, user.id);
     }).catch(() => {
       // Sync failed, but UI already shows cached data
     });
@@ -142,15 +140,27 @@ export default function NotesScreen() {
   const { data: syncStatus } = useQuery({
     queryKey: ["notes-sync-status", user?.id],
     queryFn: () => getNotesSyncStatus(user?.id),
-    refetchInterval: (query) =>
-      query.state.data?.pendingCount ? 3000 : 10000,
+    // Optimize polling: poll more frequently when there are pending changes, less when idle
+    refetchInterval: (query) => {
+      const pendingCount = query.state.data?.pendingCount ?? 0;
+      // Poll every 2s when syncing, 5s when pending changes, 15s when idle
+      if (query.state.data?.isSyncing) return 2000;
+      if (pendingCount > 0) return 5000;
+      return 15000; // Reduced from 10s to 15s when idle
+    },
     enabled: !!user?.id,
   });
 
   const { data: unsyncedNoteIds = [] } = useQuery({
     queryKey: ["notes-unsynced-ids", user?.id],
     queryFn: () => getUnsyncedNoteIds(user?.id),
-    refetchInterval: syncStatus?.pendingCount ? 3000 : 10000,
+    // Match sync status polling frequency
+    refetchInterval: (query) => {
+      const pendingCount = syncStatus?.pendingCount ?? 0;
+      if (syncStatus?.isSyncing) return 2000;
+      if (pendingCount > 0) return 5000;
+      return 15000; // Reduced from 10s to 15s when idle
+    },
     enabled: !!user?.id,
   });
 
@@ -163,9 +173,7 @@ export default function NotesScreen() {
   const archiveMutation = useMutation({
     mutationFn: (id: string) => archiveNote(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-      queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
-      queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
+      invalidateNotesQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setArchiveDialogOpen(false);
       setNoteToArchive(null);

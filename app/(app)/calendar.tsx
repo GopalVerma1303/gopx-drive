@@ -20,6 +20,7 @@ import type { Event } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { invalidateEventsQueries, debounce } from "@/lib/query-utils";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack } from "expo-router";
@@ -79,7 +80,16 @@ export default function CalendarScreen() {
     retryOnMount: false,
   });
 
-  // Refetch events when month changes (non-blocking)
+  // Debounced refetch to avoid rapid API calls when scrolling through months quickly
+  const debouncedRefetch = useRef(
+    debounce(() => {
+      refetch().catch(() => {
+        // Refetch failed, but UI already shows cached data
+      });
+    }, 300) // 300ms debounce delay
+  ).current;
+
+  // Refetch events when month changes (non-blocking, debounced)
   useEffect(() => {
     if (!user?.id) return;
 
@@ -96,14 +106,12 @@ export default function CalendarScreen() {
       return;
     }
 
-    // Refetch only if month actually changed (non-blocking)
+    // Refetch only if month actually changed (non-blocking, debounced)
     if (previousMonthKey !== currentMonthKey) {
       previousMonthRef.current = currentMonthKey;
-      refetch().catch(() => {
-        // Refetch failed, but UI already shows cached data
-      });
+      debouncedRefetch();
     }
-  }, [currentMonth, user?.id, refetch]);
+  }, [currentMonth, user?.id, refetch, debouncedRefetch]);
 
   const createMutation = useMutation({
     mutationFn: (input: {
@@ -114,8 +122,7 @@ export default function CalendarScreen() {
       repeat_interval?: "once" | "daily" | "weekly" | "monthly" | "yearly" | null;
     }) => createEvent(input),
     onSuccess: () => {
-      // Remove redundant refetch() - invalidateQueries already triggers refetch
-      queryClient.invalidateQueries({ queryKey: ["events"] });
+      invalidateEventsQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setEventModalOpen(false);
       setEditingEvent(null);
@@ -135,8 +142,7 @@ export default function CalendarScreen() {
       updates: Partial<Pick<Event, "title" | "description" | "event_date" | "repeat_interval">>;
     }) => updateEvent(id, updates),
     onSuccess: () => {
-      // Remove redundant refetch() - invalidateQueries already triggers refetch
-      queryClient.invalidateQueries({ queryKey: ["events"] });
+      invalidateEventsQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setEventModalOpen(false);
       setEditingEvent(null);
@@ -191,11 +197,11 @@ export default function CalendarScreen() {
     onSuccess: async (data, id: string) => {
       console.log("deleteMutation.onSuccess called for id:", id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setEventModalOpen(false);
-      setEditingEvent(null);
+      setDeleteDialogOpen(false);
+      setEventToDelete(null);
       // Invalidate after a brief delay to ensure DB has processed
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["events"] });
+        invalidateEventsQueries(queryClient, user?.id);
       }, 200);
     },
   });
@@ -1494,27 +1500,29 @@ function EventCard({ event, onSelectDate, onEdit }: EventCardProps) {
       onLongPress={handleLongPress}
     >
       <Animated.View style={{ transform: [{ scale }] }}>
-        <Card className="p-4 mb-3 rounded-2xl bg-muted border border-border">
+        <Card className="p-3 mb-2 rounded-xl bg-muted border border-border">
           <View
             style={{
               flexDirection: "row",
-              gap: 16,
+              gap: 12,
+              alignItems: "center",
             }}
           >
-            {/* Date Section */}
+            {/* Date Section - More Compact */}
             <View
               style={{
                 alignItems: "center",
                 justifyContent: "center",
-                minWidth: 60,
-                paddingVertical: 8,
+                minWidth: 50,
+                paddingVertical: 4,
               }}
             >
               <Text
                 style={{
                   color: showRed ? "#ef4444" : colors.primary,
-                  fontSize: 24,
+                  fontSize: 20,
                   fontWeight: "700",
+                  lineHeight: 24,
                 }}
               >
                 {dayNumber}
@@ -1522,9 +1530,10 @@ function EventCard({ event, onSelectDate, onEdit }: EventCardProps) {
               <Text
                 style={{
                   color: showRed ? "#ef4444" : colors.mutedForeground,
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: "500",
                   textTransform: "uppercase",
+                  marginTop: 1,
                 }}
               >
                 {dayName}
@@ -1532,36 +1541,37 @@ function EventCard({ event, onSelectDate, onEdit }: EventCardProps) {
               <Text
                 style={{
                   color: colors.mutedForeground,
-                  fontSize: 11,
-                  marginTop: 2,
+                  fontSize: 10,
+                  marginTop: 1,
                 }}
               >
                 {monthName}
               </Text>
             </View>
 
-            {/* Content Section */}
+            {/* Content Section - More Compact */}
             <View style={{ flex: 1 }}>
               <Text
-                className="text-lg font-semibold text-foreground"
+                className="text-base font-semibold text-foreground"
                 numberOfLines={1}
                 style={{
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: "600",
                   color: colors.foreground,
-                  marginBottom: 4,
+                  marginBottom: 2,
+                  lineHeight: 20,
                 }}
               >
                 {event.title}
               </Text>
               <Text
-                className="text-sm text-muted-foreground leading-5"
+                className="text-sm text-muted-foreground"
                 numberOfLines={2}
                 style={{
-                  fontSize: 14,
+                  fontSize: 13,
                   color: colors.mutedForeground,
-                  lineHeight: 20,
-                  marginBottom: 8,
+                  lineHeight: 18,
+                  marginBottom: 4,
                 }}
               >
                 {event.description || "No description"}
@@ -1570,12 +1580,12 @@ function EventCard({ event, onSelectDate, onEdit }: EventCardProps) {
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 8,
+                  gap: 6,
                 }}
               >
                 <Text
                   style={{
-                    fontSize: 12,
+                    fontSize: 11,
                     color: colors.mutedForeground,
                     textTransform: "capitalize",
                   }}
@@ -1584,9 +1594,9 @@ function EventCard({ event, onSelectDate, onEdit }: EventCardProps) {
                 </Text>
                 <Text
                   style={{
-                    fontSize: 12,
+                    fontSize: 11,
                     color: colors.mutedForeground,
-                    marginLeft: -3,
+                    marginLeft: -2,
                   }}
                 >
                   • {eventTime}

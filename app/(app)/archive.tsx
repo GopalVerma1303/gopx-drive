@@ -20,6 +20,7 @@ import {
 import type { File as FileRecord, Note } from "@/lib/supabase";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { invalidateNotesQueries, invalidateFilesQueries } from "@/lib/query-utils";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
@@ -93,10 +94,7 @@ export default function ArchiveScreen() {
     if (!user?.id) return;
     // Sync in background without blocking UI
     syncNotesFromSupabase(user.id)?.then(() => {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-      queryClient.invalidateQueries({ queryKey: ["archivedNotes"] });
-      queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
-      queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
+      invalidateNotesQueries(queryClient, user.id);
     }).catch(() => {
       // Sync failed, but UI already shows cached data
     });
@@ -124,7 +122,8 @@ export default function ArchiveScreen() {
   const { data: unsyncedNoteIds = [] } = useQuery({
     queryKey: ["notes-unsynced-ids", user?.id],
     queryFn: () => getUnsyncedNoteIds(user?.id),
-    refetchInterval: 10000,
+    // Optimize polling: reduce frequency when idle
+    refetchInterval: 15000, // Reduced from 10s to 15s
     enabled: !!user?.id && activeTab === "notes",
   });
 
@@ -150,10 +149,7 @@ export default function ArchiveScreen() {
   const restoreNoteMutation = useMutation({
     mutationFn: (id: string) => restoreNote(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["archivedNotes"] });
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-      queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
-      queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
+      invalidateNotesQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
   });
@@ -161,9 +157,7 @@ export default function ArchiveScreen() {
   const deleteNoteMutation = useMutation({
     mutationFn: (id: string) => deleteNote(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["archivedNotes"] });
-      queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
-      queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
+      invalidateNotesQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
   });
@@ -171,9 +165,7 @@ export default function ArchiveScreen() {
   const restoreFileMutation = useMutation({
     mutationFn: (id: string) => restoreFile(id),
     onSuccess: () => {
-      // Remove redundant refetch() - invalidateQueries already triggers refetch
-      queryClient.invalidateQueries({ queryKey: ["archivedFiles"] });
-      queryClient.invalidateQueries({ queryKey: ["files"] });
+      invalidateFilesQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
   });
@@ -181,8 +173,7 @@ export default function ArchiveScreen() {
   const deleteFileMutation = useMutation({
     mutationFn: (id: string) => deleteFile(id),
     onSuccess: () => {
-      // Remove redundant refetch() - invalidateQueries already triggers refetch
-      queryClient.invalidateQueries({ queryKey: ["archivedFiles"] });
+      invalidateFilesQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
   });

@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { NavigationProvider, useNavigation } from "@/contexts/navigation-context";
 import { syncNotesFromSupabase } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import { invalidateNotesQueries, invalidateFilesQueries } from "@/lib/query-utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Redirect, Stack, usePathname } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -116,19 +117,23 @@ export default function AppLayout() {
       ) {
         // Sync in background without blocking UI
         syncNotesFromSupabase(user?.id)?.then(() => {
-          queryClient.invalidateQueries({ queryKey: ["notes"] });
-          queryClient.invalidateQueries({ queryKey: ["archivedNotes"] });
-          queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
-          queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
+          invalidateNotesQueries(queryClient, user?.id);
         }).catch(() => {
           // Sync failed, but UI already shows cached data
         });
-        // Refetch queries in background (non-blocking)
-        queryClient.refetchQueries({
-          queryKey: ["files"],
-          type: "active",
-          stale: true,
-        }).catch(() => {
+        // Refetch queries in background (non-blocking) - batch refetch for efficiency
+        Promise.all([
+          queryClient.refetchQueries({
+            queryKey: ["files"],
+            type: "active",
+            stale: true,
+          }),
+          queryClient.refetchQueries({
+            queryKey: ["events"],
+            type: "active",
+            stale: true,
+          }),
+        ]).catch(() => {
           // Refetch failed, but UI already shows cached data
         });
       }

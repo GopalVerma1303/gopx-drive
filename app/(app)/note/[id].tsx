@@ -9,6 +9,7 @@ import { generateAIContent } from "@/lib/ai-providers";
 import { createNote, getNoteById, updateNote } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { invalidateNotesQueries } from "@/lib/query-utils";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -153,9 +154,7 @@ export default function NoteEditorScreen() {
 
       // Optimistically update cache instead of invalidating
       queryClient.setQueryData(["note", id], savedNote);
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-      queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
-      queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
+      invalidateNotesQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     onError: (error: any) => {
