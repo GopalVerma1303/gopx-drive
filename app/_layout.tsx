@@ -31,6 +31,10 @@ const queryClient = new QueryClient({
       refetchOnReconnect: false,
       staleTime: 5 * 60 * 1000, // 5 minutes - data is fresh for 5 minutes
       gcTime: 10 * 60 * 1000, // 10 minutes - cache garbage collection (formerly cacheTime)
+      // Offline-first: Use cached data immediately, don't show loading if we have cache
+      placeholderData: (previousData: any) => previousData,
+      // Don't retry on mount if query fails (use cache instead)
+      retryOnMount: false,
     },
   },
 });

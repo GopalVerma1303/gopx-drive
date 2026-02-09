@@ -88,13 +88,17 @@ export default function ArchiveScreen() {
     id?: string;
   } | null>(null);
 
-  // Sync notes from Supabase when archive screen mounts; invalidate so lists refresh after sync
+  // Sync notes from Supabase in background (non-blocking) when archive screen mounts
   useEffect(() => {
-    syncNotesFromSupabase(user?.id)?.then(() => {
+    if (!user?.id) return;
+    // Sync in background without blocking UI
+    syncNotesFromSupabase(user.id)?.then(() => {
       queryClient.invalidateQueries({ queryKey: ["notes"] });
       queryClient.invalidateQueries({ queryKey: ["archivedNotes"] });
       queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
       queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
+    }).catch(() => {
+      // Sync failed, but UI already shows cached data
     });
   }, [user?.id, queryClient]);
 
@@ -111,6 +115,10 @@ export default function ArchiveScreen() {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
+    // Use cached data immediately, don't show loading if we have cache
+    placeholderData: (previousData) => previousData,
+    retry: false,
+    retryOnMount: false,
   });
 
   const { data: unsyncedNoteIds = [] } = useQuery({
@@ -134,6 +142,9 @@ export default function ArchiveScreen() {
     refetchOnReconnect: false,
     staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
     retry: false, // When offline, fail once and show cached archived files from listArchivedFiles() fallback
+    // Use cached data immediately, don't show loading if we have cache
+    placeholderData: (previousData) => previousData,
+    retryOnMount: false,
   });
 
   const restoreNoteMutation = useMutation({

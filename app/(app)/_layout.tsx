@@ -108,29 +108,32 @@ export default function AppLayout() {
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
-    // Only refetch stale queries when app comes to foreground
+    // Only refetch stale queries when app comes to foreground (non-blocking)
     const subscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
       if (
         appState.current.match(/inactive|background/) &&
         nextAppState === "active"
       ) {
+        // Sync in background without blocking UI
         syncNotesFromSupabase(user?.id)?.then(() => {
           queryClient.invalidateQueries({ queryKey: ["notes"] });
           queryClient.invalidateQueries({ queryKey: ["archivedNotes"] });
           queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
           queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
+        }).catch(() => {
+          // Sync failed, but UI already shows cached data
         });
+        // Refetch queries in background (non-blocking)
         queryClient.refetchQueries({
           queryKey: ["files"],
           type: "active",
           stale: true,
+        }).catch(() => {
+          // Refetch failed, but UI already shows cached data
         });
       }
       appState.current = nextAppState;
     });
-
-    // Remove initial mount refetch - queries will fetch when components mount
-    // This prevents double fetching on app startup
 
     return () => {
       subscription.remove();

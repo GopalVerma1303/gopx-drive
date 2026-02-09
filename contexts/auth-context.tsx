@@ -2,6 +2,7 @@ import { UI_DEV } from "@/lib/config";
 import { supabase } from "@/lib/supabase";
 import createContextHook from "@nkzw/create-context-hook";
 import type { User } from "@supabase/supabase-js";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 
 interface AuthContextValue {
@@ -12,6 +13,8 @@ interface AuthContextValue {
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
+
+const SESSION_STORAGE_KEY = "sb-auth-token";
 
 export const [AuthProvider, useAuth] = createContextHook(
   (): AuthContextValue => {
@@ -27,8 +30,12 @@ export const [AuthProvider, useAuth] = createContextHook(
         return;
       }
 
-      // In production mode, use Supabase auth
-      // Get initial session
+      // Offline-first: Don't block UI - set loading to false immediately
+      // Supabase's getSession() reads from AsyncStorage first, but we don't want to wait for network
+      setIsLoading(false); // Allow UI to render immediately with cached session if available
+      
+      // Try to get session in background (non-blocking)
+      // Supabase will read from AsyncStorage first, then optionally refresh token
       supabase.auth.getSession().then(({ data: { session } }) => {
         // Only set user if email is confirmed
         if (session?.user?.email_confirmed_at) {
@@ -38,7 +45,32 @@ export const [AuthProvider, useAuth] = createContextHook(
           setSession(null);
           setUser(null);
         }
-        setIsLoading(false);
+      }).catch(() => {
+        // Network failed - Supabase should still have session from AsyncStorage
+        // Try reading directly from storage as fallback
+        AsyncStorage.getAllKeys().then(async (keys) => {
+          const supabaseKey = keys.find((key) => 
+            (key.includes("supabase.auth.token") || (key.includes("sb-") && key.includes("-auth-token")))
+          );
+          if (supabaseKey) {
+            try {
+              const stored = await AsyncStorage.getItem(supabaseKey);
+              if (stored) {
+                const parsed = JSON.parse(stored);
+                const sessionValue = parsed?.currentSession || parsed?.session || parsed;
+                if (sessionValue?.user?.email_confirmed_at) {
+                  setSession(sessionValue);
+                  setUser(sessionValue.user);
+                  return;
+                }
+              }
+            } catch {
+              // Invalid cached data
+            }
+          }
+          setSession(null);
+          setUser(null);
+        });
       });
 
       // Listen for auth changes

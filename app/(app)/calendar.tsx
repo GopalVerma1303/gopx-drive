@@ -68,29 +68,40 @@ export default function CalendarScreen() {
     // Stable key so calendar stays visible when month changes (we refetch in background, keep showing previous data)
     queryKey: ["events", user?.id],
     queryFn: () => listEvents(user?.id),
-    refetchOnMount: true, // Fetch on initial mount
+    refetchOnMount: false, // Don't block on mount - use cache first
     refetchOnWindowFocus: false,
     staleTime: Infinity, // Don't auto-refetch based on stale time - we'll refetch manually on month change
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (formerly cacheTime)
+    // Use cached data immediately, don't show loading if we have cache
+    placeholderData: (previousData) => previousData,
+    // Don't throw errors on network failures - use cache instead
+    retry: false,
+    retryOnMount: false,
   });
 
-  // Refetch events when month changes
+  // Refetch events when month changes (non-blocking)
   useEffect(() => {
     if (!user?.id) return;
 
     const currentMonthKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth()}`;
     const previousMonthKey = previousMonthRef.current;
 
-    // Skip refetch on initial mount (handled by refetchOnMount: true)
+    // Skip refetch on initial mount - use cached data
     if (previousMonthKey === null) {
       previousMonthRef.current = currentMonthKey;
+      // Try to refetch in background without blocking
+      refetch().catch(() => {
+        // Refetch failed, but UI already shows cached data
+      });
       return;
     }
 
-    // Refetch only if month actually changed
+    // Refetch only if month actually changed (non-blocking)
     if (previousMonthKey !== currentMonthKey) {
       previousMonthRef.current = currentMonthKey;
-      refetch();
+      refetch().catch(() => {
+        // Refetch failed, but UI already shows cached data
+      });
     }
   }, [currentMonth, user?.id, refetch]);
 

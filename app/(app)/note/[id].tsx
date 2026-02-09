@@ -73,6 +73,10 @@ export default function NoteEditorScreen() {
     },
     enabled: !isNewNote && !!id,
     staleTime: 2 * 60 * 1000, // 2 minutes - shorter for individual notes since they change more frequently
+    // Use cached data immediately, don't show loading if we have cache
+    placeholderData: (previousData) => previousData,
+    retry: false,
+    retryOnMount: false,
   });
 
   useEffect(() => {

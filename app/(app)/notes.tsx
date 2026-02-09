@@ -55,13 +55,17 @@ export default function NotesScreen() {
     return Dimensions.get("window").width;
   });
 
-  // Sync notes from Supabase when screen mounts; invalidate so lists refresh after sync
+  // Sync notes from Supabase in background (non-blocking) when screen mounts
   useEffect(() => {
-    syncNotesFromSupabase(user?.id)?.then(() => {
+    if (!user?.id) return;
+    // Sync in background without blocking UI
+    syncNotesFromSupabase(user.id)?.then(() => {
       queryClient.invalidateQueries({ queryKey: ["notes"] });
       queryClient.invalidateQueries({ queryKey: ["archivedNotes"] });
       queryClient.invalidateQueries({ queryKey: ["notes-sync-status"] });
       queryClient.invalidateQueries({ queryKey: ["notes-unsynced-ids"] });
+    }).catch(() => {
+      // Sync failed, but UI already shows cached data
     });
   }, [user?.id, queryClient]);
 
@@ -128,6 +132,11 @@ export default function NotesScreen() {
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
+    // Use cached data immediately, don't show loading if we have cache
+    placeholderData: (previousData) => previousData,
+    // Don't throw errors on network failures - use cache instead
+    retry: false,
+    retryOnMount: false,
   });
 
   const { data: syncStatus } = useQuery({
