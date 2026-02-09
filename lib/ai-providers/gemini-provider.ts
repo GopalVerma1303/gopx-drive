@@ -5,6 +5,7 @@
  */
 
 import type { AIProvider, AIGenerateOptions } from "./types";
+import { buildContextAwarePrompt } from "./prompt-builder";
 
 const GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -49,13 +50,15 @@ export class GeminiProvider implements AIProvider {
 
     const model = options.model || this.defaultModel;
     
-    // Build the full prompt
-    let fullPrompt = options.prompt;
-    if (options.selectedText && options.selectedText.trim()) {
-      fullPrompt = `Context: "${options.selectedText.trim()}"\n\nUser request: ${options.prompt}\n\nPlease provide only the markdown content without any explanations, introductions, or helping statements. Respond with pure markdown output only.`;
-    } else {
-      fullPrompt = `${options.prompt}\n\nPlease provide only the markdown content without any explanations, introductions, or helping statements. Respond with pure markdown output only.`;
-    }
+    // Build context-aware prompt with system message
+    const { systemMessage, userMessage } = buildContextAwarePrompt(
+      options.prompt,
+      options.selectedText
+    );
+
+    // Gemini uses a different format - combine system and user messages
+    // Gemini doesn't have a separate system role, so we prepend system message
+    const fullPrompt = `${systemMessage}\n\n${userMessage}`;
 
     const url = `${GEMINI_API_BASE_URL}/models/${model}:generateContent?key=${apiKey}`;
 
@@ -76,7 +79,7 @@ export class GeminiProvider implements AIProvider {
             },
           ],
           generationConfig: {
-            temperature: options.temperature ?? 0.7,
+            temperature: options.temperature ?? 0.5, // Lower temperature for more consistent, agent-like behavior
             topK: 40,
             topP: 0.95,
             maxOutputTokens: options.maxTokens ?? 2048,
@@ -115,9 +118,10 @@ export class GeminiProvider implements AIProvider {
 
   private cleanResponse(text: string): string {
     let cleanedText = text.trim();
-    
-    // Remove common AI response patterns
+
+    // Remove common AI response patterns and meta-commentary
     const patternsToRemove = [
+      // Introductory phrases
       /^Here's.*?:\s*/i,
       /^Here is.*?:\s*/i,
       /^I'll.*?:\s*/i,
@@ -125,13 +129,59 @@ export class GeminiProvider implements AIProvider {
       /^Sure.*?:\s*/i,
       /^Of course.*?:\s*/i,
       /^Certainly.*?:\s*/i,
+      /^Let me.*?:\s*/i,
+      /^I'll help.*?:\s*/i,
+      /^I can help.*?:\s*/i,
+      /^Here.*?:\s*/i,
+      
+      // Trailing phrases
       /\s*Let me know.*$/i,
       /\s*Is there anything else.*$/i,
       /\s*I hope this helps.*$/i,
+      /\s*Hope this helps.*$/i,
+      /\s*Does this help\?.*$/i,
+      /\s*Let me know if.*$/i,
+      
+      // Markdown headers that shouldn't be there (for simple replacements)
+      /^#+\s+(.+)$/m, // Remove standalone markdown headers at start
+      
+      // Code blocks wrapping simple text
+      /^```[\w]*\n(.+)\n```$/s,
+      
+      // Quotes wrapping content
+      /^["'](.+)["']$/,
+      
+      // Parenthetical explanations
+      /\s*\([^)]*here[^)]*\)/i,
+      /\s*\([^)]*note[^)]*\)/i,
     ];
 
     for (const pattern of patternsToRemove) {
-      cleanedText = cleanedText.replace(pattern, "");
+      cleanedText = cleanedText.replace(pattern, "$1").trim();
+    }
+
+    // Remove leading markdown headers if they're standalone (not part of formatted content)
+    // Only remove if the entire response is just a header
+    const headerOnlyPattern = /^(#+\s+)(.+)$/;
+    const headerMatch = cleanedText.match(headerOnlyPattern);
+    if (headerMatch && cleanedText.split('\n').length === 1) {
+      // If it's a single-line header, extract just the text
+      cleanedText = headerMatch[2].trim();
+    }
+
+    // Remove any remaining markdown header prefixes from single-word responses
+    // This handles cases like "# delicious" -> "delicious"
+    if (cleanedText.match(/^#+\s+\w+$/)) {
+      cleanedText = cleanedText.replace(/^#+\s+/, '').trim();
+    }
+
+    // Remove code fence markers if they wrap simple text
+    if (cleanedText.startsWith('```') && cleanedText.endsWith('```')) {
+      const lines = cleanedText.split('\n');
+      if (lines.length <= 3) {
+        // Simple code block, extract content
+        cleanedText = lines.slice(1, -1).join('\n').trim();
+      }
     }
 
     return cleanedText.trim();
