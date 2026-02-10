@@ -32,75 +32,85 @@ export const [AuthProvider, useAuth] = createContextHook(
 
       let isMounted = true;
 
-      const initializeSession = async () => {
+      /**
+       * WhatsApp-style startup:
+       * - First, hydrate from local storage only so the app can render
+       *   immediately using the last known session (no network required).
+       * - Then, in the background, ask Supabase to validate/refresh the
+       *   session, but don't block the UI while that happens.
+       */
+      const hydrateFromStorage = async () => {
         try {
-          // Supabase will read from AsyncStorage first, then optionally refresh the token
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
+          const keys = await AsyncStorage.getAllKeys();
+          const supabaseKey = keys.find(
+            (key) =>
+              key.includes("supabase.auth.token") ||
+              (key.includes("sb-") && key.includes("-auth-token"))
+          );
 
-          // Only set user if email is confirmed
-          if (session?.user?.email_confirmed_at) {
-            if (!isMounted) return;
-            setSession(session);
-            setUser(session.user);
-          } else {
-            if (!isMounted) return;
+          if (supabaseKey) {
+            const stored = await AsyncStorage.getItem(supabaseKey);
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              const sessionValue =
+                parsed?.currentSession || parsed?.session || parsed;
+
+              if (sessionValue?.user?.email_confirmed_at) {
+                if (!isMounted) return;
+                setSession(sessionValue);
+                setUser(sessionValue.user);
+              } else if (isMounted) {
+                setSession(null);
+                setUser(null);
+              }
+            } else if (isMounted) {
+              setSession(null);
+              setUser(null);
+            }
+          } else if (isMounted) {
             setSession(null);
             setUser(null);
           }
         } catch {
-          // Network failed - Supabase should still have session from AsyncStorage
-          // Try reading directly from storage as fallback
-          try {
-            const keys = await AsyncStorage.getAllKeys();
-            const supabaseKey = keys.find(
-              (key) =>
-                key.includes("supabase.auth.token") ||
-                (key.includes("sb-") && key.includes("-auth-token"))
-            );
-
-            if (supabaseKey) {
-              const stored = await AsyncStorage.getItem(supabaseKey);
-              if (stored) {
-                const parsed = JSON.parse(stored);
-                const sessionValue =
-                  parsed?.currentSession || parsed?.session || parsed;
-
-                if (sessionValue?.user?.email_confirmed_at) {
-                  if (!isMounted) return;
-                  setSession(sessionValue);
-                  setUser(sessionValue.user);
-                } else if (isMounted) {
-                  setSession(null);
-                  setUser(null);
-                }
-                return;
-              }
-            }
-
-            if (isMounted) {
-              setSession(null);
-              setUser(null);
-            }
-          } catch {
-            if (isMounted) {
-              // Invalid or missing cached data
-              setSession(null);
-              setUser(null);
-            }
+          if (isMounted) {
+            setSession(null);
+            setUser(null);
           }
         } finally {
+          // Critical: unblock the UI as soon as we've decided based on local data.
           if (isMounted) {
             setIsLoading(false);
           }
         }
       };
 
-      // Perform the initial session check before we consider auth done
-      initializeSession();
+      // Kick off local-only hydration immediately so the app can render.
+      hydrateFromStorage();
 
-      // Listen for auth changes
+      // In parallel, ask Supabase for the current session.
+      // This may hit the network, but we DON'T block `isLoading` on it.
+      (async () => {
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          if (!isMounted) return;
+
+          // Only set user if email is confirmed
+          if (session?.user?.email_confirmed_at) {
+            setSession(session);
+            setUser(session.user);
+          } else {
+            setSession(null);
+            setUser(null);
+          }
+        } catch {
+          // Network or Supabase failure – keep whatever we got from local storage.
+        }
+      })();
+
+      // Listen for auth changes (sign in/out, token refresh, etc.)
       const {
         data: { subscription },
       } = supabase.auth.onAuthStateChange((event, session) => {
@@ -136,6 +146,7 @@ export const [AuthProvider, useAuth] = createContextHook(
             setUser(null);
           }
         }
+        // Auth events can happen at any time; if we were still loading, consider auth resolved now.
         setIsLoading(false);
       });
 

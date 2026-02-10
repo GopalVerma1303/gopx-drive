@@ -11,12 +11,12 @@ import {
   listNotes,
   syncNotesFromSupabase,
 } from "@/lib/notes";
+import { invalidateNotesQueries } from "@/lib/query-utils";
 import type { Note } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { invalidateNotesQueries } from "@/lib/query-utils";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
