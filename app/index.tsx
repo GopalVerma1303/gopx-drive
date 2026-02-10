@@ -1,8 +1,7 @@
-import splashIcon from "@/assets/images/splash-icon.png";
 import { useAuth } from "@/contexts/auth-context";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { Redirect } from "expo-router";
-import { Image, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 
 export default function Index() {
   const { user, isLoading } = useAuth();
@@ -21,15 +20,7 @@ export default function Index() {
           backgroundColor: colors.background,
         }}
       >
-        <Image
-          source={splashIcon}
-          style={{
-            width: 160,
-            height: 160,
-            resizeMode: "contain",
-            borderRadius: 30
-          }}
-        />
+        <ActivityIndicator size="large" color={colors.foreground} />
       </View>
     );
   }
