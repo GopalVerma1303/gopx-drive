@@ -104,6 +104,7 @@ interface MarkdownToolbarProps {
   canRedo?: boolean;
   isPreview?: boolean;
   onAIAssistant?: () => void;
+  onImageInsert?: () => void;
 }
 
 export function MarkdownToolbar({
@@ -118,6 +119,7 @@ export function MarkdownToolbar({
   canRedo,
   isPreview = false,
   onAIAssistant,
+  onImageInsert,
 }: MarkdownToolbarProps) {
   const { colors } = useThemeColors();
   const TAB_SPACES = "   ";
@@ -173,8 +175,13 @@ export function MarkdownToolbar({
 
   const handleImage = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // Insert ![]() with cursor positioned between brackets for alt text
-    onInsertText("![]()", 2);
+    // If onImageInsert callback is provided, open modal; otherwise use default behavior
+    if (onImageInsert) {
+      onImageInsert();
+    } else {
+      // Fallback: Insert ![]() with cursor positioned between brackets for alt text
+      onInsertText("![]()", 2);
+    }
   };
 
   const handleBulletList = () => {

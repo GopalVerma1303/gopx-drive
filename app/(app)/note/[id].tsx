@@ -1,6 +1,7 @@
 "use client";
 
 import { AIPromptModal } from "@/components/ai-prompt-modal";
+import { ImageInsertModal } from "@/components/image-insert-modal";
 import { NoteDetailHeader } from "@/components/headers/note-detail-header";
 import { MarkdownEditor, MarkdownEditorRef } from "@/components/markdown-editor";
 import { MarkdownToolbar } from "@/components/markdown-toolbar";
@@ -42,6 +43,7 @@ export default function NoteEditorScreen() {
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [selectedText, setSelectedText] = useState("");
+  const [imageModalOpen, setImageModalOpen] = useState(false);
   /** Last selection from editor (updated on every selection change). Preserved when AI button steals focus. */
   const lastSelectionRef = useRef({ start: 0, end: 0 });
   /** Range to replace with AI output when modal was opened with a selection (so we don't rely on getSelection() after focus is lost). */
@@ -118,6 +120,7 @@ export default function NoteEditorScreen() {
       setIsPreview(false); // open new note in edit mode
       setAiReplaceRange(null);
       setSelectedText("");
+      setImageModalOpen(false);
     }
   }, [id]);
 
@@ -298,6 +301,12 @@ export default function NoteEditorScreen() {
     }
   };
 
+  const handleImageInsert = (markdown: string) => {
+    if (editorRef.current) {
+      editorRef.current.insertText(markdown, markdown.length);
+    }
+  };
+
   if (isLoading && !isNewNote) {
     return (
       <View
@@ -352,6 +361,7 @@ export default function NoteEditorScreen() {
                   editorRef.current?.redo();
                 }}
                 onAIAssistant={handleOpenAIModal}
+                onImageInsert={() => setImageModalOpen(true)}
                 isPreview={isPreview}
               />
             )}
@@ -400,6 +410,7 @@ export default function NoteEditorScreen() {
                     editorRef.current?.redo();
                   }}
                   onAIAssistant={handleOpenAIModal}
+                  onImageInsert={() => setImageModalOpen(true)}
                   isPreview={isPreview}
                 />
               )}
@@ -435,6 +446,11 @@ export default function NoteEditorScreen() {
         onGenerate={handleAIGenerate}
         initialPrompt={selectedText ? `Improve or rewrite: "${selectedText}" ` : ""}
         isLoading={aiLoading}
+      />
+      <ImageInsertModal
+        visible={imageModalOpen}
+        onClose={() => setImageModalOpen(false)}
+        onInsert={handleImageInsert}
       />
     </>
   );
