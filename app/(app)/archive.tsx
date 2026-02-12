@@ -2,7 +2,8 @@
 
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -17,14 +18,15 @@ import {
   restoreNote,
   syncNotesFromSupabase,
 } from "@/lib/notes";
+import { invalidateFilesQueries, invalidateNotesQueries } from "@/lib/query-utils";
 import type { File as FileRecord, Note } from "@/lib/supabase";
+import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { invalidateNotesQueries, invalidateFilesQueries } from "@/lib/query-utils";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Archive, ArrowLeft, Check, CheckCheck, Trash2, Undo2 } from "lucide-react-native";
+import { Archive, ArrowLeft, Check, CheckCheck, FileText, Files, Search, Trash2, Undo2 } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -48,6 +50,7 @@ export default function ArchiveScreen() {
   const [activeTab, setActiveTab] = useState<"notes" | "files">("notes");
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
   const [screenWidth, setScreenWidth] = useState(() => {
     if (Platform.OS === "web") {
       if (typeof window !== "undefined") {
@@ -213,12 +216,12 @@ export default function ArchiveScreen() {
 
     if (deleteAction.type === "all") {
       if (activeTab === "notes") {
-        for (const note of archivedNotes) {
+        for (const note of filteredNotes) {
           await deleteNoteMutation.mutateAsync(note.id);
         }
         setSelectedNotes(new Set());
       } else {
-        for (const file of archivedFiles) {
+        for (const file of filteredFiles) {
           await deleteFileMutation.mutateAsync(file.id);
         }
         setSelectedFiles(new Set());
@@ -252,12 +255,12 @@ export default function ArchiveScreen() {
 
     if (restoreAction.type === "all") {
       if (activeTab === "notes") {
-        for (const note of archivedNotes) {
+        for (const note of filteredNotes) {
           await restoreNoteMutation.mutateAsync(note.id);
         }
         setSelectedNotes(new Set());
       } else {
-        for (const file of archivedFiles) {
+        for (const file of filteredFiles) {
           await restoreFileMutation.mutateAsync(file.id);
         }
         setSelectedFiles(new Set());
@@ -329,6 +332,22 @@ export default function ArchiveScreen() {
     activeTab === "notes" ? selectedNotes.size > 0 : selectedFiles.size > 0;
   const itemCount =
     activeTab === "notes" ? archivedNotes.length : archivedFiles.length;
+
+  // Filter notes and files based on search query
+  const filteredNotes = archivedNotes.filter((note) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      note.title?.toLowerCase().includes(query) ||
+      note.content?.toLowerCase().includes(query)
+    );
+  });
+
+  const filteredFiles = archivedFiles.filter((file) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return file.name.toLowerCase().includes(query);
+  });
 
   return (
     <View
@@ -438,39 +457,49 @@ export default function ArchiveScreen() {
       </View>
       <View className="w-full flex-1">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "notes" | "files")} className="flex-1">
-          {/* Tabs Container - styled like search bar */}
+          {/* Search and Tabs Container */}
           <View className="w-full max-w-2xl mx-auto">
-            <View className="flex-row items-center mx-4 my-3 px-4 rounded-2xl h-14 border border-border bg-muted">
-              <View style={{ flex: 1, width: "100%" }}>
-                <TabsList className="w-full">
-                  <TabsTrigger
-                    value="notes"
-                    style={{
-                      flex: 1,
-                      backgroundColor: activeTab === "notes" ? colors.foreground + "10" : "transparent",
-                    }}
-                  >
-                    <Text style={{
-                      color: activeTab === "notes" ? colors.foreground : colors.mutedForeground
-                    }}>
-                      Notes
-                    </Text>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="files"
-                    style={{
-                      flex: 1,
-                      backgroundColor: activeTab === "files" ? colors.foreground + "10" : "transparent",
-                    }}
-                  >
-                    <Text style={{
-                      color: activeTab === "files" ? colors.foreground : colors.mutedForeground
-                    }}>
-                      Files
-                    </Text>
-                  </TabsTrigger>
-                </TabsList>
+            <View className="flex-row items-center mx-4 my-3 gap-2">
+              {/* Search Bar */}
+              <View className="flex-row items-center flex-1 min-w-0 px-4 rounded-2xl h-14 border border-border bg-muted">
+                <Search
+                  className="text-muted border-border mr-2"
+                  color={THEME.light.mutedForeground}
+                  size={20}
+                />
+                <Input
+                  className="flex-1 h-full border-0 bg-transparent px-2 shadow-none"
+                  placeholder={`Search ${activeTab}...`}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholderTextColor="muted-foreground"
+                />
               </View>
+
+              {/* Toggle Button */}
+              <Pressable
+                onPress={() => {
+                  if (Platform.OS !== "web") {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }
+                  setActiveTab(activeTab === "notes" ? "files" : "notes");
+                }}
+                className="p-2 rounded-2xl bg-muted items-center justify-center border border-border h-14 w-14"
+              >
+                {activeTab === "notes" ? (
+                  <FileText
+                    color={colors.mutedForeground}
+                    size={20}
+                    strokeWidth={2}
+                  />
+                ) : (
+                  <Files
+                    color={colors.mutedForeground}
+                    size={20}
+                    strokeWidth={2}
+                  />
+                )}
+              </Pressable>
             </View>
           </View>
 
@@ -494,7 +523,7 @@ export default function ArchiveScreen() {
                   />
                 }
               >
-                {archivedNotes.length === 0 ? (
+                {filteredNotes.length === 0 ? (
                   <View className="w-full max-w-2xl mx-auto flex-1 justify-center items-center pt-24">
                     <Archive
                       color={colors.mutedForeground}
@@ -503,10 +532,10 @@ export default function ArchiveScreen() {
                       style={{ marginBottom: 16 }}
                     />
                     <Text className="text-xl font-semibold text-muted-foreground mb-2">
-                      No archived notes
+                      {searchQuery.trim() ? "No matching notes" : "No archived notes"}
                     </Text>
                     <Text className="text-sm text-muted-foreground text-center">
-                      Notes you archive will appear here
+                      {searchQuery.trim() ? "Try a different search term" : "Notes you archive will appear here"}
                     </Text>
                   </View>
                 ) : (
@@ -521,7 +550,7 @@ export default function ArchiveScreen() {
 
                       return (
                         <View style={{ width: cardWidth, alignSelf: "center" }}>
-                          {archivedNotes.map((note, noteIndex) => (
+                          {filteredNotes.map((note, noteIndex) => (
                             <View
                               key={note.id}
                               style={{
@@ -572,7 +601,7 @@ export default function ArchiveScreen() {
                   />
                 }
               >
-                {archivedFiles.length === 0 ? (
+                {filteredFiles.length === 0 ? (
                   <View className="w-full max-w-2xl mx-auto flex-1 justify-center items-center pt-24">
                     <Archive
                       color={colors.mutedForeground}
@@ -581,10 +610,10 @@ export default function ArchiveScreen() {
                       style={{ marginBottom: 16 }}
                     />
                     <Text className="text-xl font-semibold text-muted-foreground mb-2">
-                      No archived files
+                      {searchQuery.trim() ? "No matching files" : "No archived files"}
                     </Text>
                     <Text className="text-sm text-muted-foreground text-center">
-                      Files you archive will appear here
+                      {searchQuery.trim() ? "Try a different search term" : "Files you archive will appear here"}
                     </Text>
                   </View>
                 ) : (
@@ -599,7 +628,7 @@ export default function ArchiveScreen() {
 
                       return (
                         <View style={{ width: cardWidth, alignSelf: "center" }}>
-                          {archivedFiles.map((file: FileRecord, index: number) => (
+                          {filteredFiles.map((file: FileRecord, index: number) => (
                             <View
                               key={file.id}
                               style={{
@@ -691,8 +720,8 @@ export default function ArchiveScreen() {
               >
                 {deleteAction?.type === "all"
                   ? `Are you sure you want to permanently delete all ${activeTab === "notes"
-                    ? archivedNotes.length
-                    : archivedFiles.length
+                    ? filteredNotes.length
+                    : filteredFiles.length
                   } archived ${activeTab}? This action cannot be undone.`
                   : deleteAction?.type === "selected"
                     ? `Are you sure you want to permanently delete ${activeTab === "notes"
@@ -814,8 +843,8 @@ export default function ArchiveScreen() {
                 >
                   {deleteAction?.type === "all"
                     ? `Are you sure you want to permanently delete all ${activeTab === "notes"
-                      ? archivedNotes.length
-                      : archivedFiles.length
+                      ? filteredNotes.length
+                      : filteredFiles.length
                     } archived ${activeTab}? This action cannot be undone.`
                     : deleteAction?.type === "selected"
                       ? `Are you sure you want to permanently delete ${activeTab === "notes"
@@ -924,8 +953,8 @@ export default function ArchiveScreen() {
               >
                 {restoreAction?.type === "all"
                   ? `Are you sure you want to restore all ${activeTab === "notes"
-                    ? archivedNotes.length
-                    : archivedFiles.length
+                    ? filteredNotes.length
+                    : filteredFiles.length
                   } archived ${activeTab}?`
                   : restoreAction?.type === "selected"
                     ? `Are you sure you want to restore ${activeTab === "notes"
@@ -1047,8 +1076,8 @@ export default function ArchiveScreen() {
                 >
                   {restoreAction?.type === "all"
                     ? `Are you sure you want to restore all ${activeTab === "notes"
-                      ? archivedNotes.length
-                      : archivedFiles.length
+                      ? filteredNotes.length
+                      : filteredFiles.length
                     } archived ${activeTab}?`
                     : restoreAction?.type === "selected"
                       ? `Are you sure you want to restore ${activeTab === "notes"
