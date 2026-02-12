@@ -487,13 +487,14 @@ export default function ArchiveScreen() {
                 className="p-2 rounded-2xl bg-muted items-center justify-center border border-border h-14 w-14"
               >
                 {activeTab === "notes" ? (
-                  <FileText
+                  <Files
                     color={colors.mutedForeground}
                     size={20}
                     strokeWidth={2}
                   />
                 ) : (
-                  <Files
+
+                  <FileText
                     color={colors.mutedForeground}
                     size={20}
                     strokeWidth={2}
