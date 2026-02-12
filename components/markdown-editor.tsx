@@ -1289,7 +1289,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         fontWeight: "bold" as const,
         marginTop: 16,
         marginBottom: 8,
-        lineHeight: 32,
+        lineHeight: 40,
         // fontFamily: "monospace",
       },
       heading2: {
@@ -1298,7 +1298,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         fontWeight: "bold" as const,
         marginTop: 14,
         marginBottom: 7,
-        lineHeight: 28,
+        lineHeight: 36,
         // fontFamily: "monospace",
       },
       heading3: {
@@ -1307,7 +1307,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         fontWeight: "600" as const,
         marginTop: 12,
         marginBottom: 6,
-        lineHeight: 24,
+        lineHeight: 30,
         // fontFamily: "monospace",
       },
       heading4: {
@@ -1316,7 +1316,25 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         fontWeight: "600" as const,
         marginTop: 10,
         marginBottom: 5,
-        lineHeight: 20,
+        lineHeight: 26,
+        // fontFamily: "monospace",
+      },
+      heading5: {
+        color: colors.foreground,
+        fontSize: 18,
+        fontWeight: "600" as const,
+        marginTop: 8,
+        marginBottom: 4,
+        lineHeight: 24,
+        // fontFamily: "monospace",
+      },
+      heading6: {
+        color: colors.foreground,
+        fontSize: 16,
+        fontWeight: "600" as const,
+        marginTop: 8,
+        marginBottom: 4,
+        lineHeight: 22,
         // fontFamily: "monospace",
       },
       paragraph: {

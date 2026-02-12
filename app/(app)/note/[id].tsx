@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { generateAIContent } from "@/lib/ai-providers";
 import { createNote, getNoteById, updateNote } from "@/lib/notes";
 import { invalidateNotesQueries } from "@/lib/query-utils";
+import type { Note } from "@/lib/supabase";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
@@ -79,6 +80,24 @@ export default function NoteEditorScreen() {
     retry: false,
     retryOnMount: false,
   });
+
+  // Check if notes list shows a newer version of this note and refetch if needed
+  // This fixes the issue where note list updates but individual note shows stale content
+  useEffect(() => {
+    if (isNewNote || !id || !note || !user?.id) return;
+
+    type NoteArray = Array<{ id: string; updated_at: string }>;
+    const notesListData = queryClient.getQueryData<NoteArray>(["notes", user.id]);
+    if (notesListData) {
+      const listNote = notesListData.find((n) => n.id === id);
+      if (listNote && listNote.updated_at !== note.updated_at) {
+        // List shows a different updated_at, refetch the note to get latest content
+        refetch().catch(() => {
+          // Refetch failed, but we already have cached data
+        });
+      }
+    }
+  }, [id, note, user?.id, queryClient, refetch, isNewNote]);
 
   useEffect(() => {
     if (note) {
@@ -153,7 +172,38 @@ export default function NoteEditorScreen() {
       setLastSavedContent(updatedContent);
 
       // Optimistically update cache instead of invalidating
+      // For new notes, id is "new" but savedNote.id is the actual ID, so update both
       queryClient.setQueryData(["note", id], savedNote);
+      if (isNewNote && savedNote.id !== id) {
+        // Also set cache for the actual note ID
+        queryClient.setQueryData(["note", savedNote.id], savedNote);
+      }
+      
+      // Optimistically update notes list cache to show new note immediately
+      // This fixes the issue where new notes don't appear until refresh
+      const notesQueryKey = ["notes", user?.id];
+      queryClient.setQueryData<typeof savedNote[]>(notesQueryKey, (oldData) => {
+        if (!oldData) return [savedNote];
+        // Check if note already exists in the list
+        const existingIndex = oldData.findIndex((n) => n.id === savedNote.id);
+        if (existingIndex >= 0) {
+          // Update existing note
+          const updated = [...oldData];
+          updated[existingIndex] = savedNote;
+          // Sort by updated_at descending
+          return updated.sort((a, b) => 
+            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+          );
+        } else {
+          // Add new note at the beginning (most recent first)
+          // Only add if not archived (notes list only shows non-archived notes)
+          if (!savedNote.is_archived) {
+            return [savedNote, ...oldData];
+          }
+          return oldData;
+        }
+      });
+      
       invalidateNotesQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },

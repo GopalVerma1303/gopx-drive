@@ -30,6 +30,7 @@ export const QueryKeys = {
 
 /**
  * Invalidate all notes-related queries after a mutation
+ * Also invalidates all individual note queries to ensure consistency
  */
 export function invalidateNotesQueries(queryClient: QueryClient, userId?: string): void {
   batchInvalidateQueries(queryClient, [
@@ -38,6 +39,9 @@ export function invalidateNotesQueries(queryClient: QueryClient, userId?: string
     QueryKeys.notesSyncStatus(userId),
     QueryKeys.notesUnsyncedIds(userId),
   ]);
+  // Also invalidate all individual note queries to ensure they show latest content
+  // This fixes the issue where note list updates but individual notes show stale data
+  queryClient.invalidateQueries({ queryKey: ["note"] });
 }
 
 /**
