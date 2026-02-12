@@ -105,8 +105,18 @@ export async function syncFromSupabase(userId: string): Promise<void> {
   const db = await getDbAsync();
   if (!db) return;
 
+  // Prevent concurrent syncs
+  if (isSyncing) {
+    return;
+  }
+
   isSyncing = true;
   try {
+    // Fetch all remote notes once (we'll need them for duplicate checking and final sync)
+    const remote = await supabaseNotes.listNotes(userId);
+    const archived = await supabaseNotes.listArchivedNotes(userId);
+    const allRemote = [...remote, ...archived];
+
     const dirtyRows = await db.getAllAsync<Record<string, unknown>>(
       `SELECT * FROM ${TABLE} WHERE user_id = ? AND dirty = 1`,
       userId
@@ -117,27 +127,72 @@ export async function syncFromSupabase(userId: string): Promise<void> {
       try {
         const existing = await supabaseNotes.getNoteById(note.id);
         if (!existing) {
-          const created = await supabaseNotes.createNote({
-            user_id: note.user_id,
-            title: note.title,
-            content: note.content,
-          });
-          if (note.is_archived) {
-            await supabaseNotes.archiveNote(created.id);
-          }
-          await db.runAsync(`DELETE FROM ${TABLE} WHERE id = ?`, note.id);
-          await db.runAsync(
-            `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
-            created.id,
-            created.user_id,
-            created.title,
-            created.content,
-            note.is_archived ? 1 : 0,
-            created.created_at,
-            created.updated_at
+          // Note doesn't exist in Supabase - this could be:
+          // 1. A new note created locally (legitimate case)
+          // 2. A note that was created but sync failed (should check for duplicates)
+          // 
+          // To prevent duplicates, check if a note with similar content already exists
+          // Check if a note with the same title and content already exists
+          // (within a small time window to account for timing differences)
+          const duplicate = allRemote.find(
+            (remoteNote) =>
+              remoteNote.title === note.title &&
+              remoteNote.content === note.content &&
+              Math.abs(
+                new Date(remoteNote.created_at).getTime() -
+                new Date(note.created_at).getTime()
+              ) < 60000 // Within 1 minute
           );
+
+          if (duplicate) {
+            // A duplicate exists - update local note to use the existing ID
+            await db.runAsync(`DELETE FROM ${TABLE} WHERE id = ?`, note.id);
+            await db.runAsync(
+              `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+               ON CONFLICT(id) DO UPDATE SET
+                 user_id = excluded.user_id,
+                 title = excluded.title,
+                 content = excluded.content,
+                 is_archived = excluded.is_archived,
+                 created_at = excluded.created_at,
+                 updated_at = excluded.updated_at,
+                 dirty = 0`,
+              duplicate.id,
+              duplicate.user_id,
+              duplicate.title,
+              duplicate.content,
+              duplicate.is_archived ? 1 : 0,
+              duplicate.created_at,
+              duplicate.updated_at
+            );
+          } else {
+            // No duplicate found - create new note
+            const created = await supabaseNotes.createNote({
+              user_id: note.user_id,
+              title: note.title,
+              content: note.content,
+            });
+            if (note.is_archived) {
+              await supabaseNotes.archiveNote(created.id);
+            }
+            await db.runAsync(`DELETE FROM ${TABLE} WHERE id = ?`, note.id);
+            await db.runAsync(
+              `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
+              created.id,
+              created.user_id,
+              created.title,
+              created.content,
+              note.is_archived ? 1 : 0,
+              created.created_at,
+              created.updated_at
+            );
+            // Add the newly created note to allRemote for subsequent duplicate checks
+            allRemote.push(created);
+          }
         } else {
+          // Note exists - update it
           await supabaseNotes.updateNote(note.id, {
             title: note.title,
             content: note.content,
@@ -152,14 +207,11 @@ export async function syncFromSupabase(userId: string): Promise<void> {
             note.id
           );
         }
-      } catch {
-        // Keep row dirty for next sync
+      } catch (error) {
+        // Log error but keep row dirty for next sync
+        console.warn(`[notes-reservoir] Failed to sync note ${note.id}:`, error);
       }
     }
-
-    const remote = await supabaseNotes.listNotes(userId);
-    const archived = await supabaseNotes.listArchivedNotes(userId);
-    const allRemote = [...remote, ...archived];
 
     for (const note of allRemote) {
       await db.runAsync(
@@ -286,6 +338,19 @@ export async function createNote(input: {
   const now = new Date().toISOString();
   const title = input.title || "Untitled";
 
+  // Check if a note with the same content already exists locally (prevent duplicates)
+  const existingLocal = await db.getFirstAsync<Record<string, unknown>>(
+    `SELECT * FROM ${TABLE} WHERE user_id = ? AND title = ? AND content = ? AND is_archived = 0 LIMIT 1`,
+    input.user_id,
+    title,
+    input.content
+  );
+
+  if (existingLocal) {
+    // Return existing note instead of creating duplicate
+    return rowToNote(existingLocal);
+  }
+
   await db.runAsync(
     `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty)
      VALUES (?, ?, ?, ?, 0, ?, ?, 1)`,
@@ -308,6 +373,30 @@ export async function createNote(input: {
   };
 
   try {
+    // Check if note already exists in Supabase before creating
+    const allRemoteNotes = await supabaseNotes.listNotes(input.user_id);
+    const duplicate = allRemoteNotes.find(
+      (remoteNote) =>
+        remoteNote.title === title &&
+        remoteNote.content === input.content
+    );
+
+    if (duplicate) {
+      // Update local note to use existing Supabase ID
+      await db.runAsync(`DELETE FROM ${TABLE} WHERE id = ?`, id);
+      await db.runAsync(
+        `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty)
+         VALUES (?, ?, ?, ?, 0, ?, ?, 0)`,
+        duplicate.id,
+        duplicate.user_id,
+        duplicate.title,
+        duplicate.content,
+        duplicate.created_at,
+        duplicate.updated_at
+      );
+      return { ...duplicate };
+    }
+
     const created = await supabaseNotes.createNote({
       user_id: input.user_id,
       title,
@@ -325,7 +414,9 @@ export async function createNote(input: {
       created.updated_at
     );
     return { ...created };
-  } catch {
+  } catch (error) {
+    // Sync failed - return local note, it will sync later
+    console.warn(`[notes-reservoir] Failed to sync new note immediately:`, error);
     return note;
   }
 }
@@ -341,26 +432,26 @@ export async function updateNote(
   const db = await getDbAsync();
   if (!db) return supabaseNotes.updateNote(id, updates);
 
-  const updated_at = new Date().toISOString();
-  const title = updates.title !== undefined ? updates.title : null;
-  const content = updates.content !== undefined ? updates.content : null;
+  // Get current note state
+  const currentRow = await db.getFirstAsync<Record<string, unknown>>(
+    `SELECT * FROM ${TABLE} WHERE id = ?`,
+    id
+  );
+  if (!currentRow) return null;
 
-  if (title !== null) {
-    await db.runAsync(
-      `UPDATE ${TABLE} SET title = ?, updated_at = ?, dirty = 1 WHERE id = ?`,
-      title,
-      updated_at,
-      id
-    );
-  }
-  if (content !== null) {
-    await db.runAsync(
-      `UPDATE ${TABLE} SET content = ?, updated_at = ?, dirty = 1 WHERE id = ?`,
-      content,
-      updated_at,
-      id
-    );
-  }
+  const currentNote = rowToNote(currentRow);
+  const updated_at = new Date().toISOString();
+  const title = updates.title !== undefined ? updates.title : currentNote.title;
+  const content = updates.content !== undefined ? updates.content : currentNote.content;
+
+  // Update local database
+  await db.runAsync(
+    `UPDATE ${TABLE} SET title = ?, content = ?, updated_at = ?, dirty = 1 WHERE id = ?`,
+    title,
+    content,
+    updated_at,
+    id
+  );
 
   const row = await db.getFirstAsync<Record<string, unknown>>(
     `SELECT * FROM ${TABLE} WHERE id = ?`,
@@ -370,8 +461,8 @@ export async function updateNote(
 
   try {
     const updated = await supabaseNotes.updateNote(id, {
-      ...(title !== null && { title }),
-      ...(content !== null && { content }),
+      title,
+      content,
     });
     if (updated) {
       await db.runAsync(
@@ -381,8 +472,9 @@ export async function updateNote(
       );
       return updated;
     }
-  } catch {
+  } catch (error) {
     // Leave dirty for later sync
+    console.warn(`[notes-reservoir] Failed to sync update for note ${id}:`, error);
   }
   return rowToNote(row);
 }
