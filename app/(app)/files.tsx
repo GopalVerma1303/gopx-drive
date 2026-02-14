@@ -842,24 +842,11 @@ function FileCard({
       })}
     >
       <Animated.View style={{ transform: [{ scale }] }}>
-        <View
-          style={{
-            marginBottom: 12,
-            alignItems: "center",
-          }}
-        >
+        <View className="mb-3 items-center">
           {/* File Icon Shape */}
           <View
-            style={{
-              width: fileWidth,
-              height: fileHeight,
-              backgroundColor: colors.muted,
-              borderWidth: 0,
-              borderColor: colors.border,
-              borderRadius: 4,
-              position: "relative",
-              overflow: "hidden",
-            }}
+            className="bg-muted rounded overflow-hidden relative"
+            style={{ width: fileWidth, height: fileHeight }}
           >
             {/* Folded Corner Inner Triangle (darker shade for depth) */}
             <View
@@ -882,46 +869,24 @@ function FileCard({
 
             {/* Content inside file icon */}
             <View
-              style={{
-                flex: 1,
-                padding: 12,
-                paddingTop: 16,
-                paddingRight: foldSize + 4,
-                justifyContent: "space-between",
-              }}
+              className="flex-1 p-3 pt-4 justify-between"
+              style={{ paddingRight: foldSize + 4 }}
             >
-              <View style={{ flex: 1 }}>
+              <View className="flex-1">
                 <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "600",
-                    color: colors.foreground,
-                    marginBottom: 4,
-                  }}
+                  className="text-sm font-semibold text-foreground mb-1"
                   numberOfLines={2}
                 >
                   {file.name.length > 15
                     ? file.name.substring(0, 15) + "..."
                     : file.name}
                 </Text>
-                <Text
-                  style={{
-                    fontSize: 10,
-                    color: colors.mutedForeground,
-                    marginTop: 4,
-                  }}
-                >
+                <Text className="text-[10px] text-muted-foreground mt-1">
                   {file.extension.toUpperCase()}
                 </Text>
               </View>
-              <View style={{ marginTop: "auto" }}>
-                <Text
-                  style={{
-                    fontSize: 9,
-                    color: colors.mutedForeground,
-                    opacity: 0.7,
-                  }}
-                >
+              <View className="mt-auto">
+                <Text className="text-[9px] text-muted-foreground opacity-70">
                   {formatFileSize(file.file_size)}
                 </Text>
               </View>
@@ -930,30 +895,16 @@ function FileCard({
 
           {/* File info below icon */}
           <View
-            style={{
-              marginTop: 8,
-              width: cardWidth,
-              alignItems: "center",
-            }}
+            className="mt-2 items-center"
+            style={{ width: cardWidth }}
           >
             <Text
-              style={{
-                fontSize: 12,
-                fontWeight: "500",
-                color: colors.foreground,
-                textAlign: "center",
-              }}
+              className="text-xs font-medium text-foreground text-center"
               numberOfLines={1}
             >
               {file.name}
             </Text>
-            <Text
-              style={{
-                fontSize: 10,
-                color: colors.mutedForeground,
-                marginTop: 2,
-              }}
-            >
+            <Text className="text-[10px] text-muted-foreground mt-0.5">
               {formatDate(file.updated_at)}
             </Text>
           </View>
@@ -1038,31 +989,13 @@ function FileListCard({
     >
       <Animated.View style={{ transform: [{ scale }] }}>
         <View
-          style={{
-            width: cardWidth,
-            height: cardHeight,
-            backgroundColor: colors.muted,
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 12,
-            flexDirection: "row",
-            alignItems: "center",
-            padding: padding,
-            gap: 12,
-          }}
+          className="flex-row items-center p-3 gap-3 bg-muted border border-border rounded-xl"
+          style={{ width: cardWidth, height: cardHeight }}
         >
           {/* File Icon - Smaller version for list */}
           <View
-            style={{
-              width: iconSize,
-              height: iconSize,
-              backgroundColor: colors.background,
-              borderWidth: 1,
-              borderColor: colors.muted,
-              borderRadius: 4,
-              position: "relative",
-              overflow: "hidden",
-            }}
+            className="bg-background border border-muted rounded overflow-hidden relative"
+            style={{ width: iconSize, height: iconSize }}
           >
             {/* Folded Corner */}
             <View
@@ -1085,32 +1018,17 @@ function FileListCard({
 
             {/* Content inside file icon */}
             <View
-              style={{
-                flex: 1,
-                padding: 6,
-                paddingTop: 8,
-                paddingRight: foldSize + 2,
-                justifyContent: "space-between",
-              }}
+              className="flex-1 pt-2 justify-between"
+              style={{ padding: 6, paddingRight: foldSize + 2 }}
             >
               <Text
-                style={{
-                  fontSize: 8,
-                  fontWeight: "600",
-                  color: colors.foreground,
-                }}
+                className="text-[8px] font-semibold text-foreground"
                 numberOfLines={1}
               >
                 {file.extension.toUpperCase().slice(0, 3)}
               </Text>
-              <View style={{ marginTop: "auto" }}>
-                <Text
-                  style={{
-                    fontSize: 6,
-                    color: colors.mutedForeground,
-                    opacity: 0.7,
-                  }}
-                >
+              <View className="mt-auto">
+                <Text className="text-[6px] text-muted-foreground opacity-70">
                   {formatFileSize(file.file_size).split(" ")[0]}
                 </Text>
               </View>
@@ -1118,63 +1036,23 @@ function FileListCard({
           </View>
 
           {/* File Info */}
-          <View style={{ flex: 1, justifyContent: "center", gap: 4 }}>
+          <View className="flex-1 justify-center gap-1">
             <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "600",
-                color: colors.foreground,
-              }}
+              className="text-sm font-semibold text-foreground"
               numberOfLines={1}
             >
               {file.name}
             </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 11,
-                  color: colors.mutedForeground,
-                  textTransform: "uppercase",
-                }}
-              >
+            <View className="flex-row items-center gap-2">
+              <Text className="text-[11px] text-muted-foreground uppercase">
                 {file.extension}
               </Text>
-              <Text
-                style={{
-                  fontSize: 11,
-                  color: colors.mutedForeground,
-                }}
-              >
-                •
-              </Text>
-              <Text
-                style={{
-                  fontSize: 11,
-                  color: colors.mutedForeground,
-                }}
-              >
+              <Text className="text-[11px] text-muted-foreground">•</Text>
+              <Text className="text-[11px] text-muted-foreground">
                 {formatFileSize(file.file_size)}
               </Text>
-              <Text
-                style={{
-                  fontSize: 11,
-                  color: colors.mutedForeground,
-                }}
-              >
-                •
-              </Text>
-              <Text
-                style={{
-                  fontSize: 11,
-                  color: colors.mutedForeground,
-                }}
-              >
+              <Text className="text-[11px] text-muted-foreground">•</Text>
+              <Text className="text-[11px] text-muted-foreground">
                 {formatDate(file.updated_at)}
               </Text>
             </View>

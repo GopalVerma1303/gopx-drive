@@ -681,18 +681,10 @@ function AttachmentCard({
     >
       <Animated.View style={{ transform: [{ scale }] }}>
         {isGrid ? (
-          <View style={{ marginBottom: 12, alignItems: "center" }}>
+          <View className="mb-3 items-center">
             <View
-              style={{
-                width: size,
-                height: size,
-                backgroundColor: colors.muted,
-                borderWidth: 0,
-                borderColor: colors.border,
-                borderRadius: 4,
-                position: "relative",
-                overflow: "hidden",
-              }}
+              className="bg-muted rounded overflow-hidden relative"
+              style={{ width: size, height: size }}
             >
               <Image
                 source={{ uri: item.url }}
@@ -711,56 +703,31 @@ function AttachmentCard({
             </View>
             {/* File info below icon (same as /files) */}
             <View
-              style={{
-                marginTop: 8,
-                width: cardWidth,
-                alignItems: "center",
-              }}
+              className="mt-2 items-center"
+              style={{ width: cardWidth }}
             >
               <Text
                 numberOfLines={1}
-                style={{
-                  fontSize: 12,
-                  fontWeight: "500",
-                  color: colors.foreground,
-                  textAlign: "center",
-                }}
+                className="text-xs font-medium text-foreground text-center"
               >
                 {item.name}
               </Text>
-              <Text
-                style={{
-                  fontSize: 10,
-                  color: colors.mutedForeground,
-                  marginTop: 2,
-                }}
-              >
+              <Text className="text-[10px] text-muted-foreground mt-0.5">
                 {formatDate(item.createdAt)}
               </Text>
             </View>
           </View>
         ) : (
           <View
-            style={{
-              width: cardWidth,
-              height: listCardHeight,
-              backgroundColor: colors.muted,
-              borderWidth: 1,
-              borderColor: colors.border,
-              borderRadius: 12,
-              flexDirection: "row",
-              alignItems: "center",
-              padding: 12,
-              gap: 12,
-            }}
+            className="flex-row items-center p-3 gap-3 bg-muted border border-border rounded-xl"
+            style={{ width: cardWidth, height: listCardHeight }}
           >
             <View
+              className="bg-background overflow-hidden"
               style={{
                 width: listIconSize,
                 height: listIconSize,
-                backgroundColor: colors.background,
                 borderRadius: imageRadius,
-                overflow: "hidden",
               }}
             >
               <Image
@@ -770,33 +737,23 @@ function AttachmentCard({
                 recyclingKey={item.url}
               />
             </View>
-            <View style={{ flex: 1, justifyContent: "center", gap: 4 }}>
+            <View className="flex-1 justify-center gap-1">
               <Text
                 numberOfLines={1}
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  color: colors.foreground,
-                }}
+                className="text-sm font-semibold text-foreground"
               >
                 {item.name}
               </Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Text
-                  style={{
-                    fontSize: 11,
-                    color: colors.mutedForeground,
-                    textTransform: "uppercase",
-                  }}
-                >
+              <View className="flex-row items-center gap-2">
+                <Text className="text-[11px] text-muted-foreground uppercase">
                   {(item.contentType?.split("/").pop() ?? "file").slice(0, 8)}
                 </Text>
-                <Text style={{ fontSize: 11, color: colors.mutedForeground }}>•</Text>
-                <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                <Text className="text-[11px] text-muted-foreground">•</Text>
+                <Text className="text-[11px] text-muted-foreground">
                   {formatFileSize(item.sizeBytes)}
                 </Text>
-                <Text style={{ fontSize: 11, color: colors.mutedForeground }}>•</Text>
-                <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                <Text className="text-[11px] text-muted-foreground">•</Text>
+                <Text className="text-[11px] text-muted-foreground">
                   {formatDate(item.createdAt)}
                 </Text>
               </View>

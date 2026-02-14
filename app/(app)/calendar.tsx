@@ -440,16 +440,7 @@ export default function CalendarScreen() {
               <View className="w-full max-w-2xl mx-auto mb-4">
                 <Pressable
                   onPress={() => setSelectedDate(null)}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: 12,
-                    backgroundColor: colors.muted,
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                  }}
+                  className="flex-row items-center justify-between p-3 rounded-lg border border-border bg-muted"
                 >
                   <Text
                     style={{
@@ -1028,15 +1019,7 @@ function CustomCalendar({
     const datesInMonth = getDatesInMonth();
 
     return (
-      <Card
-        className="p-4 rounded-2xl bg-muted border border-border"
-        style={{
-          backgroundColor: colors.muted,
-          borderColor: colors.border,
-          borderRadius: 16,
-          padding: 16,
-        }}
-      >
+      <Card className="p-4 rounded-2xl bg-muted border border-border">
         {/* Collapsed Header */}
         <View
           style={{
@@ -1220,15 +1203,7 @@ function CustomCalendar({
 
   // Expanded view - full calendar
   return (
-    <Card
-      className="p-4 rounded-2xl bg-muted border border-border"
-      style={{
-        backgroundColor: colors.muted,
-        borderColor: colors.border,
-        borderRadius: 16,
-        padding: 16,
-      }}
-    >
+    <Card className="p-4 rounded-2xl bg-muted border border-border">
       {/* Calendar Header */}
       <View
         style={{
