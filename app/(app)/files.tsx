@@ -105,14 +105,7 @@ export default function FilesScreen() {
     }
   }, [viewMode, isViewModeLoaded]);
 
-  // Calculate columns based on screen size
-  const getColumns = () => {
-    if (screenWidth >= 1024) return 3; // lg
-    if (screenWidth >= 768) return 3; // md
-    return 2; // sm
-  };
-
-  const columns = getColumns();
+  const columns = 2;
 
   const {
     data: files = [],

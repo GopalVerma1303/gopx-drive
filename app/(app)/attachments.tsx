@@ -1,0 +1,797 @@
+"use client";
+
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Text } from "@/components/ui/text";
+import { useAuth } from "@/contexts/auth-context";
+import { deleteAttachment, listAttachments, type AttachmentBucketItem } from "@/lib/attachments";
+import { invalidateAttachmentsQueries } from "@/lib/query-utils";
+import { THEME } from "@/lib/theme";
+import { useThemeColors } from "@/lib/use-theme-colors";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BlurView } from "expo-blur";
+import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
+import { Stack, useRouter } from "expo-router";
+import { ArrowLeft, ImageIcon, LayoutGrid, Rows2, Search } from "lucide-react-native";
+import { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Share,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const ATTACHMENTS_VIEW_MODE_STORAGE_KEY = "@attachments_view_mode";
+
+export default function AttachmentsScreen() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { colors } = useThemeColors();
+  const insets = useSafeAreaInsets();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const [isViewModeLoaded, setIsViewModeLoaded] = useState(false);
+  const [screenWidth, setScreenWidth] = useState(() => {
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined") {
+        return window.innerWidth;
+      }
+    }
+    return Dimensions.get("window").width;
+  });
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedAttachment, setSelectedAttachment] = useState<AttachmentBucketItem | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      const handleResize = () => {
+        if (typeof window !== "undefined") {
+          setScreenWidth(window.innerWidth);
+        }
+      };
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    } else {
+      const subscription = Dimensions.addEventListener("change", ({ window }) => {
+        setScreenWidth(window.width);
+      });
+      return () => subscription?.remove();
+    }
+  }, []);
+
+  useEffect(() => {
+    const loadViewMode = async () => {
+      try {
+        const saved = await AsyncStorage.getItem(ATTACHMENTS_VIEW_MODE_STORAGE_KEY);
+        if (saved && (saved === "grid" || saved === "list")) {
+          setViewMode(saved);
+        }
+      } catch {
+        // ignore
+      } finally {
+        setIsViewModeLoaded(true);
+      }
+    };
+    loadViewMode();
+  }, []);
+
+  useEffect(() => {
+    if (isViewModeLoaded) {
+      AsyncStorage.setItem(ATTACHMENTS_VIEW_MODE_STORAGE_KEY, viewMode).catch(() => { });
+    }
+  }, [viewMode, isViewModeLoaded]);
+
+  const {
+    data: attachments = [],
+    isLoading,
+    refetch,
+    isFetching,
+  } = useQuery({
+    queryKey: ["attachments", user?.id],
+    queryFn: () => listAttachments(user?.id),
+    enabled: !!user?.id,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+    placeholderData: (previousData) => previousData,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (url: string) => deleteAttachment(url),
+    onSuccess: () => {
+      invalidateAttachmentsQueries(queryClient, user?.id);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setDeleteDialogOpen(false);
+      setSelectedAttachment(null);
+    },
+  });
+
+  const filteredAttachments = attachments.filter((item) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      item.name.toLowerCase().includes(q) ||
+      (item.contentType && item.contentType.toLowerCase().includes(q))
+    );
+  });
+
+  const onRefresh = async () => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    await refetch();
+    if (Platform.OS !== "web") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  };
+
+  const handleCopyLink = async (item: AttachmentBucketItem) => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    if (Platform.OS === "web") {
+      try {
+        await navigator.clipboard.writeText(item.url);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch {
+        // clipboard not available
+      }
+    } else {
+      try {
+        await Share.share({
+          message: item.url,
+          title: "Attachment link",
+        });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch {
+        // user dismissed share
+      }
+    }
+  };
+
+  const openActionModal = (item: AttachmentBucketItem) => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setSelectedAttachment(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedAttachment) return;
+    await deleteMutation.mutateAsync(selectedAttachment.url);
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return (bytes / Math.pow(k, i)).toFixed(2) + " " + sizes[i];
+  };
+
+  const isSmallScreen = screenWidth < 768;
+  const columns = 2;
+
+  return (
+    <View
+      className="flex-1 w-full mx-auto"
+      style={{ backgroundColor: colors.background }}
+    >
+      <Stack.Screen options={{ headerShown: false }} />
+      <View
+        style={{
+          paddingTop: insets.top,
+          backgroundColor: colors.background,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            height: 56,
+            paddingHorizontal: 16,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+            {isSmallScreen && (
+              <Pressable
+                onPress={() => {
+                  if (Platform.OS !== "web") {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }
+                  router.push("/(app)/settings");
+                }}
+                style={{ padding: 8, marginRight: 8 }}
+              >
+                <ArrowLeft color={colors.foreground} size={24} />
+              </Pressable>
+            )}
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "600",
+                color: colors.foreground,
+              }}
+            >
+              Attachments
+            </Text>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Pressable
+              onPress={() => {
+                if (Platform.OS !== "web") {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                }
+                setViewMode((m) => (m === "grid" ? "list" : "grid"));
+              }}
+              style={{ padding: 8 }}
+            >
+              {viewMode === "grid" ? (
+                <Rows2 color={colors.foreground} size={22} strokeWidth={2.5} />
+              ) : (
+                <LayoutGrid color={colors.foreground} size={22} strokeWidth={2.5} />
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </View>
+
+      <View className="w-full max-w-3xl mx-auto">
+        <View className="flex-row items-center mx-4 my-3 px-4 rounded-2xl h-14 border border-border bg-muted">
+          <Search
+            color={THEME.light.mutedForeground}
+            size={20}
+            style={{ marginRight: 8 }}
+          />
+          <Input
+            className="flex-1 h-full border-0 bg-transparent px-2 shadow-none"
+            placeholder="Search by file name..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="muted-foreground"
+          />
+        </View>
+      </View>
+
+      {isLoading ? (
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color={colors.foreground} />
+        </View>
+      ) : (
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+          refreshControl={
+            <RefreshControl
+              progressBackgroundColor={colors.background}
+              refreshing={isFetching}
+              onRefresh={onRefresh}
+              tintColor={colors.foreground}
+              colors={[colors.foreground]}
+            />
+          }
+        >
+          {filteredAttachments.length === 0 ? (
+            <View className="w-full max-w-2xl mx-auto flex-1 justify-center items-center pt-24">
+              <ImageIcon
+                color={colors.mutedForeground}
+                size={48}
+                strokeWidth={1.5}
+                style={{ marginBottom: 16 }}
+              />
+              <Text className="text-xl font-semibold text-muted-foreground mb-2">
+                {searchQuery.trim() ? "No matching attachments" : "No attachments"}
+              </Text>
+              <Text className="text-sm text-muted-foreground text-center">
+                {searchQuery.trim()
+                  ? "Try a different search"
+                  : "Files in your attachments bucket will appear here"}
+              </Text>
+            </View>
+          ) : viewMode === "grid" ? (
+            <View className="w-full max-w-2xl mx-auto">
+              {(() => {
+                const maxWidth = 672;
+                const containerPadding = 16;
+                const gap = 16;
+                const availableWidth =
+                  Math.min(screenWidth, maxWidth) - containerPadding * 2;
+                const cardWidth =
+                  (availableWidth - gap * (columns - 1)) / columns;
+                return (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "flex-start",
+                      width: cardWidth * columns + gap * (columns - 1),
+                      alignSelf: "center",
+                      flexWrap: "wrap",
+                      gap,
+                    }}
+                  >
+                    {filteredAttachments.map((item) => (
+                      <AttachmentCard
+                        key={item.path}
+                        item={item}
+                        cardWidth={cardWidth}
+                        variant="grid"
+                        formatFileSize={formatFileSize}
+                        onPress={() => openActionModal(item)}
+                      />
+                    ))}
+                  </View>
+                );
+              })()}
+            </View>
+          ) : (
+            <View className="w-full max-w-2xl mx-auto">
+              {(() => {
+                const maxWidth = 672;
+                const containerPadding = 16;
+                const listGap = 16;
+                const availableWidth =
+                  Math.min(screenWidth, maxWidth) - containerPadding * 2;
+                const cardWidth = availableWidth;
+                return (
+                  <View style={{ width: cardWidth, alignSelf: "center" }}>
+                    {filteredAttachments.map((item, index) => (
+                      <View
+                        key={item.path}
+                        style={{
+                          marginBottom:
+                            index < filteredAttachments.length - 1 ? listGap : 0,
+                        }}
+                      >
+                        <AttachmentCard
+                          item={item}
+                          cardWidth={cardWidth}
+                          variant="list"
+                          formatFileSize={formatFileSize}
+                          onPress={() => openActionModal(item)}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                );
+              })()}
+            </View>
+          )}
+        </ScrollView>
+      )}
+
+      {/* Action modal: Delete (left), Cancel (center), Copy URL (right) */}
+      {Platform.OS === "web" ? (
+        deleteDialogOpen && selectedAttachment && (
+          <View
+            style={{
+              position: "fixed" as any,
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 50,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              backdropFilter: "blur(8px)",
+              justifyContent: "center",
+              alignItems: "center",
+              padding: 16,
+            }}
+          >
+            <Pressable
+              style={{
+                position: "absolute" as any,
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+              }}
+              onPress={() => setDeleteDialogOpen(false)}
+            />
+            <View
+              style={{
+                backgroundColor: colors.muted,
+                borderColor: colors.border,
+                borderRadius: 8,
+                borderWidth: 1,
+                padding: 24,
+                width: "100%",
+                maxWidth: 400,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+              }}
+            >
+              <Text
+                numberOfLines={2}
+                style={{
+                  color: colors.foreground,
+                  fontSize: 18,
+                  fontWeight: "600",
+                  marginBottom: 8,
+                }}
+              >
+                {selectedAttachment?.name ?? "Attachment"}
+              </Text>
+              <Text
+                style={{
+                  color: colors.mutedForeground,
+                  fontSize: 14,
+                  marginBottom: 20,
+                  lineHeight: 20,
+                }}
+              >
+                Click "Copy URL" to copy the URL to the clipboard. Delete is
+                permanent and cannot be recovered.
+              </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Pressable
+                  style={{ paddingLeft: 0, paddingRight: 16, paddingVertical: 8 }}
+                  onPress={() => {
+                    confirmDelete();
+                  }}
+                  disabled={deleteMutation.isPending}
+                >
+                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>
+                    Delete
+                  </Text>
+                </Pressable>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                  <Pressable
+                    style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                    onPress={() => setDeleteDialogOpen(false)}
+                  >
+                    <Text style={{ color: colors.foreground }}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                    onPress={async () => {
+                      await handleCopyLink(selectedAttachment);
+                      setDeleteDialogOpen(false);
+                      setSelectedAttachment(null);
+                    }}
+                  >
+                    <Text style={{ color: "#3b82f6", fontWeight: "600" }}>
+                      Copy URL
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          </View>
+        )
+      ) : (
+        <Modal
+          visible={deleteDialogOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setDeleteDialogOpen(false)}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+            }}
+          >
+            <BlurView
+              intensity={20}
+              tint="dark"
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                padding: 16,
+              }}
+            >
+              <Pressable
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+                onPress={() => setDeleteDialogOpen(false)}
+              />
+              <View
+                style={{
+                  backgroundColor: colors.muted,
+                  borderColor: colors.border,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  padding: 24,
+                  width: "100%",
+                  maxWidth: 400,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  elevation: 5,
+                }}
+              >
+                {selectedAttachment && (
+                  <>
+                    <Text
+                      numberOfLines={2}
+                      style={{
+                        color: colors.foreground,
+                        fontSize: 18,
+                        fontWeight: "600",
+                        marginBottom: 8,
+                      }}
+                    >
+                      {selectedAttachment?.name ?? "Attachment"}
+                    </Text>
+                    <Text
+                      style={{
+                        color: colors.mutedForeground,
+                        fontSize: 14,
+                        marginBottom: 20,
+                        lineHeight: 20,
+                      }}
+                    >
+                      Click "Copy URL" to copy the URL to the clipboard. Delete is
+                      permanent and cannot be recovered.
+                    </Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Pressable
+                        style={{ paddingLeft: 0, paddingRight: 16, paddingVertical: 8 }}
+                        onPress={() => {
+                          confirmDelete();
+                        }}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Text style={{ color: "#ef4444", fontWeight: "600" }}>
+                          Delete
+                        </Text>
+                      </Pressable>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                        <Pressable
+                          style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                          onPress={() => setDeleteDialogOpen(false)}
+                        >
+                          <Text style={{ color: colors.foreground }}>Cancel</Text>
+                        </Pressable>
+                        <Pressable
+                          style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                          onPress={async () => {
+                            await handleCopyLink(selectedAttachment);
+                            setDeleteDialogOpen(false);
+                            setSelectedAttachment(null);
+                          }}
+                        >
+                          <Text style={{ color: "#3b82f6", fontWeight: "600" }}>
+                            Copy URL
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  </>
+                )}
+              </View>
+            </BlurView>
+          </View>
+        </Modal>
+      )}
+    </View>
+  );
+}
+
+interface AttachmentCardProps {
+  item: AttachmentBucketItem;
+  cardWidth: number;
+  variant: "grid" | "list";
+  formatFileSize: (bytes: number) => string;
+  onPress: () => void;
+}
+
+function AttachmentCard({
+  item,
+  cardWidth,
+  variant,
+  formatFileSize,
+  onPress,
+}: AttachmentCardProps) {
+  const { colors } = useThemeColors();
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+  };
+
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: variant === "grid" ? 0.96 : 0.98,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 3,
+    }).start();
+  };
+
+  const isGrid = variant === "grid";
+  const imageMargin = 8;
+  const imageRadius = 10;
+  const listIconSize = 56;
+  const listCardHeight = 80;
+  const gridImageWidth = cardWidth - imageMargin * 2;
+  const gridImageHeight = gridImageWidth * 0.7;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+    >
+      <Animated.View style={{ transform: [{ scale }] }}>
+        {isGrid ? (
+          <Card
+            className="rounded-xl bg-muted border border-border overflow-hidden"
+            style={{
+              width: cardWidth,
+              padding: imageMargin,
+              overflow: "hidden",
+              borderRadius: 12,
+            }}
+          >
+            <View style={{ flexDirection: "column", alignItems: "stretch" }}>
+              <View
+                style={{
+                  width: gridImageWidth,
+                  height: gridImageHeight,
+                  backgroundColor: colors.background,
+                  borderRadius: imageRadius,
+                  overflow: "hidden",
+                  marginBottom: 6,
+                }}
+              >
+                <Image
+                  source={{ uri: item.url }}
+                  style={{ width: gridImageWidth, height: gridImageHeight }}
+                  contentFit="cover"
+                  recyclingKey={item.url}
+                />
+              </View>
+              <View style={{ paddingVertical: 0, flex: 1, justifyContent: "center" }}>
+                <Text
+                  numberOfLines={2}
+                  style={{
+                    fontSize: 13,
+                    fontWeight: "600",
+                    color: colors.foreground,
+                  }}
+                >
+                  {item.name}
+                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      color: colors.mutedForeground,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {(item.contentType?.split("/").pop() ?? "file").slice(0, 8)}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: colors.mutedForeground }}>•</Text>
+                  <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                    {formatFileSize(item.sizeBytes)}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: colors.mutedForeground }}>•</Text>
+                  <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                    {formatDate(item.createdAt)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </Card>
+        ) : (
+          <View
+            style={{
+              width: cardWidth,
+              height: listCardHeight,
+              backgroundColor: colors.muted,
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: 12,
+              flexDirection: "row",
+              alignItems: "center",
+              padding: 12,
+              gap: 12,
+            }}
+          >
+            <View
+              style={{
+                width: listIconSize,
+                height: listIconSize,
+                backgroundColor: colors.background,
+                borderRadius: imageRadius,
+                overflow: "hidden",
+              }}
+            >
+              <Image
+                source={{ uri: item.url }}
+                style={{ width: listIconSize, height: listIconSize }}
+                contentFit="cover"
+                recyclingKey={item.url}
+              />
+            </View>
+            <View style={{ flex: 1, justifyContent: "center", gap: 4 }}>
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontSize: 14,
+                  fontWeight: "600",
+                  color: colors.foreground,
+                }}
+              >
+                {item.name}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: colors.mutedForeground,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {(item.contentType?.split("/").pop() ?? "file").slice(0, 8)}
+                </Text>
+                <Text style={{ fontSize: 11, color: colors.mutedForeground }}>•</Text>
+                <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                  {formatFileSize(item.sizeBytes)}
+                </Text>
+                <Text style={{ fontSize: 11, color: colors.mutedForeground }}>•</Text>
+                <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                  {formatDate(item.createdAt)}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+      </Animated.View>
+    </Pressable>
+  );
+}

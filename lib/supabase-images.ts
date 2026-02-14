@@ -232,3 +232,95 @@ export const uploadImageToNoteImages = async (input: {
 
   return urlData.publicUrl;
 };
+
+/**
+ * Extract storage path from a Supabase Storage public URL.
+ * URL format: https://<project>.supabase.co/storage/v1/object/public/<bucket>/<path>
+ */
+function getStoragePathFromPublicUrl(publicUrl: string): string | null {
+  const bucketName = getBucketName();
+  try {
+    const url = new URL(publicUrl);
+    const pathname = url.pathname;
+    const prefix = `/storage/v1/object/public/${bucketName}/`;
+    if (pathname.startsWith(prefix)) {
+      return pathname.slice(prefix.length);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Delete an attachment from Storage by its public URL.
+ * Only works for URLs that point to the configured attachments bucket.
+ */
+export const deleteAttachmentByPublicUrl = async (
+  publicUrl: string
+): Promise<void> => {
+  const bucketName = getBucketName();
+  const path = getStoragePathFromPublicUrl(publicUrl);
+  if (!path) {
+    throw new Error(
+      "Invalid attachment URL: could not determine storage path. URL must be from the attachments bucket."
+    );
+  }
+  const { error } = await supabase.storage.from(bucketName).remove([path]);
+  if (error) {
+    throw new Error(error.message || "Failed to delete attachment");
+  }
+};
+
+/** File metadata from the attachments bucket (no note correlation) */
+export type AttachmentBucketItem = {
+  name: string;
+  path: string;
+  url: string;
+  contentType: string;
+  sizeBytes: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * List all files in the user's folder in the attachments bucket.
+ * Used for the Attachments settings page (bucket management only).
+ */
+export async function listFilesInAttachmentsBucket(
+  userId: string
+): Promise<AttachmentBucketItem[]> {
+  const bucketName = getBucketName();
+  const { data, error } = await supabase.storage
+    .from(bucketName)
+    .list(userId, {
+      limit: 1000,
+      sortBy: { column: "created_at", order: "desc" },
+    });
+
+  if (error) {
+    throw new Error(error.message || "Failed to list attachments");
+  }
+
+  const items: AttachmentBucketItem[] = [];
+  const fileObjects = (data || []).filter((f) => f.name != null);
+
+  for (const f of fileObjects) {
+    const path = `${userId}/${f.name}`;
+    const { data: urlData } = supabase.storage
+      .from(bucketName)
+      .getPublicUrl(path);
+    const meta = (f as any).metadata || {};
+    items.push({
+      name: f.name,
+      path,
+      url: urlData?.publicUrl ?? "",
+      contentType: meta.mimetype || meta.contentType || "application/octet-stream",
+      sizeBytes: meta.size ?? meta.contentLength ?? 0,
+      createdAt: (f as any).created_at ?? "",
+      updatedAt: (f as any).updated_at ?? "",
+    });
+  }
+
+  return items;
+}

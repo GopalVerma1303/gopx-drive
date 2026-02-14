@@ -26,6 +26,7 @@ export const QueryKeys = {
   archivedFiles: (userId?: string) => (userId ? ["archivedFiles", userId] : ["archivedFiles"]),
   events: (userId?: string) => (userId ? ["events", userId] : ["events"]),
   note: (id: string) => ["note", id],
+  attachments: (userId?: string) => (userId ? ["attachments", userId] : ["attachments"]),
 } as const;
 
 /**
@@ -59,6 +60,13 @@ export function invalidateFilesQueries(queryClient: QueryClient, userId?: string
  */
 export function invalidateEventsQueries(queryClient: QueryClient, userId?: string): void {
   queryClient.invalidateQueries({ queryKey: QueryKeys.events(userId) });
+}
+
+/**
+ * Invalidate attachments queries (bucket-only, no note correlation)
+ */
+export function invalidateAttachmentsQueries(queryClient: QueryClient, userId?: string): void {
+  queryClient.invalidateQueries({ queryKey: QueryKeys.attachments(userId) });
 }
 
 /**

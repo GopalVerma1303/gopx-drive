@@ -8,7 +8,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Archive, LogOut } from "lucide-react-native";
+import { Archive, ImageIcon, LogOut } from "lucide-react-native";
 import { useState } from "react";
 import {
   Alert,
@@ -195,7 +195,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Archive Section */}
+        {/* Storage Section */}
         <View className="w-full max-w-2xl mx-auto">
           <Text
             style={{
@@ -231,6 +231,36 @@ export default function SettingsScreen() {
                   }}
                 >
                   Archive
+                </Text>
+              </View>
+            </Pressable>
+            <View
+              style={{
+                borderTopWidth: 1,
+                borderTopColor: colors.border,
+              }}
+            />
+            <Pressable
+              className="flex flex-row p-4 gap-12"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/(app)/attachments");
+              }}
+            >
+              <View className="flex flex-row items-center gap-2">
+                <ImageIcon
+                  color={colors.foreground}
+                  size={20}
+                  strokeWidth={2}
+                />
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: colors.foreground,
+                    fontWeight: "500",
+                  }}
+                >
+                  Attachments
                 </Text>
               </View>
             </Pressable>
