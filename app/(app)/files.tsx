@@ -407,7 +407,7 @@ export default function FilesScreen() {
                   // max-w-2xl is 672px
                   const maxWidth = 672; // max-w-2xl
                   const containerPadding = 16; // p-4 = 16px
-                  const gap = 16; // gap between cards
+                  const gap = 8; // half of 16 so column gap (8+gap+8) matches edge feel
                   const availableWidth = Math.min(screenWidth, maxWidth) - containerPadding * 2;
                   // Calculate width to fill evenly: (availableWidth - gaps) / columns
                   const cardWidth = (availableWidth - gap * (columns - 1)) / columns;

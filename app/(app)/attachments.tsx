@@ -1,6 +1,5 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
@@ -100,11 +99,12 @@ export default function AttachmentsScreen() {
   } = useQuery({
     queryKey: ["attachments", user?.id],
     queryFn: () => listAttachments(user?.id),
-    enabled: !!user?.id,
-    refetchOnMount: "always",
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
-    staleTime: 0,
+    staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
+    retry: false, // When offline, fail once and show cached list from listAttachments() fallback
     placeholderData: (previousData) => previousData,
+    retryOnMount: false,
   });
 
   const deleteMutation = useMutation({
@@ -308,32 +308,46 @@ export default function AttachmentsScreen() {
               {(() => {
                 const maxWidth = 672;
                 const containerPadding = 16;
-                const gap = 16;
+                const gap = 8; // half of 16 so column gap matches edge feel (card padding 8+8)
+                const rowGap = 16;
                 const availableWidth =
                   Math.min(screenWidth, maxWidth) - containerPadding * 2;
                 const cardWidth =
                   (availableWidth - gap * (columns - 1)) / columns;
+                const totalWidth = cardWidth * columns + gap * (columns - 1);
                 return (
                   <View
                     style={{
                       flexDirection: "row",
-                      alignItems: "flex-start",
-                      width: cardWidth * columns + gap * (columns - 1),
-                      alignSelf: "center",
                       flexWrap: "wrap",
-                      gap,
+                      justifyContent: "flex-start",
+                      width: totalWidth,
+                      alignSelf: "center",
                     }}
                   >
-                    {filteredAttachments.map((item) => (
-                      <AttachmentCard
-                        key={item.path}
-                        item={item}
-                        cardWidth={cardWidth}
-                        variant="grid"
-                        formatFileSize={formatFileSize}
-                        onPress={() => openActionModal(item)}
-                      />
-                    ))}
+                    {filteredAttachments.map((item, index) => {
+                      const marginRight =
+                        index % columns < columns - 1 ? gap : 0;
+                      const marginBottom = rowGap;
+                      return (
+                        <View
+                          key={item.path}
+                          style={{
+                            width: cardWidth,
+                            marginRight,
+                            marginBottom,
+                          }}
+                        >
+                          <AttachmentCard
+                            item={item}
+                            cardWidth={cardWidth}
+                            variant="grid"
+                            formatFileSize={formatFileSize}
+                            onPress={() => openActionModal(item)}
+                          />
+                        </View>
+                      );
+                    })}
                   </View>
                 );
               })()}
@@ -343,7 +357,7 @@ export default function AttachmentsScreen() {
               {(() => {
                 const maxWidth = 672;
                 const containerPadding = 16;
-                const listGap = 16;
+                const listGap = 12; // same as files list view
                 const availableWidth =
                   Math.min(screenWidth, maxWidth) - containerPadding * 2;
                 const cardWidth = availableWidth;
@@ -652,12 +666,12 @@ function AttachmentCard({
   };
 
   const isGrid = variant === "grid";
-  const imageMargin = 8;
-  const imageRadius = 10;
   const listIconSize = 56;
   const listCardHeight = 80;
-  const gridImageWidth = cardWidth - imageMargin * 2;
-  const gridImageHeight = gridImageWidth * 0.7;
+  const imageRadius = 10;
+  // Grid: 1:1 square image, no folded corner
+  const padding = 8;
+  const size = cardWidth - padding * 2;
 
   return (
     <Pressable
@@ -667,66 +681,64 @@ function AttachmentCard({
     >
       <Animated.View style={{ transform: [{ scale }] }}>
         {isGrid ? (
-          <Card
-            className="rounded-xl bg-muted border border-border overflow-hidden"
-            style={{
-              width: cardWidth,
-              padding: imageMargin,
-              overflow: "hidden",
-              borderRadius: 12,
-            }}
-          >
-            <View style={{ flexDirection: "column", alignItems: "stretch" }}>
-              <View
+          <View style={{ marginBottom: 12, alignItems: "center" }}>
+            <View
+              style={{
+                width: size,
+                height: size,
+                backgroundColor: colors.muted,
+                borderWidth: 0,
+                borderColor: colors.border,
+                borderRadius: 4,
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              <Image
+                source={{ uri: item.url }}
                 style={{
-                  width: gridImageWidth,
-                  height: gridImageHeight,
-                  backgroundColor: colors.background,
-                  borderRadius: imageRadius,
-                  overflow: "hidden",
-                  marginBottom: 6,
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  width: size,
+                  height: size,
+                }}
+                contentFit="cover"
+                recyclingKey={item.url}
+              />
+            </View>
+            {/* File info below icon (same as /files) */}
+            <View
+              style={{
+                marginTop: 8,
+                width: cardWidth,
+                alignItems: "center",
+              }}
+            >
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontSize: 12,
+                  fontWeight: "500",
+                  color: colors.foreground,
+                  textAlign: "center",
                 }}
               >
-                <Image
-                  source={{ uri: item.url }}
-                  style={{ width: gridImageWidth, height: gridImageHeight }}
-                  contentFit="cover"
-                  recyclingKey={item.url}
-                />
-              </View>
-              <View style={{ paddingVertical: 0, flex: 1, justifyContent: "center" }}>
-                <Text
-                  numberOfLines={2}
-                  style={{
-                    fontSize: 13,
-                    fontWeight: "600",
-                    color: colors.foreground,
-                  }}
-                >
-                  {item.name}
-                </Text>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      color: colors.mutedForeground,
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {(item.contentType?.split("/").pop() ?? "file").slice(0, 8)}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: colors.mutedForeground }}>•</Text>
-                  <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
-                    {formatFileSize(item.sizeBytes)}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: colors.mutedForeground }}>•</Text>
-                  <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
-                    {formatDate(item.createdAt)}
-                  </Text>
-                </View>
-              </View>
+                {item.name}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 10,
+                  color: colors.mutedForeground,
+                  marginTop: 2,
+                }}
+              >
+                {formatDate(item.createdAt)}
+              </Text>
             </View>
-          </Card>
+          </View>
         ) : (
           <View
             style={{

@@ -212,6 +212,7 @@ export default function SettingsScreen() {
           <View className="bg-muted border border-border rounded-2xl overflow-hidden">
             <Pressable
               className="flex flex-row p-4 gap-12"
+              style={{ paddingBottom: 8 }}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push("/(app)/archive");
@@ -242,6 +243,7 @@ export default function SettingsScreen() {
             />
             <Pressable
               className="flex flex-row p-4 gap-12"
+              style={{ paddingTop: 8 }}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push("/(app)/attachments");
