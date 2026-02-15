@@ -27,19 +27,21 @@ import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller
 import Animated, { useAnimatedStyle } from "react-native-reanimated";
 
 export default function NoteEditorScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, edit: editParam } = useLocalSearchParams<{ id: string; edit?: string }>();
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { colors } = useThemeColors();
   const isNewNote = id === "new";
+  /** Open in edit mode for new notes, or when we just created and replaced (edit=1) */
+  const openInEditMode = isNewNote || editParam === "1";
   const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [lastSavedTitle, setLastSavedTitle] = useState("");
   const [lastSavedContent, setLastSavedContent] = useState("");
-  const [isPreview, setIsPreview] = useState(!isNewNote);
+  const [isPreview, setIsPreview] = useState(!openInEditMode);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [selectedText, setSelectedText] = useState("");
@@ -49,6 +51,8 @@ export default function NoteEditorScreen() {
   /** Range to replace with AI output when modal was opened with a selection (so we don't rely on getSelection() after focus is lost). */
   const [aiReplaceRange, setAiReplaceRange] = useState<{ start: number; end: number } | null>(null);
   const editorRef = useRef<MarkdownEditorRef>(null);
+  /** Guards against double submission (e.g. double-tap save) before isPending updates. */
+  const saveInProgressRef = useRef(false);
 
   const containerAnimatedStyle = useAnimatedStyle(() => {
     // Only apply keyboard avoidance on native platforms
@@ -124,6 +128,13 @@ export default function NoteEditorScreen() {
     }
   }, [id]);
 
+  // After replace from "new" to /note/[id]?edit=1, keep edit mode (in case component didn't remount)
+  useEffect(() => {
+    if (editParam === "1") {
+      setIsPreview(false);
+    }
+  }, [id, editParam]);
+
   useEffect(() => {
     if (Platform.OS !== "android") return;
 
@@ -181,7 +192,14 @@ export default function NoteEditorScreen() {
         // Also set cache for the actual note ID
         queryClient.setQueryData(["note", savedNote.id], savedNote);
       }
-      
+
+      // Replace route so we're on /note/[id] instead of /note/new. Prevents redundant
+      // note creation: next save will call updateNote(id) instead of createNote() again.
+      // Pass edit=1 so the screen opens in edit mode (user was still editing).
+      if (id === "new" && savedNote?.id) {
+        router.replace(`/(app)/note/${savedNote.id}?edit=1`);
+      }
+
       // Optimistically update notes list cache to show new note immediately
       // This fixes the issue where new notes don't appear until refresh
       const notesQueryKey = ["notes", user?.id];
@@ -194,7 +212,7 @@ export default function NoteEditorScreen() {
           const updated = [...oldData];
           updated[existingIndex] = savedNote;
           // Sort by updated_at descending
-          return updated.sort((a, b) => 
+          return updated.sort((a, b) =>
             new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
           );
         } else {
@@ -206,12 +224,15 @@ export default function NoteEditorScreen() {
           return oldData;
         }
       });
-      
+
       invalidateNotesQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     onError: (error: any) => {
       RNAlert.alert("Error", error.message);
+    },
+    onSettled: () => {
+      saveInProgressRef.current = false;
     },
   });
 
@@ -223,6 +244,9 @@ export default function NoteEditorScreen() {
     if (!isDirty) {
       return;
     }
+    // Prevent double submission (e.g. double-tap or slow network) before isPending updates
+    if (saveInProgressRef.current) return;
+    saveInProgressRef.current = true;
     saveMutation.mutate();
   };
 

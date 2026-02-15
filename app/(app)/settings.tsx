@@ -4,11 +4,13 @@ import { Switch } from "@/components/ui/switch";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
+import { clearAppCache } from "@/lib/clear-cache";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import { useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Archive, ImageIcon, LogOut } from "lucide-react-native";
+import { Archive, Eraser, ImageIcon, LogOut } from "lucide-react-native";
 import { useState } from "react";
 import {
   Alert,
@@ -26,8 +28,11 @@ export default function SettingsScreen() {
   const { resolvedTheme, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [clearCacheDialogOpen, setClearCacheDialogOpen] = useState(false);
+  const [clearingCache, setClearingCache] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -50,6 +55,33 @@ export default function SettingsScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     handleSignOut();
+  };
+
+  const handleClearCachePress = () => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setClearCacheDialogOpen(true);
+  };
+
+  const handleClearCacheConfirm = async () => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    setClearCacheDialogOpen(false);
+    setClearingCache(true);
+    try {
+      await clearAppCache();
+      queryClient.clear();
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      Alert.alert("Done", "Cache cleared. Your data will refresh when you open each screen.");
+    } catch (error: any) {
+      Alert.alert("Error", error?.message ?? "Failed to clear cache");
+    } finally {
+      setClearingCache(false);
+    }
   };
 
   return (
@@ -258,6 +290,28 @@ export default function SettingsScreen() {
                 </Text>
               </View>
             </Pressable>
+            <Pressable
+              className="flex flex-row items-center gap-12 p-4 border-t border-border"
+              onPress={handleClearCachePress}
+              disabled={clearingCache}
+            >
+              <View className="flex flex-row items-center gap-2">
+                <Eraser
+                  color={colors.foreground}
+                  size={20}
+                  strokeWidth={2}
+                />
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: colors.foreground,
+                    fontWeight: "500",
+                  }}
+                >
+                  {clearingCache ? "Clearing…" : "Clear cache"}
+                </Text>
+              </View>
+            </Pressable>
           </View>
         </View>
 
@@ -300,6 +354,182 @@ export default function SettingsScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Clear cache confirmation dialog — same style as archive.tsx */}
+      {Platform.OS === "web" ? (
+        clearCacheDialogOpen && (
+          <View
+            style={{
+              position: "fixed" as any,
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 50,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              backdropFilter: "blur(8px)",
+              justifyContent: "center",
+              alignItems: "center",
+              padding: 16,
+            }}
+          >
+            <Pressable
+              style={{ position: "absolute" as any, top: 0, left: 0, right: 0, bottom: 0 }}
+              onPress={() => setClearCacheDialogOpen(false)}
+            />
+            <View
+              style={{
+                backgroundColor: colors.muted,
+                borderColor: colors.border,
+                borderRadius: 8,
+                borderWidth: 1,
+                padding: 24,
+                width: "100%",
+                maxWidth: 400,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+              }}
+            >
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontSize: 18,
+                  fontWeight: "600",
+                  marginBottom: 8,
+                }}
+              >
+                Clear cache
+              </Text>
+              <Text
+                style={{
+                  color: colors.mutedForeground,
+                  fontSize: 14,
+                  marginBottom: 24,
+                }}
+              >
+                This will clear cached files, notes, and calendar data. You will stay signed in. Data will load again when you open each screen.
+              </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "flex-end",
+                  gap: 12,
+                }}
+              >
+                <Pressable
+                  style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                  onPress={() => setClearCacheDialogOpen(false)}
+                >
+                  <Text style={{ color: colors.foreground }}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: 6,
+                  }}
+                  onPress={handleClearCacheConfirm}
+                >
+                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>Clear cache</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )
+      ) : (
+        <Modal
+          visible={clearCacheDialogOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setClearCacheDialogOpen(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)" }}>
+            <BlurView
+              intensity={20}
+              tint="dark"
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                padding: 16,
+              }}
+            >
+              <Pressable
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+                onPress={() => setClearCacheDialogOpen(false)}
+              />
+              <View
+                style={{
+                  backgroundColor: colors.muted,
+                  borderColor: colors.border,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  padding: 24,
+                  width: "100%",
+                  maxWidth: 400,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  elevation: 5,
+                }}
+              >
+                <Text
+                  style={{
+                    color: colors.foreground,
+                    fontSize: 18,
+                    fontWeight: "600",
+                    marginBottom: 8,
+                  }}
+                >
+                  Clear cache
+                </Text>
+                <Text
+                  style={{
+                    color: colors.mutedForeground,
+                    fontSize: 14,
+                    marginBottom: 24,
+                  }}
+                >
+                  This will clear cached files, notes, and calendar data. You will stay signed in. Data will load again when you open each screen.
+                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "flex-end",
+                    gap: 12,
+                  }}
+                >
+                  <Pressable
+                    style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                    onPress={() => setClearCacheDialogOpen(false)}
+                  >
+                    <Text style={{ color: colors.foreground }}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      borderRadius: 6,
+                    }}
+                    onPress={handleClearCacheConfirm}
+                  >
+                    <Text style={{ color: "#ef4444", fontWeight: "600" }}>Clear cache</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </BlurView>
+          </View>
+        </Modal>
+      )}
 
       {/* Sign Out confirmation dialog — same style as notes archive dialog for web + native */}
       {Platform.OS === "web" ? (

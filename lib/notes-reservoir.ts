@@ -234,6 +234,25 @@ export async function syncFromSupabase(userId: string): Promise<void> {
         note.updated_at
       );
     }
+
+    // Remove local notes that were deleted on the server (e.g. from archive on web)
+    const remoteIdSet = new Set(allRemote.map((n) => n.id));
+    const localRows = await db.getAllAsync<{ id: string }>(
+      `SELECT id FROM ${TABLE} WHERE user_id = ?`,
+      userId
+    );
+    const idsToDelete = localRows.map((r) => r.id).filter((id) => !remoteIdSet.has(id));
+    if (idsToDelete.length > 0) {
+      const chunkSize = 500; // SQLite default limit is 999 bind params
+      for (let i = 0; i < idsToDelete.length; i += chunkSize) {
+        const chunk = idsToDelete.slice(i, i + chunkSize);
+        const placeholders = chunk.map(() => "?").join(",");
+        await db.runAsync(
+          `DELETE FROM ${TABLE} WHERE id IN (${placeholders})`,
+          ...chunk
+        );
+      }
+    }
   } catch (e) {
     console.warn("[notes-reservoir] syncFromSupabase failed:", e);
   } finally {

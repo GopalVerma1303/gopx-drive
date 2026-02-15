@@ -112,7 +112,7 @@ export default function ArchiveScreen() {
     queryKey: ["archivedNotes", user?.id],
     queryFn: () => listArchivedNotes(user?.id),
     enabled: !!user?.id,
-    refetchOnMount: false,
+    refetchOnMount: true, // Refetch when opening archive so mobile sees items deleted on web
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
@@ -139,7 +139,7 @@ export default function ArchiveScreen() {
     queryKey: ["archivedFiles", user?.id],
     queryFn: () => listArchivedFiles(user?.id),
     enabled: !!user?.id,
-    refetchOnMount: false,
+    refetchOnMount: true, // Refetch when opening archive so mobile sees items deleted on web
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
@@ -333,14 +333,11 @@ export default function ArchiveScreen() {
   const itemCount =
     activeTab === "notes" ? archivedNotes.length : archivedFiles.length;
 
-  // Filter notes and files based on search query
+  // Filter notes and files based on search query (notes by title only)
   const filteredNotes = archivedNotes.filter((note) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
-    return (
-      note.title?.toLowerCase().includes(query) ||
-      note.content?.toLowerCase().includes(query)
-    );
+    return note.title?.toLowerCase().includes(query);
   });
 
   const filteredFiles = archivedFiles.filter((file) => {
