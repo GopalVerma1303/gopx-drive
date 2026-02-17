@@ -127,10 +127,12 @@ export default function NoteEditorScreen() {
     }
   }, [id]);
 
-  // After replace from "new" to /note/[id]?edit=1, keep edit mode (in case component didn't remount)
+  // After replace from "new" to /note/[id], sync preview/edit with URL: edit=1 → edit mode, no param → preview
   useEffect(() => {
     if (editParam === "1") {
       setIsPreview(false);
+    } else if (id !== "new") {
+      setIsPreview(true);
     }
   }, [id, editParam]);
 
@@ -153,8 +155,10 @@ export default function NoteEditorScreen() {
 
   const isDirty = title !== lastSavedTitle || content !== lastSavedContent;
 
+  type SaveVariables = { openInEditAfterSave?: boolean };
+
   const saveMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (_variables?: SaveVariables) => {
       const userId = user?.id ?? "demo-user";
 
       if (isNewNote) {
@@ -175,7 +179,7 @@ export default function NoteEditorScreen() {
         return updated;
       }
     },
-    onSuccess: (savedNote) => {
+    onSuccess: (savedNote, variables) => {
       const updatedTitle = savedNote.title ?? title;
       const updatedContent = savedNote.content ?? content;
 
@@ -194,9 +198,12 @@ export default function NoteEditorScreen() {
 
       // Replace route so we're on /note/[id] instead of /note/new. Prevents redundant
       // note creation: next save will call updateNote(id) instead of createNote() again.
-      // Pass edit=1 so the screen opens in edit mode (user was still editing).
+      // If user saved from preview mode, open in preview; if from edit mode, open in edit.
       if (id === "new" && savedNote?.id) {
-        router.replace(`/(app)/note/${savedNote.id}?edit=1`);
+        const openInEditAfterSave = variables?.openInEditAfterSave ?? true;
+        router.replace(
+          `/(app)/note/${savedNote.id}${openInEditAfterSave ? "?edit=1" : ""}`
+        );
       }
 
       // Optimistically update notes list cache to show new note immediately
@@ -246,7 +253,8 @@ export default function NoteEditorScreen() {
     // Prevent double submission (e.g. double-tap or slow network) before isPending updates
     if (saveInProgressRef.current) return;
     saveInProgressRef.current = true;
-    saveMutation.mutate();
+    // Pass whether to open in edit mode after save: only true when user was editing (not in preview)
+    saveMutation.mutate({ openInEditAfterSave: !isPreview });
   };
 
   const handleRefresh = async () => {
