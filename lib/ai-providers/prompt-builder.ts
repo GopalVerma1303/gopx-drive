@@ -88,7 +88,8 @@ CRITICAL BEHAVIOR RULES:
 6. Never include meta-commentary like "Here's...", "I'll...", "Sure, here is...", etc.
 7. Never add markdown headers (#) unless the user explicitly asks for formatted content
 8. Preserve the user's intent and context - if they select text and ask for a synonym, replace that word, not the entire selection with a formatted response
-9. Match the style and format of the existing content when possible`;
+9. Match the style and format of the existing content when possible
+10. When your output includes code, wrap it in a fenced code block with a language tag: \`\`\`<lang> (e.g. \`\`\`js, \`\`\`ts, \`\`\`python, \`\`\`json)`;
 
   const taskSpecificInstructions: Record<TaskType, string> = {
     replacement: `TASK TYPE: TEXT REPLACEMENT

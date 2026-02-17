@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
+import { Check, Copy } from "lucide-react-native";
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Image, Linking, Platform, Pressable, Text as RNText, ScrollView, TextInput, useWindowDimensions, View } from "react-native";
 import Markdown, { renderRules } from "react-native-markdown-display";
@@ -26,6 +27,49 @@ import {
 } from "./markdown-editor/utils/list-markers";
 import { renumberOrderedList, TAB_SPACES } from "./markdown-editor/utils/list-processing";
 import { linkifyMarkdown } from "./markdown-editor/utils/text-helpers";
+
+const COPIED_FEEDBACK_MS = 2000;
+
+function CodeBlockCopyButton({
+  code,
+  iconColor,
+  backgroundColor,
+}: {
+  code: string;
+  iconColor: string;
+  backgroundColor: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const handlePress = () => {
+    const text = code.trim();
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS);
+    }
+  };
+  return (
+    <Pressable
+      onPress={handlePress}
+      style={{
+        position: "absolute",
+        top: 6,
+        right: 6,
+        zIndex: 1,
+        padding: 4,
+        borderRadius: 4,
+        backgroundColor,
+      }}
+      hitSlop={8}
+    >
+      {copied ? (
+        <Check size={14} color={iconColor} />
+      ) : (
+        <Copy size={14} color={iconColor} />
+      )}
+    </Pressable>
+  );
+}
 
 // Re-export types for backward compatibility
 export type { MarkdownEditorProps, MarkdownEditorRef };
@@ -1867,9 +1911,15 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                 padding: 12,
                 marginTop: 8,
                 marginBottom: 8,
+                position: "relative",
               },
             ]}
           >
+            <CodeBlockCopyButton
+              code={code}
+              iconColor={colors.foreground + "70"}
+              backgroundColor={colors.muted}
+            />
             <SyntaxHighlighter code={code.trim()} language={language} />
           </View>
         );
@@ -1895,9 +1945,15 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                 padding: 12,
                 marginTop: 8,
                 marginBottom: 8,
+                position: "relative",
               },
             ]}
           >
+            <CodeBlockCopyButton
+              code={code}
+              iconColor={colors.ring}
+              backgroundColor={colors.muted}
+            />
             <SyntaxHighlighter code={code.trim()} />
           </View>
         );

@@ -7,10 +7,10 @@ import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { PortalHost } from "@rn-primitives/portal";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useFonts } from "expo-font";
 import * as Linking from "expo-linking";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { Alert, Platform, View } from "react-native";
@@ -183,7 +183,7 @@ export default function RootLayout() {
         // On web, Metro processes require() and returns a string URL for assets
         // Fallback to a path that Metro should resolve
         const fontUrl = typeof iosevkaFont === "string" ? iosevkaFont : "/assets/fonts/Iosevka.ttf";
-        
+
         const style = document.createElement("style");
         style.id = "iosevka-font-face";
         style.textContent = `

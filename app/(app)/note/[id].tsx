@@ -1,15 +1,14 @@
 "use client";
 
 import { AIPromptModal } from "@/components/ai-prompt-modal";
-import { ImageInsertModal } from "@/components/image-insert-modal";
 import { NoteDetailHeader } from "@/components/headers/note-detail-header";
+import { ImageInsertModal } from "@/components/image-insert-modal";
 import { MarkdownEditor, MarkdownEditorRef } from "@/components/markdown-editor";
 import { MarkdownToolbar } from "@/components/markdown-toolbar";
 import { useAuth } from "@/contexts/auth-context";
 import { generateAIContent } from "@/lib/ai-providers";
 import { createNote, getNoteById, updateNote } from "@/lib/notes";
 import { invalidateNotesQueries } from "@/lib/query-utils";
-import type { Note } from "@/lib/supabase";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
@@ -316,10 +315,22 @@ export default function NoteEditorScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      RNAlert.alert(
-        "AI Generation Failed",
-        error.message || "Failed to generate content. Please check your AI provider configuration and API key."
-      );
+
+      // Insert error message into editor instead of showing alert
+      const errorMessage = error.message || "Failed to generate content. Please check your AI provider configuration and API key.";
+
+      if (editorRef.current) {
+        const range = aiReplaceRange;
+        if (range) {
+          editorRef.current.replaceRange(range.start, range.end, errorMessage);
+          setAiReplaceRange(null);
+        } else {
+          editorRef.current.insertText(errorMessage, errorMessage.length);
+        }
+      }
+
+      setAiModalOpen(false);
+      setSelectedText("");
     } finally {
       setAiLoading(false);
     }

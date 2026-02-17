@@ -5,7 +5,7 @@
  * switching between different AI services (Groq, Gemini, OpenAI, etc.)
  */
 
-export type AIProviderType = "groq" | "gemini" | "openai";
+export type AIProviderType = "groq" | "gemini" | "openai" | "backend";
 
 export interface AIGenerateOptions {
   prompt: string;

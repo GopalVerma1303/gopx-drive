@@ -16,7 +16,7 @@
 
 import { GeminiProvider } from "./gemini-provider";
 import { GroqProvider } from "./groq-provider";
-import type { AIProvider, AIProviderType, AIGenerateOptions } from "./types";
+import type { AIGenerateOptions, AIProvider, AIProviderType } from "./types";
 
 /**
  * Create an AI provider instance based on the configured provider type
@@ -66,4 +66,5 @@ export async function generateAIContent(options: AIGenerateOptions): Promise<str
 /**
  * Export types for use in other modules
  */
-export type { AIProvider, AIProviderType, AIGenerateOptions } from "./types";
+export type { AIGenerateOptions, AIProvider, AIProviderType } from "./types";
+
