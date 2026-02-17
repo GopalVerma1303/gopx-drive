@@ -7,13 +7,16 @@
  * Supported providers:
  * - groq: Groq API (default, fast inference)
  * - gemini: Google Gemini API
+ * - backend: Custom backend API (EXPO_PUBLIC_BACKEND_URL)
  * 
  * Environment variables:
- * - EXPO_PUBLIC_AI_PROVIDER: "groq" | "gemini" (default: "groq")
+ * - EXPO_PUBLIC_AI_PROVIDER: "groq" | "gemini" | "backend" (default: "groq")
  * - EXPO_PUBLIC_GROQ_API_KEY: Your Groq API key
  * - EXPO_PUBLIC_GEMINI_API_KEY: Your Gemini API key
+ * - EXPO_PUBLIC_BACKEND_URL: Backend API base URL (for "backend" provider)
  */
 
+import { BackendProvider } from "./backend-provider";
 import { GeminiProvider } from "./gemini-provider";
 import { GroqProvider } from "./groq-provider";
 import type { AIGenerateOptions, AIProvider, AIProviderType } from "./types";
@@ -31,6 +34,8 @@ export function createAIProvider(providerType?: AIProviderType): AIProvider {
       return new GroqProvider();
     case "gemini":
       return new GeminiProvider();
+    case "backend":
+      return new BackendProvider();
     default:
       console.warn(`Unknown AI provider: ${provider}, falling back to groq`);
       return new GroqProvider();

@@ -68,7 +68,6 @@ export function cleanResponse(text: string): string {
   if (cleanedText.startsWith("```") && cleanedText.endsWith("```")) {
     const lines = cleanedText.split("\n");
     const firstLine = lines[0].trim();
-    const closingFence = lines[lines.length - 1].trim();
     const body = lines.slice(1, lines.length - 1).join("\n").trim();
 
     const hasLang = firstLine.length > 3 && /^```[\w+#-]+$/.test(firstLine);

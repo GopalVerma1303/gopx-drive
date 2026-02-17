@@ -7,6 +7,7 @@
 
 import type { AIGenerateOptions, AIProvider } from "./types";
 import { buildContextAwarePrompt } from "./prompt-builder";
+import { cleanResponse } from "./response-cleaner";
 
 const GROQ_API_BASE_URL = "https://api.groq.com/openai/v1";
 
@@ -101,8 +102,8 @@ export class GroqProvider implements AIProvider {
         throw new Error("Empty response from Groq API");
       }
 
-      // Clean up the response - remove any common AI prefixes/suffixes
-      return this.cleanResponse(generatedText);
+      // Clean up the response and ensure code blocks use ```<lang> format
+      return cleanResponse(generatedText);
     } catch (error: any) {
       if (error.message) {
         throw error;
@@ -111,76 +112,5 @@ export class GroqProvider implements AIProvider {
         `Failed to generate content: ${error.message || "Unknown error"}`
       );
     }
-  }
-
-  private cleanResponse(text: string): string {
-    let cleanedText = text.trim();
-
-    // Remove common AI response patterns and meta-commentary
-    const patternsToRemove = [
-      // Introductory phrases
-      /^Here's.*?:\s*/i,
-      /^Here is.*?:\s*/i,
-      /^I'll.*?:\s*/i,
-      /^I can.*?:\s*/i,
-      /^Sure.*?:\s*/i,
-      /^Of course.*?:\s*/i,
-      /^Certainly.*?:\s*/i,
-      /^Let me.*?:\s*/i,
-      /^I'll help.*?:\s*/i,
-      /^I can help.*?:\s*/i,
-      /^Here.*?:\s*/i,
-
-      // Trailing phrases
-      /\s*Let me know.*$/i,
-      /\s*Is there anything else.*$/i,
-      /\s*I hope this helps.*$/i,
-      /\s*Hope this helps.*$/i,
-      /\s*Does this help\?.*$/i,
-      /\s*Let me know if.*$/i,
-
-      // Markdown headers that shouldn't be there (for simple replacements)
-      /^#+\s+(.+)$/m, // Remove standalone markdown headers at start
-
-      // Code blocks wrapping simple text
-      /^```[\w]*\n(.+)\n```$/s,
-
-      // Quotes wrapping content
-      /^["'](.+)["']$/,
-
-      // Parenthetical explanations
-      /\s*\([^)]*here[^)]*\)/i,
-      /\s*\([^)]*note[^)]*\)/i,
-    ];
-
-    for (const pattern of patternsToRemove) {
-      cleanedText = cleanedText.replace(pattern, "$1").trim();
-    }
-
-    // Remove leading markdown headers if they're standalone (not part of formatted content)
-    // Only remove if the entire response is just a header
-    const headerOnlyPattern = /^(#+\s+)(.+)$/;
-    const headerMatch = cleanedText.match(headerOnlyPattern);
-    if (headerMatch && cleanedText.split("\n").length === 1) {
-      // If it's a single-line header, extract just the text
-      cleanedText = headerMatch[2].trim();
-    }
-
-    // Remove any remaining markdown header prefixes from single-word responses
-    // This handles cases like "# delicious" -> "delicious"
-    if (cleanedText.match(/^#+\s+\w+$/)) {
-      cleanedText = cleanedText.replace(/^#+\s+/, "").trim();
-    }
-
-    // Remove code fence markers if they wrap simple text
-    if (cleanedText.startsWith("```") && cleanedText.endsWith("```")) {
-      const lines = cleanedText.split("\n");
-      if (lines.length <= 3) {
-        // Simple code block, extract content
-        cleanedText = lines.slice(1, -1).join("\n").trim();
-      }
-    }
-
-    return cleanedText.trim();
   }
 }

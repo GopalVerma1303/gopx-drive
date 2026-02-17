@@ -48,24 +48,31 @@ function CodeBlockCopyButton({
       setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS);
     }
   };
+  // Match code block padding (12) and first-line height (≈20 for 14px font)
+  const codeBlockPadding = 12;
+  const firstLineHeight = 20;
+
   return (
     <Pressable
       onPress={handlePress}
       style={{
         position: "absolute",
-        top: 6,
-        right: 6,
+        top: codeBlockPadding,
+        right: codeBlockPadding,
         zIndex: 1,
-        padding: 4,
+        height: firstLineHeight,
+        minWidth: firstLineHeight,
         borderRadius: 4,
         backgroundColor,
+        alignItems: "center",
+        justifyContent: "center",
       }}
       hitSlop={8}
     >
       {copied ? (
-        <Check size={14} color={iconColor} />
+        <Check size={16} color={iconColor} />
       ) : (
-        <Copy size={14} color={iconColor} />
+        <Copy size={16} color={iconColor} />
       )}
     </Pressable>
   );
