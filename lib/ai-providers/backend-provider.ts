@@ -8,6 +8,7 @@
 import type { AIGenerateOptions, AIProvider } from "./types";
 import { buildContextAwarePrompt } from "./prompt-builder";
 import { cleanResponse } from "./response-cleaner";
+import { getModeConfig } from "./mode-config";
 
 const BACKEND_API_BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -44,12 +45,20 @@ export class BackendProvider implements AIProvider {
       );
     }
 
-    const model = options.model || this.defaultModel;
+    // Determine model: use mode-specific model if mode is provided, otherwise use provided model or default
+    let model: string;
+    if (options.mode) {
+      const modeConfig = getModeConfig(options.mode);
+      model = options.model || modeConfig.model;
+    } else {
+      model = options.model || this.defaultModel;
+    }
 
-    // Build context-aware prompt with system message
+    // Build context-aware prompt with system message and mode
     const { systemMessage, userMessage } = buildContextAwarePrompt(
       options.prompt,
-      options.selectedText
+      options.selectedText,
+      options.mode
     );
 
     const url = `${BACKEND_API_BASE_URL.replace(/\/$/, "")}/api/chat`;

@@ -5,6 +5,9 @@
  * with proper system instructions and task-aware formatting.
  */
 
+import type { AIMode } from "./mode-config";
+import { getModeConfig } from "./mode-config";
+
 export type TaskType =
   | "replacement"
   | "insertion"
@@ -76,7 +79,7 @@ export function detectTaskType(
 /**
  * Builds a system message that defines the AI's role as a note-editing agent
  */
-function buildSystemMessage(taskType: TaskType): string {
+function buildSystemMessage(taskType: TaskType, mode?: AIMode): string {
   const baseSystemMessage = `You are an intelligent note-editing agent integrated into a markdown note-taking application. Your role is to directly perform text editing operations requested by users.
 
 CRITICAL BEHAVIOR RULES:
@@ -122,7 +125,15 @@ CRITICAL BEHAVIOR RULES:
 - No explanations or meta-commentary`,
   };
 
-  return `${baseSystemMessage}\n\n${taskSpecificInstructions[taskType]}`;
+  let systemMessage = `${baseSystemMessage}\n\n${taskSpecificInstructions[taskType]}`;
+
+  // Add mode-specific enhancements if mode is provided
+  if (mode) {
+    const modeConfig = getModeConfig(mode);
+    systemMessage += `\n\nMODE-SPECIFIC INSTRUCTIONS:\n${modeConfig.systemPromptEnhancement}`;
+  }
+
+  return systemMessage;
 }
 
 /**
@@ -130,23 +141,55 @@ CRITICAL BEHAVIOR RULES:
  */
 export function buildContextAwarePrompt(
   prompt: string,
-  selectedText?: string
+  selectedText?: string,
+  mode?: AIMode
 ): { systemMessage: string; userMessage: string } {
   const taskType = detectTaskType(prompt, selectedText);
-  const systemMessage = buildSystemMessage(taskType);
+  const systemMessage = buildSystemMessage(taskType, mode);
 
   let userMessage: string;
+  let modeSpecificGuidance = "";
+
+  // Add mode-specific user message guidance
+  if (mode) {
+    switch (mode) {
+      case "table":
+        modeSpecificGuidance =
+          "\n\nIMPORTANT: Format the output as a valid markdown table. Use proper markdown table syntax with pipes (|) and dashes (-). Ensure all columns align properly.";
+        break;
+      case "code":
+        modeSpecificGuidance =
+          "\n\nIMPORTANT: Provide clean, working code. Wrap code blocks with proper language tags (```lang). Think through the solution step-by-step before providing code.";
+        break;
+      case "list":
+        modeSpecificGuidance =
+          "\n\nIMPORTANT: Format as a clear, structured list using markdown list syntax (- for bullets, 1. for numbered). Ensure consistent formatting throughout.";
+        break;
+      case "key-points":
+        modeSpecificGuidance =
+          "\n\nIMPORTANT: Extract only the most important points. Use bullet points or numbered format. Be precise and focused.";
+        break;
+      case "summary":
+        modeSpecificGuidance =
+          "\n\nIMPORTANT: Provide a comprehensive summary that captures all essential information. Maintain the logical flow and hierarchy of the original content.";
+        break;
+      case "concise":
+        modeSpecificGuidance =
+          "\n\nIMPORTANT: Be extremely brief. Use the absolute minimum words necessary. Eliminate all redundancy.";
+        break;
+    }
+  }
 
   if (selectedText && selectedText.trim()) {
     // For replacement/transformation tasks
     if (taskType === "replacement") {
-      userMessage = `Selected text: "${selectedText.trim()}"\n\nRequest: ${prompt}\n\nOutput ONLY the replacement text that should replace the selected text. Do not include explanations, markdown headers, or meta-commentary.`;
+      userMessage = `Selected text: "${selectedText.trim()}"\n\nRequest: ${prompt}${modeSpecificGuidance}\n\nOutput ONLY the replacement text that should replace the selected text. Do not include explanations, markdown headers, or meta-commentary.`;
     } else {
-      userMessage = `Selected text: "${selectedText.trim()}"\n\nRequest: ${prompt}\n\nOutput ONLY the result of the requested operation. Do not include explanations, introductions, or unnecessary formatting.`;
+      userMessage = `Selected text: "${selectedText.trim()}"\n\nRequest: ${prompt}${modeSpecificGuidance}\n\nOutput ONLY the result of the requested operation. Do not include explanations, introductions, or unnecessary formatting.`;
     }
   } else {
     // For insertion/generation tasks
-    userMessage = `Request: ${prompt}\n\nOutput ONLY the requested content. Do not include explanations, introductions, or unnecessary markdown headers.`;
+    userMessage = `Request: ${prompt}${modeSpecificGuidance}\n\nOutput ONLY the requested content. Do not include explanations, introductions, or unnecessary markdown headers.`;
   }
 
   return { systemMessage, userMessage };

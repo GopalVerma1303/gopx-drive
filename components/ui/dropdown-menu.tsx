@@ -13,6 +13,7 @@ import * as React from "react";
 import {
   Modal,
   Platform,
+  ScrollView,
   type StyleProp,
   StyleSheet,
   Text,
@@ -111,12 +112,14 @@ function DropdownMenuContent({
   overlayClassName,
   overlayStyle,
   portalHost,
+  children,
   ...props
 }: DropdownMenuPrimitive.ContentProps &
   React.RefAttributes<DropdownMenuPrimitive.ContentRef> & {
     overlayStyle?: StyleProp<ViewStyle>;
     overlayClassName?: string;
     portalHost?: string;
+    children?: React.ReactNode;
   }) {
   // Get the open state from the root context
   const { open } = DropdownMenuPrimitive.useRootContext();
@@ -144,10 +147,10 @@ function DropdownMenuContent({
         <TextClassContext.Provider value="text-popover-foreground">
           <DropdownMenuPrimitive.Content
             className={cn(
-              "bg-popover border-border min-w-[8rem] overflow-hidden rounded-md border p-1 shadow-lg shadow-black/5",
+              "bg-popover border-border min-w-[12rem] overflow-hidden rounded-md border p-1 shadow-lg shadow-black/5",
               Platform.select({
                 web: cn(
-                  "animate-in fade-in-0 zoom-in-95 max-h-(--radix-context-menu-content-available-height) origin-(--radix-context-menu-content-transform-origin) z-50 cursor-default",
+                  "animate-in fade-in-0 zoom-in-95 origin-(--radix-context-menu-content-transform-origin) z-50 cursor-default",
                   props.side === "bottom" && "slide-in-from-top-2",
                   props.side === "top" && "slide-in-from-bottom-2"
                 ),
@@ -155,7 +158,9 @@ function DropdownMenuContent({
               className
             )}
             {...props}
-          />
+          >
+            {children}
+          </DropdownMenuPrimitive.Content>
         </TextClassContext.Provider>
       </NativeOnlyAnimatedView>
     </DropdownMenuPrimitive.Overlay>
@@ -281,20 +286,18 @@ function DropdownMenuRadioItem({
     <TextClassContext.Provider value="text-sm text-popover-foreground select-none group-active:text-accent-foreground">
       <DropdownMenuPrimitive.RadioItem
         className={cn(
-          "active:bg-accent group relative flex flex-row items-center gap-2 rounded-sm py-2 pl-8 pr-2 sm:py-1.5",
+          "active:bg-accent group relative flex flex-row items-center gap-2 rounded-sm py-2 pl-2 pr-2 sm:py-1.5",
           Platform.select({
-            web: "focus:bg-accent focus:text-accent-foreground cursor-default outline-none data-[disabled]:pointer-events-none",
+            web: cn(
+              "focus:bg-accent focus:text-accent-foreground cursor-default outline-none data-[disabled]:pointer-events-none",
+              "data-[state=checked]:bg-accent data-[state=checked]:text-accent-foreground"
+            ),
           }),
           props.disabled && "opacity-50",
           className
         )}
         {...props}
       >
-        <View className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-          <DropdownMenuPrimitive.ItemIndicator>
-            <View className="bg-foreground h-2 w-2 rounded-full" />
-          </DropdownMenuPrimitive.ItemIndicator>
-        </View>
         <>{children}</>
       </DropdownMenuPrimitive.RadioItem>
     </TextClassContext.Provider>

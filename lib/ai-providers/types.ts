@@ -5,6 +5,8 @@
  * switching between different AI services (Groq, Gemini, OpenAI, etc.)
  */
 
+import type { AIMode } from "./mode-config";
+
 export type AIProviderType = "groq" | "gemini" | "openai" | "backend";
 
 export interface AIGenerateOptions {
@@ -12,6 +14,7 @@ export interface AIGenerateOptions {
   selectedText?: string;
   apiKey?: string;
   model?: string;
+  mode?: AIMode;
   temperature?: number;
   maxTokens?: number;
 }

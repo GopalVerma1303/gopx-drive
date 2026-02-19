@@ -293,7 +293,7 @@ export default function NoteEditorScreen() {
     setAiModalOpen(true);
   };
 
-  const handleAIGenerate = async (prompt: string) => {
+  const handleAIGenerate = async (prompt: string, mode?: string) => {
     if (!prompt.trim()) return;
 
     setAiLoading(true);
@@ -307,6 +307,7 @@ export default function NoteEditorScreen() {
       const generatedText = await generateAIContent({
         prompt,
         selectedText: contextText || undefined,
+        mode: mode as any,
       });
 
       if (editorRef.current && generatedText) {

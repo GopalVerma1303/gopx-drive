@@ -8,6 +8,7 @@
 import type { AIGenerateOptions, AIProvider } from "./types";
 import { buildContextAwarePrompt } from "./prompt-builder";
 import { cleanResponse } from "./response-cleaner";
+import { getModeConfig } from "./mode-config";
 
 const GROQ_API_BASE_URL = "https://api.groq.com/openai/v1";
 
@@ -48,12 +49,29 @@ export class GroqProvider implements AIProvider {
       );
     }
 
-    const model = options.model || this.defaultModel;
+    // Determine model and mode-specific settings
+    let model: string;
+    let temperature: number;
+    let maxTokens: number;
+    
+    if (options.mode) {
+      const modeConfig = getModeConfig(options.mode);
+      model = options.model || modeConfig.model;
+      // Use mode-specific temperature if available, otherwise use provided or default
+      temperature = options.temperature ?? modeConfig.temperature ?? 0.5;
+      // Use mode-specific maxTokens if available, otherwise use provided or default
+      maxTokens = options.maxTokens ?? modeConfig.maxTokens ?? 2048;
+    } else {
+      model = options.model || this.defaultModel;
+      temperature = options.temperature ?? 0.5;
+      maxTokens = options.maxTokens ?? 2048;
+    }
 
-    // Build context-aware prompt with system message
+    // Build context-aware prompt with system message and mode
     const { systemMessage, userMessage } = buildContextAwarePrompt(
       options.prompt,
-      options.selectedText
+      options.selectedText,
+      options.mode
     );
 
     const url = `${GROQ_API_BASE_URL}/chat/completions`;
@@ -77,8 +95,8 @@ export class GroqProvider implements AIProvider {
               content: userMessage,
             },
           ],
-          temperature: options.temperature ?? 0.5, // Lower temperature for more consistent, agent-like behavior
-          max_tokens: options.maxTokens ?? 2048,
+          temperature,
+          max_tokens: maxTokens,
         }),
       });
 

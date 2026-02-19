@@ -1,5 +1,31 @@
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import { Icon } from "@/components/ui/icon";
+import { DEFAULT_MODE, getModeConfig, type AIMode } from "@/lib/ai-providers/mode-config";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import * as DropdownMenuPrimitive from "@rn-primitives/dropdown-menu";
 import { BlurView } from "expo-blur";
+import {
+  Briefcase,
+  ChevronDown,
+  ChevronUp,
+  Code,
+  FileCheck,
+  FileText,
+  List,
+  ListChecks,
+  Pencil,
+  Scale,
+  Smile,
+  Table
+} from "lucide-react-native";
 import * as React from "react";
 import { Keyboard, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
@@ -8,7 +34,7 @@ import Svg, { Defs, Stop, LinearGradient as SvgLinearGradient, Text as SvgText, 
 interface AIPromptModalProps {
   visible: boolean;
   onClose: () => void;
-  onGenerate: (prompt: string) => void;
+  onGenerate: (prompt: string, mode?: AIMode) => void;
   initialPrompt?: string;
   isLoading?: boolean;
 }
@@ -111,6 +137,20 @@ const GradientText = ({ children, style, disabled }: { children: React.ReactNode
   );
 };
 
+// Icon mapping for modes
+const MODE_ICONS: Record<AIMode, typeof Smile> = {
+  friendly: Smile,
+  professional: Briefcase,
+  concise: Scale,
+  summary: FileText,
+  "key-points": ListChecks,
+  list: List,
+  table: Table,
+  code: Code,
+  proofread: FileCheck,
+  rewrite: Pencil,
+};
+
 export function AIPromptModal({
   visible,
   onClose,
@@ -120,11 +160,14 @@ export function AIPromptModal({
 }: AIPromptModalProps) {
   const { colors } = useThemeColors();
   const [prompt, setPrompt] = React.useState(initialPrompt);
+  const [selectedMode, setSelectedMode] = React.useState<AIMode>(DEFAULT_MODE);
   const [keyboardVisible, setKeyboardVisible] = React.useState(false);
+  const [dropdownOpen, setDropdownOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (visible) {
       setPrompt(initialPrompt);
+      setSelectedMode(DEFAULT_MODE);
     } else {
       setKeyboardVisible(false);
     }
@@ -145,9 +188,52 @@ export function AIPromptModal({
 
   const handleGenerate = () => {
     if (prompt.trim() && !isLoading) {
-      onGenerate(prompt.trim());
+      onGenerate(prompt.trim(), selectedMode);
     }
   };
+
+  const currentModeConfig = getModeConfig(selectedMode);
+  const ModeIcon = MODE_ICONS[selectedMode];
+
+  // Custom trigger component with chevron icon
+  const CustomDropdownTrigger = React.forwardRef<any, any>((props, ref) => {
+    const { open } = DropdownMenuPrimitive.useRootContext();
+    return (
+      <DropdownMenuTrigger ref={ref} {...props}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            backgroundColor: colors.background,
+            borderColor: colors.border,
+            borderWidth: 1,
+            borderRadius: 6,
+            minWidth: 200,
+          }}
+        >
+          <Icon as={ModeIcon} size={16} className="text-foreground" />
+          <Text
+            style={{
+              color: colors.foreground,
+              fontSize: 14,
+              flex: 1,
+            }}
+          >
+            {currentModeConfig.label}
+          </Text>
+          <Icon
+            as={open ? ChevronUp : ChevronDown}
+            size={16}
+            className="text-foreground"
+          />
+        </View>
+      </DropdownMenuTrigger>
+    );
+  });
+  CustomDropdownTrigger.displayName = "CustomDropdownTrigger";
 
   return (
     <>
@@ -211,7 +297,7 @@ export function AIPromptModal({
                   marginBottom: 16,
                 }}
               >
-                Enter your prompt to generate content. The AI will respond with markdown content only.
+                Enter your prompt to generate content.
               </Text>
               <TextInput
                 value={prompt}
@@ -230,10 +316,86 @@ export function AIPromptModal({
                   fontSize: 14,
                   minHeight: 100,
                   textAlignVertical: "top",
-                  marginBottom: 24,
+                  marginBottom: 16,
                 }}
                 autoFocus
               />
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontSize: 14,
+                  fontWeight: "500",
+                  marginBottom: 8,
+                }}
+              >
+                Mode
+              </Text>
+              <View
+                style={{
+                  marginBottom: 24,
+                }}
+              >
+                <DropdownMenu>
+                  <CustomDropdownTrigger />
+                  <DropdownMenuContent>
+                    <DropdownMenuLabel>Style</DropdownMenuLabel>
+                    <DropdownMenuRadioGroup value={selectedMode} onValueChange={(value) => setSelectedMode(value as AIMode)}>
+                      <DropdownMenuRadioItem value="friendly">
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <Icon as={Smile} size={16} className="text-foreground" />
+                          <Text style={{ color: colors.foreground }}>Friendly</Text>
+                        </View>
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="professional">
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <Icon as={Briefcase} size={16} className="text-foreground" />
+                          <Text style={{ color: colors.foreground }}>Professional</Text>
+                        </View>
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="concise">
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <Icon as={Scale} size={16} className="text-foreground" />
+                          <Text style={{ color: colors.foreground }}>Concise</Text>
+                        </View>
+                      </DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Format</DropdownMenuLabel>
+                    <DropdownMenuRadioGroup value={selectedMode} onValueChange={(value) => setSelectedMode(value as AIMode)}>
+                      <DropdownMenuRadioItem value="summary">
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <Icon as={FileText} size={16} className="text-foreground" />
+                          <Text style={{ color: colors.foreground }}>Summary</Text>
+                        </View>
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="key-points">
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <Icon as={ListChecks} size={16} className="text-foreground" />
+                          <Text style={{ color: colors.foreground }}>Key Points</Text>
+                        </View>
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="list">
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <Icon as={List} size={16} className="text-foreground" />
+                          <Text style={{ color: colors.foreground }}>List</Text>
+                        </View>
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="table">
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <Icon as={Table} size={16} className="text-foreground" />
+                          <Text style={{ color: colors.foreground }}>Table</Text>
+                        </View>
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="code">
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <Icon as={Code} size={16} className="text-foreground" />
+                          <Text style={{ color: colors.foreground }}>Code</Text>
+                        </View>
+                      </DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </View>
               <View
                 style={{
                   flexDirection: "row",
@@ -355,7 +517,7 @@ export function AIPromptModal({
                         marginBottom: 16,
                       }}
                     >
-                      Enter your prompt to generate content. The AI will respond with markdown content only.
+                      Enter your prompt to generate content.
                     </Text>
                     <TextInput
                       value={prompt}
@@ -374,10 +536,86 @@ export function AIPromptModal({
                         fontSize: 14,
                         minHeight: 100,
                         textAlignVertical: "top",
-                        marginBottom: 24,
+                        marginBottom: 16,
                       }}
                       autoFocus
                     />
+                    <Text
+                      style={{
+                        color: colors.foreground,
+                        fontSize: 14,
+                        fontWeight: "500",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Mode
+                    </Text>
+                    <View
+                      style={{
+                        marginBottom: 24,
+                      }}
+                    >
+                      <DropdownMenu>
+                        <CustomDropdownTrigger />
+                        <DropdownMenuContent>
+                          <DropdownMenuLabel>Style</DropdownMenuLabel>
+                          <DropdownMenuRadioGroup value={selectedMode} onValueChange={(value) => setSelectedMode(value as AIMode)}>
+                            <DropdownMenuRadioItem value="friendly">
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Icon as={Smile} size={16} className="text-foreground" />
+                                <Text style={{ color: colors.foreground }}>Friendly</Text>
+                              </View>
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="professional">
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Icon as={Briefcase} size={16} className="text-foreground" />
+                                <Text style={{ color: colors.foreground }}>Professional</Text>
+                              </View>
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="concise">
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Icon as={Scale} size={16} className="text-foreground" />
+                                <Text style={{ color: colors.foreground }}>Concise</Text>
+                              </View>
+                            </DropdownMenuRadioItem>
+                          </DropdownMenuRadioGroup>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Format</DropdownMenuLabel>
+                          <DropdownMenuRadioGroup value={selectedMode} onValueChange={(value) => setSelectedMode(value as AIMode)}>
+                            <DropdownMenuRadioItem value="summary">
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Icon as={FileText} size={16} className="text-foreground" />
+                                <Text style={{ color: colors.foreground }}>Summary</Text>
+                              </View>
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="key-points">
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Icon as={ListChecks} size={16} className="text-foreground" />
+                                <Text style={{ color: colors.foreground }}>Key Points</Text>
+                              </View>
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="list">
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Icon as={List} size={16} className="text-foreground" />
+                                <Text style={{ color: colors.foreground }}>List</Text>
+                              </View>
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="table">
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Icon as={Table} size={16} className="text-foreground" />
+                                <Text style={{ color: colors.foreground }}>Table</Text>
+                              </View>
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="code">
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Icon as={Code} size={16} className="text-foreground" />
+                                <Text style={{ color: colors.foreground }}>Code</Text>
+                              </View>
+                            </DropdownMenuRadioItem>
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </View>
                     <View
                       style={{
                         flexDirection: "row",
