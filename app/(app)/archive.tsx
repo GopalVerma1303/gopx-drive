@@ -452,10 +452,10 @@ export default function ArchiveScreen() {
           </View>
         </View>
       </View>
-      <View className="w-full flex-1">
+      <View className="w-full h-full">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "notes" | "files")} className="flex-1">
           {/* Search and Tabs Container */}
-          <View className="w-full max-w-2xl mx-auto">
+          <View className="w-full max-w-3xl mx-auto">
             <View className="flex-row items-center mx-4 my-3 gap-2">
               {/* Search Bar */}
               <View className="flex-row items-center flex-1 min-w-0 px-4 rounded-2xl h-14 border border-border bg-muted">
@@ -501,7 +501,7 @@ export default function ArchiveScreen() {
             </View>
           </View>
 
-          <TabsContent value="notes" className="flex-1" style={{ flex: 1 }}>
+          <TabsContent value="notes" className="flex-1 -mt-2" style={{ flex: 1 }}>
             {notesLoading ? (
               <View className="flex-1 justify-center items-center" style={{ flex: 1 }}>
                 <ActivityIndicator size="large" color={colors.foreground} />
@@ -511,6 +511,7 @@ export default function ArchiveScreen() {
                 className="flex-1"
                 style={{ flex: 1 }}
                 contentContainerClassName="p-4 pb-32"
+                contentContainerStyle={{ flexGrow: 0 }}
                 refreshControl={
                   <RefreshControl
                     progressBackgroundColor={colors.background}
@@ -579,7 +580,7 @@ export default function ArchiveScreen() {
             )}
           </TabsContent>
 
-          <TabsContent value="files" className="flex-1" style={{ flex: 1 }}>
+          <TabsContent value="files" className="flex-1 -mt-2" style={{ flex: 1 }}>
             {filesLoading ? (
               <View className="flex-1 justify-center items-center" style={{ flex: 1 }}>
                 <ActivityIndicator size="large" color={colors.foreground} />
@@ -589,6 +590,7 @@ export default function ArchiveScreen() {
                 className="flex-1"
                 style={{ flex: 1 }}
                 contentContainerClassName="p-4 pb-32"
+                contentContainerStyle={{ flexGrow: 0 }}
                 refreshControl={
                   <RefreshControl
                     progressBackgroundColor={colors.background}

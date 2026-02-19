@@ -10,10 +10,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Archive, Eraser, ImageIcon, LogOut } from "lucide-react-native";
+import { Archive, Eraser, Heart, ImageIcon, LogOut, WandSparkles } from "lucide-react-native";
 import { useState } from "react";
 import {
   Alert,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -351,6 +352,63 @@ export default function SettingsScreen() {
                 </Text>
               </View>
             </Pressable>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View className="w-full max-w-2xl mx-auto" style={{ marginTop: 8, marginBottom: 24 }}>
+          <View
+            style={{
+              alignItems: "center",
+              paddingVertical: 16,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: colors.mutedForeground,
+                }}
+              >
+                Build with
+              </Text>
+              <Heart
+                color="#ef4444"
+                size={14}
+                fill="#ef4444"
+                strokeWidth={2}
+              />
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: colors.mutedForeground,
+                }}
+              >
+                by Gopal Verma aka
+              </Text>
+              <Pressable
+                onPress={() => {
+                  Linking.openURL("https://gopx.dev");
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: "#3b82f6",
+                      textDecorationLine: "underline",
+                    }}
+                  >
+                    Gopx
+                  </Text>
+                  <WandSparkles
+                    color="#3b82f6"
+                    size={14}
+                    strokeWidth={2}
+                  />
+                </View>
+              </Pressable>
+            </View>
           </View>
         </View>
       </ScrollView>
