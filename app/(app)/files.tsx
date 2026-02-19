@@ -1029,7 +1029,7 @@ function FileListCard({
               </Text>
               <View className="mt-auto">
                 <Text className="text-[6px] text-muted-foreground opacity-70">
-                  {formatFileSize(file.file_size).split(" ")[0]}
+                  {formatFileSize(file.file_size)}
                 </Text>
               </View>
             </View>

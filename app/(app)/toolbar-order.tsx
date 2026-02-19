@@ -205,22 +205,35 @@ export default function ToolbarOrderScreen() {
   };
 
   const moveItemUp = (index: number) => {
-    if (index === 0) return; // Already at top
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    const newVisible = [...preferences.visible];
-    [newVisible[index - 1], newVisible[index]] = [newVisible[index], newVisible[index - 1]];
+    const visible = preferences.visible;
+    const newVisible =
+      index === 0
+        ? [...visible.slice(1), visible[0]]
+        : (() => {
+            const next = [...visible];
+            [next[index - 1], next[index]] = [next[index], next[index - 1]];
+            return next;
+          })();
     setPreferences({ ...preferences, visible: newVisible });
   };
 
   const moveItemDown = (index: number) => {
-    if (index === preferences.visible.length - 1) return; // Already at bottom
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    const newVisible = [...preferences.visible];
-    [newVisible[index], newVisible[index + 1]] = [newVisible[index + 1], newVisible[index]];
+    const visible = preferences.visible;
+    const last = visible.length - 1;
+    const newVisible =
+      index === last
+        ? [visible[last], ...visible.slice(0, last)]
+        : (() => {
+            const next = [...visible];
+            [next[index], next[index + 1]] = [next[index + 1], next[index]];
+            return next;
+          })();
     setPreferences({ ...preferences, visible: newVisible });
   };
 
@@ -348,8 +361,6 @@ export default function ToolbarOrderScreen() {
                     onMoveToHidden={() => moveToHidden(itemId)}
                     onMoveUp={() => moveItemUp(index)}
                     onMoveDown={() => moveItemDown(index)}
-                    canMoveUp={index > 0}
-                    canMoveDown={index < preferences.visible.length - 1}
                   />
                 );
               })}
@@ -431,8 +442,6 @@ interface ToolbarOrderItemProps {
   onMoveToHidden: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
 }
 
 function ToolbarOrderItem({
@@ -441,8 +450,6 @@ function ToolbarOrderItem({
   onMoveToHidden,
   onMoveUp,
   onMoveDown,
-  canMoveUp,
-  canMoveDown,
 }: ToolbarOrderItemProps) {
   const { colors } = useThemeColors();
   const Icon = item.icon;
@@ -467,12 +474,9 @@ function ToolbarOrderItem({
         <Pressable
           onPress={(e) => {
             e.stopPropagation();
-            if (canMoveUp) {
-              onMoveUp();
-            }
+            onMoveUp();
           }}
-          disabled={!canMoveUp}
-          style={{ padding: 4, opacity: canMoveUp ? 1 : 0.4 }}
+          style={{ padding: 4 }}
         >
           <ChevronUp
             color={colors.foreground}
@@ -483,12 +487,9 @@ function ToolbarOrderItem({
         <Pressable
           onPress={(e) => {
             e.stopPropagation();
-            if (canMoveDown) {
-              onMoveDown();
-            }
+            onMoveDown();
           }}
-          disabled={!canMoveDown}
-          style={{ padding: 4, opacity: canMoveDown ? 1 : 0.4 }}
+          style={{ padding: 4 }}
         >
           <ChevronDown
             color={colors.foreground}
