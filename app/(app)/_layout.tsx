@@ -43,7 +43,8 @@ function AppLayoutContent() {
   const isMd = screenWidth >= 768 && screenWidth < 1024;
   const isLg = screenWidth >= 1024;
   const isNoteDetail = pathname?.includes("/note/") && pathname !== "/(app)/notes";
-  const isDetailPage = isNoteDetail;
+  const isFolderDetail = pathname?.includes("/folders/") && pathname !== "/(app)/folders" && pathname !== "/(app)/folders/";
+  const isDetailPage = isNoteDetail || isFolderDetail;
 
   // On small screens: bottom bar (absolute positioned)
   if (isSm) {

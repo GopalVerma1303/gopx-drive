@@ -16,12 +16,25 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+/** Sentinel id for the default folder (no folder assigned). Stored as null in DB. */
+export const DEFAULT_FOLDER_ID = "__default__";
+
+export interface Folder {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Note {
   id: string;
   user_id: string;
   title: string;
   content: string;
   is_archived: boolean;
+  /** null = default folder */
+  folder_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +48,8 @@ export interface File {
   mime_type: string;
   extension: string;
   is_archived: boolean;
+  /** null = default folder */
+  folder_id: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -19,11 +19,15 @@ export function batchInvalidateQueries(
  */
 export const QueryKeys = {
   notes: (userId?: string) => (userId ? ["notes", userId] : ["notes"]),
+  notesByFolder: (userId?: string, folderId?: string) => (userId && folderId ? ["notesByFolder", userId, folderId] : ["notesByFolder"]),
   archivedNotes: (userId?: string) => (userId ? ["archivedNotes", userId] : ["archivedNotes"]),
   notesSyncStatus: (userId?: string) => (userId ? ["notes-sync-status", userId] : ["notes-sync-status"]),
   notesUnsyncedIds: (userId?: string) => (userId ? ["notes-unsynced-ids", userId] : ["notes-unsynced-ids"]),
   files: (userId?: string) => (userId ? ["files", userId] : ["files"]),
+  filesByFolder: (userId?: string, folderId?: string) => (userId && folderId ? ["filesByFolder", userId, folderId] : ["filesByFolder"]),
   archivedFiles: (userId?: string) => (userId ? ["archivedFiles", userId] : ["archivedFiles"]),
+  folders: (userId?: string) => (userId ? ["folders", userId] : ["folders"]),
+  folder: (id: string) => ["folder", id],
   events: (userId?: string) => (userId ? ["events", userId] : ["events"]),
   note: (id: string) => ["note", id],
   attachments: (userId?: string) => (userId ? ["attachments", userId] : ["attachments"]),
@@ -36,12 +40,11 @@ export const QueryKeys = {
 export function invalidateNotesQueries(queryClient: QueryClient, userId?: string): void {
   batchInvalidateQueries(queryClient, [
     QueryKeys.notes(userId),
+    QueryKeys.notesByFolder(userId),
     QueryKeys.archivedNotes(userId),
     QueryKeys.notesSyncStatus(userId),
     QueryKeys.notesUnsyncedIds(userId),
   ]);
-  // Also invalidate all individual note queries to ensure they show latest content
-  // This fixes the issue where note list updates but individual notes show stale data
   queryClient.invalidateQueries({ queryKey: ["note"] });
 }
 
@@ -51,8 +54,17 @@ export function invalidateNotesQueries(queryClient: QueryClient, userId?: string
 export function invalidateFilesQueries(queryClient: QueryClient, userId?: string): void {
   batchInvalidateQueries(queryClient, [
     QueryKeys.files(userId),
+    QueryKeys.filesByFolder(userId),
     QueryKeys.archivedFiles(userId),
   ]);
+}
+
+/**
+ * Invalidate all folder-related queries after a mutation
+ */
+export function invalidateFoldersQueries(queryClient: QueryClient, userId?: string): void {
+  queryClient.invalidateQueries({ queryKey: ["folders"] });
+  queryClient.invalidateQueries({ queryKey: ["folder"] });
 }
 
 /**

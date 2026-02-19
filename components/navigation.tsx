@@ -3,7 +3,7 @@
 import { useThemeColors } from "@/lib/use-theme-colors";
 import * as Haptics from "expo-haptics";
 import { usePathname, useRouter } from "expo-router";
-import { Calendar, FileText, Files, Menu, Settings } from "lucide-react-native";
+import { Calendar, FileText, Files, Folder, Menu, Settings } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   Dimensions,
@@ -72,6 +72,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "Notes", icon: FileText, href: "/(app)/notes" },
   { label: "Files", icon: Files, href: "/(app)/files" },
+  { label: "Folders", icon: Folder, href: "/(app)/folders" },
   { label: "Calendar", icon: Calendar, href: "/(app)/calendar" },
   { label: "Settings", icon: Settings, href: "/(app)/settings" },
 ];

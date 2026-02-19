@@ -1,4 +1,4 @@
-import { supabase, type File } from "@/lib/supabase";
+import { supabase, DEFAULT_FOLDER_ID, type File } from "@/lib/supabase";
 import { decode } from "base64-arraybuffer";
 import * as FileSystem from "expo-file-system/legacy";
 import { Platform } from "react-native";
@@ -28,15 +28,46 @@ export const listFiles = async (userId?: string): Promise<File[]> => {
       throw new Error(`Failed to fetch files: ${fallbackQuery.error.message}`);
     }
     
-    // Filter out archived items in JavaScript (treat null/undefined as false)
-    return (fallbackQuery.data || []).filter((file: any) => !file.is_archived);
+    return (fallbackQuery.data || []).filter((file: any) => !file.is_archived).map((f: any) => ({ ...f, folder_id: f.folder_id ?? null }));
   }
 
   if (error) {
     throw new Error(`Failed to fetch files: ${error.message}`);
   }
 
-  return data || [];
+  return (data || []).map((f: any) => ({ ...f, folder_id: f.folder_id ?? null }));
+};
+
+/** List non-archived files in a folder. Use DEFAULT_FOLDER_ID for default (folder_id is null). */
+export const listFilesByFolder = async (
+  userId: string,
+  folderId: string
+): Promise<File[]> => {
+  const isDefault = folderId === DEFAULT_FOLDER_ID;
+  let query = supabase
+    .from("files")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_archived", false)
+    .order("updated_at", { ascending: false });
+
+  if (isDefault) {
+    query = query.is("folder_id", null);
+  } else {
+    query = query.eq("folder_id", folderId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    if (error.message?.includes("column") || error.message?.includes("folder_id")) {
+      const all = await listFiles(userId);
+      return all.filter((f) => (f.folder_id ?? null) === (isDefault ? null : folderId));
+    }
+    throw new Error(`Failed to fetch files: ${error.message}`);
+  }
+
+  return (data || []).map((f: any) => ({ ...f, folder_id: f.folder_id ?? null }));
 };
 
 export const listArchivedFiles = async (userId?: string): Promise<File[]> => {
@@ -112,6 +143,7 @@ export const getFileById = async (id: string, includeArchived: boolean = true): 
 
 export const uploadFile = async (input: {
   user_id: string;
+  folder_id?: string | null;
   file: {
     uri: string | globalThis.File;
     name: string;
@@ -119,7 +151,8 @@ export const uploadFile = async (input: {
     size: number;
   };
 }): Promise<File> => {
-  const { user_id, file } = input;
+  const { user_id, folder_id, file } = input;
+  const folderId = folder_id === DEFAULT_FOLDER_ID ? null : (folder_id ?? null);
 
   // Generate a unique file path
   // Note: In Supabase Storage, the path should NOT include the bucket name
@@ -178,53 +211,42 @@ export const uploadFile = async (input: {
     .from("files")
     .getPublicUrl(filePath);
 
-  // Create file record in database
-  // Try with is_archived first
-  let { data, error } = await supabase
-    .from("files")
-    .insert({
+  const insertRow: Record<string, unknown> = {
+    user_id,
+    name: file.name,
+    file_path: filePath,
+    file_size: file.size,
+    mime_type: file.type,
+    extension: fileExt,
+    is_archived: false,
+  };
+  if (folderId !== undefined) (insertRow as any).folder_id = folderId;
+
+  let { data, error } = await supabase.from("files").insert(insertRow).select().single();
+
+  if (error && (error.message?.includes("column") || error.message?.includes("is_archived") || error.message?.includes("folder_id"))) {
+    const fallbackRow: Record<string, unknown> = {
       user_id,
       name: file.name,
       file_path: filePath,
       file_size: file.size,
       mime_type: file.type,
       extension: fileExt,
-      is_archived: false,
-    })
-    .select()
-    .single();
-
-  // If column doesn't exist, try without is_archived
-  if (error && (error.message?.includes("column") || error.message?.includes("is_archived"))) {
-    const fallbackQuery = await supabase
-      .from("files")
-      .insert({
-        user_id,
-        name: file.name,
-        file_path: filePath,
-        file_size: file.size,
-        mime_type: file.type,
-        extension: fileExt,
-      })
-      .select()
-      .single();
-    
+    };
+    const fallbackQuery = await supabase.from("files").insert(fallbackRow).select().single();
     if (fallbackQuery.error) {
-      // If database insert fails, try to delete the uploaded file
       await supabase.storage.from("files").remove([filePath]);
       throw new Error(`Failed to create file record: ${fallbackQuery.error.message}`);
     }
-    
-    return fallbackQuery.data;
+    return { ...fallbackQuery.data, folder_id: (fallbackQuery.data as any).folder_id ?? null };
   }
 
   if (error) {
-    // If database insert fails, try to delete the uploaded file
     await supabase.storage.from("files").remove([filePath]);
     throw new Error(`Failed to create file record: ${error.message}`);
   }
 
-  return data;
+  return { ...data, folder_id: (data as any).folder_id ?? null };
 };
 
 export const archiveFile = async (id: string): Promise<void> => {

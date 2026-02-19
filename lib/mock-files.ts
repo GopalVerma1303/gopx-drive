@@ -12,6 +12,8 @@ let files: File[] = [
     file_size: 1024000,
     mime_type: "application/pdf",
     extension: "pdf",
+    is_archived: false,
+    folder_id: null,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     updated_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
   },
@@ -23,6 +25,8 @@ let files: File[] = [
     file_size: 512000,
     mime_type: "image/png",
     extension: "png",
+    is_archived: false,
+    folder_id: null,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
     updated_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
   },
@@ -35,6 +39,8 @@ let files: File[] = [
     mime_type:
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     extension: "xlsx",
+    is_archived: false,
+    folder_id: null,
     created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     updated_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
   },
@@ -46,6 +52,8 @@ let files: File[] = [
     file_size: 3072000,
     mime_type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     extension: "pptx",
+    is_archived: false,
+    folder_id: null,
     created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     updated_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
   }
@@ -65,6 +73,7 @@ export const getFileById = async (id: string) => {
 
 export const uploadFile = async (input: {
   user_id: string;
+  folder_id?: string | null;
   file: {
     uri: string;
     name: string;
@@ -83,6 +92,8 @@ export const uploadFile = async (input: {
     file_size: input.file.size,
     mime_type: input.file.type,
     extension: fileExt,
+    is_archived: false,
+    folder_id: input.folder_id ?? null,
     created_at: now,
     updated_at: now,
   };

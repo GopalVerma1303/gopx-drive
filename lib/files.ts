@@ -8,6 +8,7 @@ import {
 import * as mockFiles from "@/lib/mock-files";
 import * as supabaseFiles from "@/lib/supabase-files";
 import type { File } from "@/lib/supabase";
+import { DEFAULT_FOLDER_ID } from "@/lib/supabase";
 
 // Unified files API that switches between mock and Supabase based on UI_DEV config.
 // When offline, returns cached file lists so file cards can still be shown.
@@ -39,6 +40,19 @@ export const listArchivedFiles = async (userId?: string): Promise<File[]> => {
   }
 };
 
+/** List non-archived files in a folder. Use DEFAULT_FOLDER_ID for default folder. */
+export const listFilesByFolder = async (
+  userId: string | undefined,
+  folderId: string
+): Promise<File[]> => {
+  if (UI_DEV) {
+    const files = await listFiles(userId);
+    return files.filter((f) => (f.folder_id ?? null) === (folderId === DEFAULT_FOLDER_ID ? null : folderId));
+  }
+  if (!userId) return [];
+  return supabaseFiles.listFilesByFolder(userId, folderId);
+};
+
 export const getFileById = async (id: string): Promise<File | null> => {
   if (UI_DEV) {
     return mockFiles.getFileById(id);
@@ -48,6 +62,7 @@ export const getFileById = async (id: string): Promise<File | null> => {
 
 export const uploadFile = async (input: {
   user_id: string;
+  folder_id?: string | null;
   file: {
     uri: string;
     name: string;

@@ -3,8 +3,10 @@
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
+import { listFolders } from "@/lib/folders";
 import { archiveFile, getFileDownloadUrl, listFiles, uploadFile } from "@/lib/files";
 import type { File as FileRecord } from "@/lib/supabase";
+import { DEFAULT_FOLDER_ID } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -14,7 +16,7 @@ import { BlurView } from "expo-blur";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
 import { Stack } from "expo-router";
-import { ExternalLink, LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
+import { ExternalLink, Folder, LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -47,6 +49,8 @@ export default function FilesScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [uploading, setUploading] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const [uploadFolderId, setUploadFolderId] = useState<string | null>(null);
+  const [folderPickerOpen, setFolderPickerOpen] = useState(false);
   const [isViewModeLoaded, setIsViewModeLoaded] = useState(false);
   const [screenWidth, setScreenWidth] = useState(() => {
     if (Platform.OS === "web") {
@@ -106,6 +110,12 @@ export default function FilesScreen() {
   }, [viewMode, isViewModeLoaded]);
 
   const columns = 2;
+
+  const { data: foldersList = [] } = useQuery({
+    queryKey: ["folders", user?.id],
+    queryFn: () => listFolders(user?.id),
+    enabled: !!user?.id,
+  });
 
   const {
     data: files = [],
@@ -174,6 +184,7 @@ export default function FilesScreen() {
 
       await uploadFile({
         user_id: user.id,
+        folder_id: uploadFolderId ?? undefined,
         file: {
           uri: fileUri as any, // Type assertion needed due to DOM File vs our File interface
           name: file.name,
@@ -355,6 +366,23 @@ export default function FilesScreen() {
       <View className="w-full h-full">
         {/* Search Container */}
         <View className="w-full max-w-3xl mx-auto">
+          <Pressable
+            onPress={() => setFolderPickerOpen(true)}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginHorizontal: 16,
+              marginTop: 12,
+              marginBottom: 4,
+              paddingVertical: 8,
+            }}
+          >
+            <Folder size={18} color={colors.mutedForeground} style={{ marginRight: 8 }} />
+            <Text style={{ fontSize: 13, color: colors.mutedForeground }}>Upload to: </Text>
+            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.foreground }} numberOfLines={1}>
+              {uploadFolderId ? (foldersList.find((f) => f.id === uploadFolderId)?.name ?? "Folder") : "Default"}
+            </Text>
+          </Pressable>
           <View className="flex-row items-center mx-4 my-3 px-4 rounded-2xl h-14 border border-border bg-muted">
             <Search
               className="text-muted border-border mr-2"
@@ -499,6 +527,77 @@ export default function FilesScreen() {
           </ScrollView>
         )}
       </View>
+
+      {/* Folder picker for uploads */}
+      <Modal
+        visible={folderPickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFolderPickerOpen(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 24 }}
+          onPress={() => setFolderPickerOpen(false)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: colors.muted,
+              borderRadius: 12,
+              padding: 16,
+              maxHeight: 400,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 12 }}>
+              Upload to folder
+            </Text>
+            <ScrollView style={{ maxHeight: 320 }}>
+              <Pressable
+                onPress={() => {
+                  setUploadFolderId(null);
+                  setFolderPickerOpen(false);
+                }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: 12,
+                  paddingHorizontal: 8,
+                  borderRadius: 8,
+                  backgroundColor: uploadFolderId === null ? colors.accent : "transparent",
+                }}
+              >
+                <Folder size={20} color={colors.mutedForeground} style={{ marginRight: 10 }} />
+                <Text style={{ fontSize: 15, color: colors.foreground }}>Default</Text>
+              </Pressable>
+              {foldersList.map((f) => (
+                <Pressable
+                  key={f.id}
+                  onPress={() => {
+                    setUploadFolderId(f.id);
+                    setFolderPickerOpen(false);
+                  }}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingVertical: 12,
+                    paddingHorizontal: 8,
+                    borderRadius: 8,
+                    backgroundColor: uploadFolderId === f.id ? colors.accent : "transparent",
+                  }}
+                >
+                  <Folder size={20} color={colors.mutedForeground} style={{ marginRight: 10 }} />
+                  <Text style={{ fontSize: 15, color: colors.foreground }} numberOfLines={1}>{f.name}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <Pressable onPress={() => setFolderPickerOpen(false)} style={{ marginTop: 12 }}>
+              <Text style={{ color: colors.mutedForeground }}>Cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Action Dialog (Download/Delete) */}
       {Platform.OS === "web" ? (

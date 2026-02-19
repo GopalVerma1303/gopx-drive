@@ -2,6 +2,7 @@ import { UI_DEV } from "@/lib/config";
 import * as mockNotes from "@/lib/mock-notes";
 import * as notesReservoir from "@/lib/notes-reservoir";
 import type { Note } from "@/lib/supabase";
+import { DEFAULT_FOLDER_ID } from "@/lib/supabase";
 
 export type NotesSyncStatus = import("@/lib/notes-reservoir").NotesSyncStatus;
 
@@ -11,6 +12,18 @@ export const listNotes = async (userId?: string): Promise<Note[]> => {
     return mockNotes.listNotes(userId);
   }
   return notesReservoir.listNotes(userId);
+};
+
+/** List non-archived notes in a folder. Use DEFAULT_FOLDER_ID for default folder. */
+export const listNotesByFolder = async (
+  userId: string | undefined,
+  folderId: string
+): Promise<Note[]> => {
+  if (UI_DEV) {
+    const notes = await mockNotes.listNotes(userId);
+    return notes.filter((n) => (n.folder_id ?? null) === (folderId === DEFAULT_FOLDER_ID ? null : folderId));
+  }
+  return notesReservoir.listNotesByFolder(userId!, folderId);
 };
 
 export const listArchivedNotes = async (userId?: string): Promise<Note[]> => {
@@ -31,6 +44,7 @@ export const createNote = async (input: {
   user_id: string;
   title: string;
   content: string;
+  folder_id?: string | null;
 }): Promise<Note> => {
   if (UI_DEV) {
     return mockNotes.createNote(input);
@@ -40,7 +54,7 @@ export const createNote = async (input: {
 
 export const updateNote = async (
   id: string,
-  updates: Partial<Pick<Note, "title" | "content">>
+  updates: Partial<Pick<Note, "title" | "content" | "folder_id">>
 ): Promise<Note | null> => {
   if (UI_DEV) {
     return mockNotes.updateNote(id, updates);

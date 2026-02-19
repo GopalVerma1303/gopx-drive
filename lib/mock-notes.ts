@@ -103,6 +103,8 @@ let notes: Note[] = [
     user_id: "demo-user",
     title: "Markdown kitchen sink",
     content: MARKDOWN_KITCHEN_SINK,
+    is_archived: false,
+    folder_id: null,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
     updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
   },
@@ -110,7 +112,9 @@ let notes: Note[] = [
     id: "note-0",
     user_id: "demo-user",
     title: "Welcome to Gopx Drive",
-    content: "Tip: open the “Markdown kitchen sink” note to test preview rendering.",
+    content: 'Tip: open the "Markdown kitchen sink" note to test preview rendering.',
+    is_archived: false,
+    folder_id: null,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     updated_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
   },
@@ -120,6 +124,8 @@ let notes: Note[] = [
     title: "Working draft",
     content:
       "This is a sample note used while the UI is under development.\n\n- Edit me\n- Add new notes\n- Toggle preview to see markdown rendering",
+    is_archived: false,
+    folder_id: null,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     updated_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
   },
@@ -128,6 +134,8 @@ let notes: Note[] = [
     user_id: "demo-user",
     title: "Design ideas",
     content: "- Rounded cards\n- Pastel palette\n- Quick actions on long press",
+    is_archived: false,
+    folder_id: null,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
     updated_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
   },
@@ -136,6 +144,8 @@ let notes: Note[] = [
     user_id: "demo-user",
     title: "Offline first",
     content: "When ready, replace this mock store with Supabase calls.",
+    is_archived: false,
+    folder_id: null,
     created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     updated_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
   },
@@ -157,6 +167,7 @@ export const createNote = async (input: {
   user_id: string;
   title: string;
   content: string;
+  folder_id?: string | null;
 }) => {
   await wait();
   const now = new Date().toISOString();
@@ -165,6 +176,8 @@ export const createNote = async (input: {
     user_id: input.user_id,
     title: input.title || "Untitled",
     content: input.content,
+    is_archived: false,
+    folder_id: input.folder_id ?? null,
     created_at: now,
     updated_at: now,
   };

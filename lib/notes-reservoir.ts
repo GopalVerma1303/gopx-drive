@@ -5,6 +5,7 @@
  */
 
 import type { Note } from "@/lib/supabase";
+import { DEFAULT_FOLDER_ID } from "@/lib/supabase";
 import * as supabaseNotes from "@/lib/supabase-notes";
 import { Platform } from "react-native";
 import * as SQLite from "expo-sqlite";
@@ -30,12 +31,14 @@ function getDb(): Promise<SQLite.SQLiteDatabase> | null {
           title TEXT NOT NULL,
           content TEXT NOT NULL,
           is_archived INTEGER NOT NULL DEFAULT 0,
+          folder_id TEXT,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
           dirty INTEGER NOT NULL DEFAULT 0
         );
         CREATE INDEX IF NOT EXISTS idx_notes_user_archived_updated ON ${TABLE}(user_id, is_archived, updated_at);
       `);
+      await db.execAsync(`ALTER TABLE ${TABLE} ADD COLUMN folder_id TEXT;`).catch(() => {});
       return db;
     })();
   }
@@ -49,6 +52,7 @@ function rowToNote(row: Record<string, unknown>): Note {
     title: (row.title as string) ?? "",
     content: (row.content as string) ?? "",
     is_archived: Boolean(row.is_archived),
+    folder_id: (row.folder_id as string | undefined) ?? null,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
   };
@@ -145,16 +149,16 @@ export async function syncFromSupabase(userId: string): Promise<void> {
           );
 
           if (duplicate) {
-            // A duplicate exists - update local note to use the existing ID
             await db.runAsync(`DELETE FROM ${TABLE} WHERE id = ?`, note.id);
             await db.runAsync(
-              `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty)
-               VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+              `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, folder_id, created_at, updated_at, dirty)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
                ON CONFLICT(id) DO UPDATE SET
                  user_id = excluded.user_id,
                  title = excluded.title,
                  content = excluded.content,
                  is_archived = excluded.is_archived,
+                 folder_id = excluded.folder_id,
                  created_at = excluded.created_at,
                  updated_at = excluded.updated_at,
                  dirty = 0`,
@@ -163,39 +167,40 @@ export async function syncFromSupabase(userId: string): Promise<void> {
               duplicate.title,
               duplicate.content,
               duplicate.is_archived ? 1 : 0,
+              duplicate.folder_id ?? null,
               duplicate.created_at,
               duplicate.updated_at
             );
           } else {
-            // No duplicate found - create new note
             const created = await supabaseNotes.createNote({
               user_id: note.user_id,
               title: note.title,
               content: note.content,
+              folder_id: note.folder_id,
             });
             if (note.is_archived) {
               await supabaseNotes.archiveNote(created.id);
             }
             await db.runAsync(`DELETE FROM ${TABLE} WHERE id = ?`, note.id);
             await db.runAsync(
-              `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty)
-               VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
+              `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, folder_id, created_at, updated_at, dirty)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
               created.id,
               created.user_id,
               created.title,
               created.content,
               note.is_archived ? 1 : 0,
+              created.folder_id ?? null,
               created.created_at,
               created.updated_at
             );
-            // Add the newly created note to allRemote for subsequent duplicate checks
             allRemote.push(created);
           }
         } else {
-          // Note exists - update it
           await supabaseNotes.updateNote(note.id, {
             title: note.title,
             content: note.content,
+            folder_id: note.folder_id,
           });
           if (note.is_archived) {
             await supabaseNotes.archiveNote(note.id);
@@ -215,13 +220,14 @@ export async function syncFromSupabase(userId: string): Promise<void> {
 
     for (const note of allRemote) {
       await db.runAsync(
-        `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+        `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, folder_id, created_at, updated_at, dirty)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
          ON CONFLICT(id) DO UPDATE SET
            user_id = excluded.user_id,
            title = excluded.title,
            content = excluded.content,
            is_archived = excluded.is_archived,
+           folder_id = excluded.folder_id,
            created_at = excluded.created_at,
            updated_at = excluded.updated_at,
            dirty = 0`,
@@ -230,6 +236,7 @@ export async function syncFromSupabase(userId: string): Promise<void> {
         note.title,
         note.content,
         note.is_archived ? 1 : 0,
+        note.folder_id ?? null,
         note.created_at,
         note.updated_at
       );
@@ -315,6 +322,24 @@ export async function listArchivedNotes(userId?: string): Promise<Note[]> {
   return rows.map(rowToNote);
 }
 
+/** List non-archived notes in a folder. Use DEFAULT_FOLDER_ID for default (folder_id is null). */
+export async function listNotesByFolder(userId: string, folderId: string): Promise<Note[]> {
+  if (Platform.OS === "web") {
+    return supabaseNotes.listNotesByFolder(userId, folderId);
+  }
+  const db = await getDbAsync();
+  if (!db) return supabaseNotes.listNotesByFolder(userId, folderId);
+
+  const isDefault = folderId === DEFAULT_FOLDER_ID;
+  const rows = await db.getAllAsync<Record<string, unknown>>(
+    isDefault
+      ? `SELECT * FROM ${TABLE} WHERE user_id = ? AND is_archived = 0 AND (folder_id IS NULL OR folder_id = '') ORDER BY updated_at DESC`
+      : `SELECT * FROM ${TABLE} WHERE user_id = ? AND is_archived = 0 AND folder_id = ? ORDER BY updated_at DESC`,
+    isDefault ? [userId] : [userId, folderId]
+  );
+  return rows.map(rowToNote);
+}
+
 export async function getNoteById(id: string): Promise<Note | null> {
   if (Platform.OS === "web") {
     return supabaseNotes.getNoteById(id);
@@ -345,6 +370,7 @@ export async function createNote(input: {
   user_id: string;
   title: string;
   content: string;
+  folder_id?: string | null;
 }): Promise<Note> {
   if (Platform.OS === "web") {
     return supabaseNotes.createNote(input);
@@ -356,6 +382,7 @@ export async function createNote(input: {
   const id = generateId();
   const now = new Date().toISOString();
   const title = input.title || "Untitled";
+  const folderId = input.folder_id === DEFAULT_FOLDER_ID ? null : (input.folder_id ?? null);
 
   // Check if a note with the same content already exists locally (prevent duplicates)
   const existingLocal = await db.getFirstAsync<Record<string, unknown>>(
@@ -366,17 +393,17 @@ export async function createNote(input: {
   );
 
   if (existingLocal) {
-    // Return existing note instead of creating duplicate
     return rowToNote(existingLocal);
   }
 
   await db.runAsync(
-    `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty)
-     VALUES (?, ?, ?, ?, 0, ?, ?, 1)`,
+    `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, folder_id, created_at, updated_at, dirty)
+     VALUES (?, ?, ?, ?, 0, ?, ?, ?, 1)`,
     id,
     input.user_id,
     title,
     input.content,
+    folderId,
     now,
     now
   );
@@ -387,12 +414,12 @@ export async function createNote(input: {
     title,
     content: input.content,
     is_archived: false,
+    folder_id: folderId,
     created_at: now,
     updated_at: now,
   };
 
   try {
-    // Check if note already exists in Supabase before creating
     const allRemoteNotes = await supabaseNotes.listNotes(input.user_id);
     const duplicate = allRemoteNotes.find(
       (remoteNote) =>
@@ -401,15 +428,15 @@ export async function createNote(input: {
     );
 
     if (duplicate) {
-      // Update local note to use existing Supabase ID
       await db.runAsync(`DELETE FROM ${TABLE} WHERE id = ?`, id);
       await db.runAsync(
-        `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty)
-         VALUES (?, ?, ?, ?, 0, ?, ?, 0)`,
+        `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, folder_id, created_at, updated_at, dirty)
+         VALUES (?, ?, ?, ?, 0, ?, ?, ?, 0)`,
         duplicate.id,
         duplicate.user_id,
         duplicate.title,
         duplicate.content,
+        duplicate.folder_id ?? null,
         duplicate.created_at,
         duplicate.updated_at
       );
@@ -420,21 +447,22 @@ export async function createNote(input: {
       user_id: input.user_id,
       title,
       content: input.content,
+      folder_id: input.folder_id,
     });
     await db.runAsync(`DELETE FROM ${TABLE} WHERE id = ?`, id);
     await db.runAsync(
-      `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty)
-       VALUES (?, ?, ?, ?, 0, ?, ?, 0)`,
+      `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, folder_id, created_at, updated_at, dirty)
+       VALUES (?, ?, ?, ?, 0, ?, ?, ?, 0)`,
       created.id,
       created.user_id,
       created.title,
       created.content,
+      created.folder_id ?? null,
       created.created_at,
       created.updated_at
     );
     return { ...created };
   } catch (error) {
-    // Sync failed - return local note, it will sync later
     console.warn(`[notes-reservoir] Failed to sync new note immediately:`, error);
     return note;
   }
@@ -442,7 +470,7 @@ export async function createNote(input: {
 
 export async function updateNote(
   id: string,
-  updates: Partial<Pick<Note, "title" | "content">>
+  updates: Partial<Pick<Note, "title" | "content" | "folder_id">>
 ): Promise<Note | null> {
   if (Platform.OS === "web") {
     return supabaseNotes.updateNote(id, updates);
@@ -451,7 +479,6 @@ export async function updateNote(
   const db = await getDbAsync();
   if (!db) return supabaseNotes.updateNote(id, updates);
 
-  // Get current note state
   const currentRow = await db.getFirstAsync<Record<string, unknown>>(
     `SELECT * FROM ${TABLE} WHERE id = ?`,
     id
@@ -462,12 +489,15 @@ export async function updateNote(
   const updated_at = new Date().toISOString();
   const title = updates.title !== undefined ? updates.title : currentNote.title;
   const content = updates.content !== undefined ? updates.content : currentNote.content;
+  const folder_id = updates.folder_id !== undefined
+    ? (updates.folder_id === DEFAULT_FOLDER_ID ? null : updates.folder_id)
+    : currentNote.folder_id;
 
-  // Update local database
   await db.runAsync(
-    `UPDATE ${TABLE} SET title = ?, content = ?, updated_at = ?, dirty = 1 WHERE id = ?`,
+    `UPDATE ${TABLE} SET title = ?, content = ?, folder_id = ?, updated_at = ?, dirty = 1 WHERE id = ?`,
     title,
     content,
+    folder_id,
     updated_at,
     id
   );
@@ -482,6 +512,7 @@ export async function updateNote(
     const updated = await supabaseNotes.updateNote(id, {
       title,
       content,
+      folder_id: updates.folder_id !== undefined ? updates.folder_id : undefined,
     });
     if (updated) {
       await db.runAsync(
