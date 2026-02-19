@@ -401,7 +401,7 @@ export default function SettingsScreen() {
                   color: colors.mutedForeground,
                 }}
               >
-                Build with
+                Built with
               </Text>
               <Heart
                 color="#ef4444"
