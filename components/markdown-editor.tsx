@@ -6,6 +6,7 @@ import { Text } from "@/components/ui/text";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
 import { Check, Copy } from "lucide-react-native";
+import * as Clipboard from "expo-clipboard";
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Image, Linking, Platform, Pressable, Text as RNText, ScrollView, TextInput, useWindowDimensions, View } from "react-native";
 import Markdown, { renderRules } from "react-native-markdown-display";
@@ -50,12 +51,14 @@ function CodeBlockCopyButton({
   backgroundColor: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const handlePress = () => {
+  const handlePress = async () => {
     const text = code.trim();
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(text);
+    try {
+      await Clipboard.setStringAsync(text);
       setCopied(true);
       setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS);
+    } catch {
+      // Clipboard not available (e.g. unsupported environment)
     }
   };
   // Match code block padding (12) and first-line height (≈20 for 14px font)
