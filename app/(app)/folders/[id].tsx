@@ -12,7 +12,7 @@ import {
   listNotesByFolder,
   syncNotesFromSupabase,
 } from "@/lib/notes";
-import { invalidateNotesQueries, invalidateFilesQueries } from "@/lib/query-utils";
+import { invalidateNotesQueries } from "@/lib/query-utils";
 import type { File as FileRecord, Note } from "@/lib/supabase";
 import { DEFAULT_FOLDER_ID } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
@@ -67,7 +67,7 @@ export default function FolderDetailScreen() {
     if (!user?.id) return;
     syncNotesFromSupabase(user.id)?.then(() => {
       invalidateNotesQueries(queryClient, user.id);
-    }).catch(() => {});
+    }).catch(() => { });
   }, [user?.id, queryClient]);
 
   const { data: folder } = useQuery({
@@ -83,10 +83,18 @@ export default function FolderDetailScreen() {
     isLoading: notesLoading,
     refetch: refetchNotes,
     isFetching: notesFetching,
+    error: notesError,
   } = useQuery({
     queryKey: ["notesByFolder", user?.id, folderId],
-    queryFn: () => listNotesByFolder(user?.id, folderId),
+    queryFn: () => {
+      if (!user?.id) {
+        throw new Error("User ID is required");
+      }
+      return listNotesByFolder(user.id, folderId);
+    },
     enabled: !!user?.id,
+    retry: 1,
+    retryDelay: 1000,
   });
 
   const { data: unsyncedNoteIds = [] } = useQuery({
@@ -146,6 +154,7 @@ export default function FolderDetailScreen() {
   const gap = 16;
   const availableWidth = Math.min(screenWidth, maxWidth) - containerPadding * 2;
   const cardWidth = availableWidth;
+  const isSmallScreen = screenWidth < 768;
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -167,17 +176,19 @@ export default function FolderDetailScreen() {
             gap: 8,
           }}
         >
-          <Pressable
-            onPress={() => {
-              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.back();
-            }}
-            style={{ padding: 8 }}
-          >
-            <ArrowLeft color={colors.foreground} size={24} />
-          </Pressable>
           <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-            <Folder color={colors.mutedForeground} size={20} style={{ marginRight: 8 }} />
+            {isSmallScreen && (
+              <Pressable
+                onPress={() => {
+                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.back();
+                }}
+                style={{ padding: 8, marginRight: 8 }}
+              >
+                <ArrowLeft color={colors.foreground} size={24} />
+              </Pressable>
+            )}
+            <Folder color={colors.foreground} size={20} style={{ marginRight: 8 }} />
             <Text
               style={{ fontSize: 18, fontWeight: "600", color: colors.foreground }}
               numberOfLines={1}
@@ -193,7 +204,7 @@ export default function FolderDetailScreen() {
           onValueChange={(v) => setActiveTab(v as "notes" | "files")}
           className="flex-1"
         >
-          <View className="w-full max-w-2xl mx-auto">
+          <View className="w-full max-w-3xl mx-auto">
             <View className="flex-row items-center mx-4 my-3 gap-2">
               <View className="flex-row items-center flex-1 min-w-0 px-4 rounded-2xl h-14 border border-border bg-muted">
                 <Search
@@ -229,12 +240,35 @@ export default function FolderDetailScreen() {
             {notesLoading ? (
               <View className="flex-1 justify-center items-center" style={{ flex: 1 }}>
                 <ActivityIndicator size="large" color={colors.foreground} />
+                {notesError && (
+                  <Text style={{ marginTop: 16, color: colors.destructive, textAlign: "center", paddingHorizontal: 16 }}>
+                    Error: {notesError instanceof Error ? notesError.message : String(notesError)}
+                  </Text>
+                )}
+              </View>
+            ) : notesError ? (
+              <View className="flex-1 justify-center items-center" style={{ flex: 1, padding: 16 }}>
+                <Text style={{ color: colors.destructive, textAlign: "center", marginBottom: 8 }}>
+                  Error loading notes: {notesError instanceof Error ? notesError.message : String(notesError)}
+                </Text>
+                <Pressable
+                  onPress={() => refetchNotes()}
+                  style={{
+                    paddingVertical: 8,
+                    paddingHorizontal: 16,
+                    backgroundColor: colors.muted,
+                    borderRadius: 8,
+                    marginTop: 8,
+                  }}
+                >
+                  <Text style={{ color: colors.foreground }}>Retry</Text>
+                </Pressable>
               </View>
             ) : (
               <ScrollView
                 className="flex-1"
                 style={{ flex: 1 }}
-                contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+                contentContainerClassName="p-4 pb-32"
                 refreshControl={
                   <RefreshControl
                     progressBackgroundColor={colors.background}
@@ -301,7 +335,7 @@ export default function FolderDetailScreen() {
               <ScrollView
                 className="flex-1"
                 style={{ flex: 1 }}
-                contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+                contentContainerClassName="pb-32"
                 refreshControl={
                   <RefreshControl
                     progressBackgroundColor={colors.background}

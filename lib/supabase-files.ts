@@ -249,6 +249,40 @@ export const uploadFile = async (input: {
   return { ...data, folder_id: (data as any).folder_id ?? null };
 };
 
+export const updateFile = async (
+  id: string,
+  updates: Partial<Pick<File, "folder_id">>
+): Promise<File | null> => {
+  const payload: Record<string, unknown> = {
+    ...updates,
+    updated_at: new Date().toISOString(),
+  };
+  if ("folder_id" in updates) {
+    (payload as any).folder_id = updates.folder_id === DEFAULT_FOLDER_ID ? null : updates.folder_id;
+  }
+  const { data, error } = await supabase
+    .from("files")
+    .update(payload)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") {
+      return null;
+    }
+    if (error.message?.includes("folder_id")) {
+      const { folder_id: _fd, ...rest } = updates;
+      const fallback = await supabase.from("files").update({ ...rest, updated_at: new Date().toISOString() }).eq("id", id).select().single();
+      if (fallback.error) throw new Error(`Failed to update file: ${fallback.error.message}`);
+      return { ...fallback.data, folder_id: (fallback.data as any).folder_id ?? null };
+    }
+    throw new Error(`Failed to update file: ${error.message}`);
+  }
+
+  return data ? { ...data, folder_id: (data as any).folder_id ?? null } : data;
+};
+
 export const archiveFile = async (id: string): Promise<void> => {
   // Try updating with is_archived first
   let { error } = await supabase

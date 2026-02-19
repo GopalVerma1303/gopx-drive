@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
 import { listFolders } from "@/lib/folders";
-import { archiveFile, getFileDownloadUrl, listFiles, uploadFile } from "@/lib/files";
+import { archiveFile, getFileDownloadUrl, listFiles, uploadFile, updateFile } from "@/lib/files";
 import type { File as FileRecord } from "@/lib/supabase";
 import { DEFAULT_FOLDER_ID } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
@@ -16,7 +16,7 @@ import { BlurView } from "expo-blur";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
 import { Stack } from "expo-router";
-import { ExternalLink, Folder, LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
+import { ExternalLink, Folder, LayoutGrid, Plus, Rows2, Search, X, Archive } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -31,6 +31,13 @@ import {
   ScrollView,
   View
 } from "react-native";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // WebView is native-only; avoid importing on web to prevent native-module errors
@@ -134,7 +141,7 @@ export default function FilesScreen() {
     retryOnMount: false,
   });
 
-  const [actionDialogOpen, setActionDialogOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [fileToAction, setFileToAction] = useState<FileRecord | null>(null);
   /** In-app preview URL (native only). When set, a modal WebView is shown instead of opening the browser. */
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -147,7 +154,18 @@ export default function FilesScreen() {
     onSuccess: () => {
       invalidateFilesQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setActionDialogOpen(false);
+      setDropdownOpen(null);
+      setFileToAction(null);
+    },
+  });
+
+  const moveFileMutation = useMutation({
+    mutationFn: ({ id, folderId }: { id: string; folderId: string | null }) =>
+      updateFile(id, { folder_id: folderId }),
+    onSuccess: () => {
+      invalidateFilesQueries(queryClient, user?.id);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setDropdownOpen(null);
       setFileToAction(null);
     },
   });
@@ -212,7 +230,25 @@ export default function FilesScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     setFileToAction(file);
-    setActionDialogOpen(true);
+    setDropdownOpen(file.id);
+  };
+
+  const handleMoveToFolder = (folderId: string | null) => {
+    if (fileToAction) {
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      moveFileMutation.mutate({ id: fileToAction.id, folderId });
+    }
+  };
+
+  const handleArchive = () => {
+    if (fileToAction) {
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      archiveMutation.mutate(fileToAction.id);
+    }
   };
 
   /** On mobile WebView, use a viewer URL for PDFs (and similar) so content displays inline instead of downloading.
@@ -256,14 +292,6 @@ export default function FilesScreen() {
     setPreviewFileName(null);
   };
 
-  const handleArchiveConfirm = () => {
-    if (fileToAction) {
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
-      archiveMutation.mutate(fileToAction.id);
-    }
-  };
 
   const filteredFiles = files.filter((file) =>
     file.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -366,23 +394,6 @@ export default function FilesScreen() {
       <View className="w-full h-full">
         {/* Search Container */}
         <View className="w-full max-w-3xl mx-auto">
-          <Pressable
-            onPress={() => setFolderPickerOpen(true)}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginHorizontal: 16,
-              marginTop: 12,
-              marginBottom: 4,
-              paddingVertical: 8,
-            }}
-          >
-            <Folder size={18} color={colors.mutedForeground} style={{ marginRight: 8 }} />
-            <Text style={{ fontSize: 13, color: colors.mutedForeground }}>Upload to: </Text>
-            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.foreground }} numberOfLines={1}>
-              {uploadFolderId ? (foldersList.find((f) => f.id === uploadFolderId)?.name ?? "Folder") : "Default"}
-            </Text>
-          </Pressable>
           <View className="flex-row items-center mx-4 my-3 px-4 rounded-2xl h-14 border border-border bg-muted">
             <Search
               className="text-muted border-border mr-2"
@@ -478,6 +489,19 @@ export default function FilesScreen() {
                               }
                               formatFileSize={formatFileSize}
                               cardWidth={cardWidth}
+                              dropdownOpen={dropdownOpen === file.id}
+                              onDropdownOpenChange={(open) => {
+                                if (open) {
+                                  setFileToAction(file);
+                                  setDropdownOpen(file.id);
+                                } else {
+                                  setDropdownOpen(null);
+                                  setFileToAction(null);
+                                }
+                              }}
+                              foldersList={foldersList}
+                              onMoveToFolder={handleMoveToFolder}
+                              onArchive={handleArchive}
                             />
                           </View>
                         );
@@ -516,6 +540,19 @@ export default function FilesScreen() {
                             }
                             formatFileSize={formatFileSize}
                             cardWidth={cardWidth}
+                            dropdownOpen={dropdownOpen === file.id}
+                            onDropdownOpenChange={(open) => {
+                              if (open) {
+                                setFileToAction(file);
+                                setDropdownOpen(file.id);
+                              } else {
+                                setDropdownOpen(null);
+                                setFileToAction(null);
+                              }
+                            }}
+                            foldersList={foldersList}
+                            onMoveToFolder={handleMoveToFolder}
+                            onArchive={handleArchive}
                           />
                         </View>
                       ))}
@@ -535,47 +572,63 @@ export default function FilesScreen() {
         animationType="fade"
         onRequestClose={() => setFolderPickerOpen(false)}
       >
-        <Pressable
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 24 }}
-          onPress={() => setFolderPickerOpen(false)}
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+          }}
         >
-          <Pressable
+          <BlurView
+            intensity={20}
+            tint="dark"
             style={{
-              backgroundColor: colors.muted,
-              borderRadius: 12,
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
               padding: 16,
-              maxHeight: 400,
-              borderWidth: 1,
-              borderColor: colors.border,
             }}
-            onPress={(e) => e.stopPropagation()}
           >
-            <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 12 }}>
-              Upload to folder
-            </Text>
-            <ScrollView style={{ maxHeight: 320 }}>
-              <Pressable
-                onPress={() => {
-                  setUploadFolderId(null);
-                  setFolderPickerOpen(false);
-                }}
+            <Pressable
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+              }}
+              onPress={() => setFolderPickerOpen(false)}
+            />
+            <View
+              style={{
+                backgroundColor: colors.muted,
+                borderColor: colors.border,
+                borderRadius: 8,
+                borderWidth: 1,
+                padding: 24,
+                width: "100%",
+                maxWidth: 400,
+                maxHeight: 400,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+                elevation: 5,
+              }}
+            >
+              <Text
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  paddingVertical: 12,
-                  paddingHorizontal: 8,
-                  borderRadius: 8,
-                  backgroundColor: uploadFolderId === null ? colors.accent : "transparent",
+                  color: colors.foreground,
+                  fontSize: 18,
+                  fontWeight: "600",
+                  marginBottom: 8,
                 }}
               >
-                <Folder size={20} color={colors.mutedForeground} style={{ marginRight: 10 }} />
-                <Text style={{ fontSize: 15, color: colors.foreground }}>Default</Text>
-              </Pressable>
-              {foldersList.map((f) => (
+                Upload to folder
+              </Text>
+              <ScrollView style={{ maxHeight: 280 }}>
                 <Pressable
-                  key={f.id}
                   onPress={() => {
-                    setUploadFolderId(f.id);
+                    setUploadFolderId(null);
                     setFolderPickerOpen(false);
                   }}
                   style={{
@@ -584,219 +637,48 @@ export default function FilesScreen() {
                     paddingVertical: 12,
                     paddingHorizontal: 8,
                     borderRadius: 8,
-                    backgroundColor: uploadFolderId === f.id ? colors.accent : "transparent",
+                    backgroundColor: uploadFolderId === null ? colors.accent : "transparent",
                   }}
                 >
                   <Folder size={20} color={colors.mutedForeground} style={{ marginRight: 10 }} />
-                  <Text style={{ fontSize: 15, color: colors.foreground }} numberOfLines={1}>{f.name}</Text>
+                  <Text style={{ fontSize: 15, color: colors.foreground }}>Default</Text>
                 </Pressable>
-              ))}
-            </ScrollView>
-            <Pressable onPress={() => setFolderPickerOpen(false)} style={{ marginTop: 12 }}>
-              <Text style={{ color: colors.mutedForeground }}>Cancel</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
+                {foldersList.map((f) => (
+                  <Pressable
+                    key={f.id}
+                    onPress={() => {
+                      setUploadFolderId(f.id);
+                      setFolderPickerOpen(false);
+                    }}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      paddingVertical: 12,
+                      paddingHorizontal: 8,
+                      borderRadius: 8,
+                      backgroundColor: uploadFolderId === f.id ? colors.accent : "transparent",
+                    }}
+                  >
+                    <Folder size={20} color={colors.mutedForeground} style={{ marginRight: 10 }} />
+                    <Text style={{ fontSize: 15, color: colors.foreground }} numberOfLines={1}>{f.name}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+              <Pressable
+                onPress={() => setFolderPickerOpen(false)}
+                style={{
+                  marginTop: 16,
+                  paddingVertical: 8,
+                  alignItems: "flex-end",
+                }}
+              >
+                <Text style={{ color: colors.foreground }}>Cancel</Text>
+              </Pressable>
+            </View>
+          </BlurView>
+        </View>
       </Modal>
 
-      {/* Action Dialog (Download/Delete) */}
-      {Platform.OS === "web" ? (
-        actionDialogOpen && (
-          <View
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            style={{
-              position: "fixed" as any,
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 50,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(8px)",
-            }}
-          >
-            <Pressable
-              className="absolute inset-0"
-              style={{ position: "absolute" as any }}
-              onPress={() => setActionDialogOpen(false)}
-            />
-            <View
-              className="bg-background border-border w-full max-w-md rounded-lg border p-6 shadow-lg"
-              style={{
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                borderRadius: 8,
-                padding: 24,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-              }}
-            >
-              <Text
-                className="text-lg font-semibold mb-2"
-                style={{
-                  color: colors.foreground,
-                  fontSize: 18,
-                  fontWeight: "600",
-                  marginBottom: 8,
-                }}
-              >
-                Archive File
-              </Text>
-              <Text
-                className="text-sm mb-6"
-                style={{
-                  color: colors.mutedForeground,
-                  fontSize: 14,
-                  marginBottom: 24,
-                }}
-              >
-                Are you sure you want to archive "{fileToAction?.name}"? You can restore it from the archive later.
-              </Text>
-              <View
-                className="flex-row justify-end gap-3"
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  gap: 12,
-                }}
-              >
-                <Pressable
-                  className="px-4 py-2"
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                  }}
-                  onPress={() => {
-                    setActionDialogOpen(false);
-                    setFileToAction(null);
-                  }}
-                >
-                  <Text style={{ color: colors.foreground }}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  className="px-4 py-2 rounded-md"
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 6,
-                  }}
-                  onPress={handleArchiveConfirm}
-                >
-                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>
-                    Archive
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        )
-      ) : (
-        <Modal
-          visible={actionDialogOpen}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setActionDialogOpen(false)}
-        >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-            }}
-          >
-            <BlurView
-              intensity={20}
-              tint="dark"
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-                padding: 16,
-              }}
-            >
-              <Pressable
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                }}
-                onPress={() => setActionDialogOpen(false)}
-              />
-              <View
-                style={{
-                  backgroundColor: colors.muted,
-                  borderColor: colors.border,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  padding: 24,
-                  width: "100%",
-                  maxWidth: 400,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 5,
-                }}
-              >
-                <Text
-                  style={{
-                    color: colors.foreground,
-                    fontSize: 18,
-                    fontWeight: "600",
-                    marginBottom: 8,
-                  }}
-                >
-                  Archive File
-                </Text>
-                <Text
-                  style={{
-                    color: colors.mutedForeground,
-                    fontSize: 14,
-                    marginBottom: 24,
-                  }}
-                >
-                  Are you sure you want to archive "{fileToAction?.name}"? You can restore it from the archive later.
-                </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "flex-end",
-                    gap: 12,
-                  }}
-                >
-                  <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                    }}
-                    onPress={() => {
-                      setActionDialogOpen(false);
-                      setFileToAction(null);
-                    }}
-                  >
-                    <Text style={{ color: colors.foreground }}>Cancel</Text>
-                  </Pressable>
-                  <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 6,
-                    }}
-                    onPress={handleArchiveConfirm}
-                  >
-                    <Text style={{ color: "#ef4444", fontWeight: "600" }}>
-                      Archive
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-            </BlurView>
-          </View>
-        </Modal>
-      )}
 
       {/* In-app WebView preview (native only; web keeps opening in browser tab) */}
       {Platform.OS !== "web" && previewUrl !== null && (
@@ -874,6 +756,11 @@ interface FileCardProps {
   onRightClickAction?: () => void;
   formatFileSize: (bytes: number) => string;
   cardWidth: number;
+  dropdownOpen: boolean;
+  onDropdownOpenChange: (open: boolean) => void;
+  foldersList: Array<{ id: string; name: string }>;
+  onMoveToFolder: (folderId: string | null) => void;
+  onArchive: () => void;
 }
 
 function FileCard({
@@ -883,6 +770,11 @@ function FileCard({
   onRightClickAction,
   formatFileSize,
   cardWidth,
+  dropdownOpen,
+  onDropdownOpenChange,
+  foldersList,
+  onMoveToFolder,
+  onArchive,
 }: FileCardProps) {
   const { colors } = useThemeColors();
   const scale = new Animated.Value(1);
@@ -931,85 +823,114 @@ function FileCard({
   const foldSize = Math.max(20, fileWidth * 0.2); // Size of the folded corner
 
   return (
-    <Pressable
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      onPress={onPress}
-      onLongPress={onDelete}
-      {...(Platform.OS === "web" && {
-        onContextMenu: handleContextMenu,
-      })}
-    >
-      <Animated.View style={{ transform: [{ scale }] }}>
-        <View className="mb-3 items-center">
-          {/* File Icon Shape */}
-          <View
-            className="bg-muted rounded overflow-hidden relative"
-            style={{ width: fileWidth, height: fileHeight }}
-          >
-            {/* Folded Corner Inner Triangle (darker shade for depth) */}
-            <View
-              style={{
-                position: "absolute",
-                top: 0,
-                right: 0,
-                width: 0,
-                height: 0,
-                borderTopWidth: foldSize,
-                borderRightWidth: foldSize,
-                borderTopColor: colors.background,
-                borderRightColor: "transparent",
-                borderBottomWidth: 0,
-                borderLeftWidth: 0,
-                opacity: 1,
-                transform: [{ rotate: "90deg" }],
-              }}
-            />
+    <DropdownMenu {...({ open: dropdownOpen, onOpenChange: onDropdownOpenChange } as any)}>
+      <DropdownMenuTrigger asChild>
+        <Pressable
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          onPress={onPress}
+          onLongPress={() => {
+            onDelete();
+            onDropdownOpenChange(true);
+          }}
+          {...(Platform.OS === "web" && {
+            onContextMenu: (e: any) => {
+              handleContextMenu(e);
+              if (onRightClickAction) {
+                onDropdownOpenChange(true);
+              }
+            },
+          })}
+        >
+          <Animated.View style={{ transform: [{ scale }] }}>
+            <View className="mb-3 items-center">
+              {/* File Icon Shape */}
+              <View
+                className="bg-muted rounded overflow-hidden relative"
+                style={{ width: fileWidth, height: fileHeight }}
+              >
+                {/* Folded Corner Inner Triangle (darker shade for depth) */}
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    right: 0,
+                    width: 0,
+                    height: 0,
+                    borderTopWidth: foldSize,
+                    borderRightWidth: foldSize,
+                    borderTopColor: colors.background,
+                    borderRightColor: "transparent",
+                    borderBottomWidth: 0,
+                    borderLeftWidth: 0,
+                    opacity: 1,
+                    transform: [{ rotate: "90deg" }],
+                  }}
+                />
 
-            {/* Content inside file icon */}
-            <View
-              className="flex-1 p-3 pt-4 justify-between"
-              style={{ paddingRight: foldSize + 4 }}
-            >
-              <View className="flex-1">
-                <Text
-                  className="text-sm font-semibold text-foreground mb-1"
-                  numberOfLines={2}
+                {/* Content inside file icon */}
+                <View
+                  className="flex-1 p-3 pt-4 justify-between"
+                  style={{ paddingRight: foldSize + 4 }}
                 >
-                  {file.name.length > 15
-                    ? file.name.substring(0, 15) + "..."
-                    : file.name}
-                </Text>
-                <Text className="text-[10px] text-muted-foreground mt-1">
-                  {file.extension.toUpperCase()}
-                </Text>
+                  <View className="flex-1">
+                    <Text
+                      className="text-sm font-semibold text-foreground mb-1"
+                      numberOfLines={2}
+                    >
+                      {file.name.length > 15
+                        ? file.name.substring(0, 15) + "..."
+                        : file.name}
+                    </Text>
+                    <Text className="text-[10px] text-muted-foreground mt-1">
+                      {file.extension.toUpperCase()}
+                    </Text>
+                  </View>
+                  <View className="mt-auto">
+                    <Text className="text-[9px] text-muted-foreground opacity-70">
+                      {formatFileSize(file.file_size)}
+                    </Text>
+                  </View>
+                </View>
               </View>
-              <View className="mt-auto">
-                <Text className="text-[9px] text-muted-foreground opacity-70">
-                  {formatFileSize(file.file_size)}
+
+              {/* File info below icon */}
+              <View
+                className="mt-2 items-center"
+                style={{ width: cardWidth }}
+              >
+                <Text
+                  className="text-xs font-medium text-foreground text-center"
+                  numberOfLines={1}
+                >
+                  {file.name}
+                </Text>
+                <Text className="text-[10px] text-muted-foreground mt-0.5">
+                  {formatDate(file.updated_at)}
                 </Text>
               </View>
             </View>
-          </View>
-
-          {/* File info below icon */}
-          <View
-            className="mt-2 items-center"
-            style={{ width: cardWidth }}
-          >
-            <Text
-              className="text-xs font-medium text-foreground text-center"
-              numberOfLines={1}
-            >
-              {file.name}
-            </Text>
-            <Text className="text-[10px] text-muted-foreground mt-0.5">
-              {formatDate(file.updated_at)}
-            </Text>
-          </View>
-        </View>
-      </Animated.View>
-    </Pressable>
+          </Animated.View>
+        </Pressable>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem onPress={() => onMoveToFolder(null)}>
+          <Folder size={16} color={colors.foreground} style={{ marginRight: 8 }} />
+          <Text style={{ color: colors.foreground }}>Default</Text>
+        </DropdownMenuItem>
+        {foldersList.map((folder) => (
+          <DropdownMenuItem key={folder.id} onPress={() => onMoveToFolder(folder.id)}>
+            <Folder size={16} color={colors.foreground} style={{ marginRight: 8 }} />
+            <Text style={{ color: colors.foreground }}>{folder.name}</Text>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" onPress={onArchive}>
+          <Archive size={16} color="#ef4444" style={{ marginRight: 8 }} />
+          <Text style={{ color: "#ef4444" }}>Archive</Text>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -1020,6 +941,11 @@ interface FileListCardProps {
   onRightClickAction?: () => void;
   formatFileSize: (bytes: number) => string;
   cardWidth: number;
+  dropdownOpen: boolean;
+  onDropdownOpenChange: (open: boolean) => void;
+  foldersList: Array<{ id: string; name: string }>;
+  onMoveToFolder: (folderId: string | null) => void;
+  onArchive: () => void;
 }
 
 function FileListCard({
@@ -1029,6 +955,11 @@ function FileListCard({
   onRightClickAction,
   formatFileSize,
   cardWidth,
+  dropdownOpen,
+  onDropdownOpenChange,
+  foldersList,
+  onMoveToFolder,
+  onArchive,
 }: FileListCardProps) {
   const { colors } = useThemeColors();
   const scale = new Animated.Value(1);
@@ -1077,87 +1008,116 @@ function FileListCard({
   const foldSize = Math.max(12, iconSize * 0.2);
 
   return (
-    <Pressable
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      onPress={onPress}
-      onLongPress={onDelete}
-      {...(Platform.OS === "web" && {
-        onContextMenu: handleContextMenu,
-      })}
-    >
-      <Animated.View style={{ transform: [{ scale }] }}>
-        <View
-          className="flex-row items-center p-3 gap-3 bg-muted border border-border rounded-xl"
-          style={{ width: cardWidth, height: cardHeight }}
+    <DropdownMenu {...({ open: dropdownOpen, onOpenChange: onDropdownOpenChange } as any)}>
+      <DropdownMenuTrigger asChild>
+        <Pressable
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          onPress={onPress}
+          onLongPress={() => {
+            onDelete();
+            onDropdownOpenChange(true);
+          }}
+          {...(Platform.OS === "web" && {
+            onContextMenu: (e: any) => {
+              handleContextMenu(e);
+              if (onRightClickAction) {
+                onDropdownOpenChange(true);
+              }
+            },
+          })}
         >
-          {/* File Icon - Smaller version for list */}
-          <View
-            className="bg-background border border-muted rounded overflow-hidden relative"
-            style={{ width: iconSize, height: iconSize }}
-          >
-            {/* Folded Corner */}
+          <Animated.View style={{ transform: [{ scale }] }}>
             <View
-              style={{
-                position: "absolute",
-                top: 0,
-                right: 0,
-                width: 0,
-                height: 0,
-                borderTopWidth: foldSize,
-                borderRightWidth: foldSize,
-                borderTopColor: colors.muted,
-                borderRightColor: "transparent",
-                borderBottomWidth: 0,
-                borderLeftWidth: 0,
-                opacity: 1,
-                transform: [{ rotate: "90deg" }],
-              }}
-            />
-
-            {/* Content inside file icon */}
-            <View
-              className="flex-1 pt-2 justify-between"
-              style={{ padding: 6, paddingRight: foldSize + 2 }}
+              className="flex-row items-center p-3 gap-3 bg-muted border border-border rounded-xl"
+              style={{ width: cardWidth, height: cardHeight }}
             >
-              <Text
-                className="text-[8px] font-semibold text-foreground"
-                numberOfLines={1}
+              {/* File Icon - Smaller version for list */}
+              <View
+                className="bg-background border border-muted rounded overflow-hidden relative"
+                style={{ width: iconSize, height: iconSize }}
               >
-                {file.extension.toUpperCase().slice(0, 3)}
-              </Text>
-              <View className="mt-auto">
-                <Text className="text-[6px] text-muted-foreground opacity-70">
-                  {formatFileSize(file.file_size).split(" ")[0]}
+                {/* Folded Corner */}
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    right: 0,
+                    width: 0,
+                    height: 0,
+                    borderTopWidth: foldSize,
+                    borderRightWidth: foldSize,
+                    borderTopColor: colors.muted,
+                    borderRightColor: "transparent",
+                    borderBottomWidth: 0,
+                    borderLeftWidth: 0,
+                    opacity: 1,
+                    transform: [{ rotate: "90deg" }],
+                  }}
+                />
+
+                {/* Content inside file icon */}
+                <View
+                  className="flex-1 pt-2 justify-between"
+                  style={{ padding: 6, paddingRight: foldSize + 2 }}
+                >
+                  <Text
+                    className="text-[8px] font-semibold text-foreground"
+                    numberOfLines={1}
+                  >
+                    {file.extension.toUpperCase().slice(0, 3)}
+                  </Text>
+                  <View className="mt-auto">
+                    <Text className="text-[6px] text-muted-foreground opacity-70">
+                      {formatFileSize(file.file_size).split(" ")[0]}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* File Info */}
+              <View className="flex-1 justify-center gap-1">
+                <Text
+                  className="text-sm font-semibold text-foreground"
+                  numberOfLines={1}
+                >
+                  {file.name}
                 </Text>
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-[11px] text-muted-foreground uppercase">
+                    {file.extension}
+                  </Text>
+                  <Text className="text-[11px] text-muted-foreground">•</Text>
+                  <Text className="text-[11px] text-muted-foreground">
+                    {formatFileSize(file.file_size)}
+                  </Text>
+                  <Text className="text-[11px] text-muted-foreground">•</Text>
+                  <Text className="text-[11px] text-muted-foreground">
+                    {formatDate(file.updated_at)}
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
-
-          {/* File Info */}
-          <View className="flex-1 justify-center gap-1">
-            <Text
-              className="text-sm font-semibold text-foreground"
-              numberOfLines={1}
-            >
-              {file.name}
-            </Text>
-            <View className="flex-row items-center gap-2">
-              <Text className="text-[11px] text-muted-foreground uppercase">
-                {file.extension}
-              </Text>
-              <Text className="text-[11px] text-muted-foreground">•</Text>
-              <Text className="text-[11px] text-muted-foreground">
-                {formatFileSize(file.file_size)}
-              </Text>
-              <Text className="text-[11px] text-muted-foreground">•</Text>
-              <Text className="text-[11px] text-muted-foreground">
-                {formatDate(file.updated_at)}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </Animated.View>
-    </Pressable>
+          </Animated.View>
+        </Pressable>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem onPress={() => onMoveToFolder(null)}>
+          <Folder size={16} color={colors.foreground} style={{ marginRight: 8 }} />
+          <Text style={{ color: colors.foreground }}>Default</Text>
+        </DropdownMenuItem>
+        {foldersList.map((folder) => (
+          <DropdownMenuItem key={folder.id} onPress={() => onMoveToFolder(folder.id)}>
+            <Folder size={16} color={colors.foreground} style={{ marginRight: 8 }} />
+            <Text style={{ color: colors.foreground }}>{folder.name}</Text>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" onPress={onArchive}>
+          <Archive size={16} color="#ef4444" style={{ marginRight: 8 }} />
+          <Text style={{ color: "#ef4444" }}>Archive</Text>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

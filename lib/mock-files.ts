@@ -101,6 +101,23 @@ export const uploadFile = async (input: {
   return file;
 };
 
+export const updateFile = async (
+  id: string,
+  updates: Partial<Pick<File, "folder_id">>
+): Promise<File | null> => {
+  await wait();
+  const fileIndex = files.findIndex((file) => file.id === id);
+  if (fileIndex === -1) return null;
+  
+  const updatedFile = {
+    ...files[fileIndex],
+    ...updates,
+    updated_at: new Date().toISOString(),
+  };
+  files[fileIndex] = updatedFile;
+  return updatedFile;
+};
+
 export const deleteFile = async (id: string) => {
   await wait();
   files = files.filter((file) => file.id !== id);

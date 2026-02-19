@@ -1,6 +1,8 @@
 import { UI_DEV } from "@/lib/config";
 import * as mockNotes from "@/lib/mock-notes";
 import * as notesReservoir from "@/lib/notes-reservoir";
+import * as supabaseNotes from "@/lib/supabase-notes";
+import { Platform } from "react-native";
 import type { Note } from "@/lib/supabase";
 import { DEFAULT_FOLDER_ID } from "@/lib/supabase";
 
@@ -19,11 +21,34 @@ export const listNotesByFolder = async (
   userId: string | undefined,
   folderId: string
 ): Promise<Note[]> => {
+  if (!userId) {
+    throw new Error("User ID is required");
+  }
   if (UI_DEV) {
     const notes = await mockNotes.listNotes(userId);
     return notes.filter((n) => (n.folder_id ?? null) === (folderId === DEFAULT_FOLDER_ID ? null : folderId));
   }
-  return notesReservoir.listNotesByFolder(userId!, folderId);
+  
+  // On web, call supabase directly (same as what notes-reservoir does)
+  if (Platform.OS === "web") {
+    return supabaseNotes.listNotesByFolder(userId, folderId);
+  }
+  
+  // On native, use notes-reservoir
+  try {
+    // Try namespace import first
+    if (notesReservoir && typeof notesReservoir.listNotesByFolder === "function") {
+      return notesReservoir.listNotesByFolder(userId, folderId);
+    }
+    
+    // If that fails, fallback to supabase directly
+    console.warn("[listNotesByFolder] notesReservoir.listNotesByFolder not available, using supabase directly");
+    return supabaseNotes.listNotesByFolder(userId, folderId);
+  } catch (error: any) {
+    console.error("[listNotesByFolder] Error calling notesReservoir:", error);
+    // Fallback to supabase
+    return supabaseNotes.listNotesByFolder(userId, folderId);
+  }
 };
 
 export const listArchivedNotes = async (userId?: string): Promise<Note[]> => {

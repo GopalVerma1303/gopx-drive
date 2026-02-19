@@ -5,29 +5,25 @@ import { NoteDetailHeader } from "@/components/headers/note-detail-header";
 import { ImageInsertModal } from "@/components/image-insert-modal";
 import { MarkdownEditor, MarkdownEditorRef } from "@/components/markdown-editor";
 import { MarkdownToolbar } from "@/components/markdown-toolbar";
+import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
 import { generateAIContent } from "@/lib/ai-providers";
-import { listFolders } from "@/lib/folders";
 import { createNote, getNoteById, updateNote } from "@/lib/notes";
 import { invalidateNotesQueries } from "@/lib/query-utils";
-import { DEFAULT_FOLDER_ID } from "@/lib/supabase";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Folder } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   BackHandler,
-  Modal,
   Platform,
   Pressable,
   Alert as RNAlert,
   ScrollView,
   View,
 } from "react-native";
-import { Text } from "@/components/ui/text";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import Animated, { useAnimatedStyle } from "react-native-reanimated";
 
@@ -52,7 +48,6 @@ export default function NoteEditorScreen() {
   const [selectedText, setSelectedText] = useState("");
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [folderId, setFolderId] = useState<string | null>(null);
-  const [folderPickerOpen, setFolderPickerOpen] = useState(false);
   /** Last selection from editor (updated on every selection change). Preserved when AI button steals focus. */
   const lastSelectionRef = useRef({ start: 0, end: 0 });
   /** Range to replace with AI output when modal was opened with a selection (so we don't rely on getSelection() after focus is lost). */
@@ -296,11 +291,6 @@ export default function NoteEditorScreen() {
 
   const canSave = isDirty && !saveMutation.isPending;
 
-  const { data: foldersList = [] } = useQuery({
-    queryKey: ["folders", user?.id],
-    queryFn: () => listFolders(user?.id),
-    enabled: !!user?.id,
-  });
 
   const handleOpenAIModal = () => {
     // Use last known selection (from onSelectionChange); getSelection() is already collapsed once the toolbar button takes focus.
@@ -402,22 +392,6 @@ export default function NoteEditorScreen() {
         onPreviewToggle={() => setIsPreview(!isPreview)}
         isFetching={isFetching}
         onRefresh={!isNewNote ? handleRefresh : undefined}
-      />
-      <FolderPickerRow
-        folderName={folderId ? (foldersList.find((f) => f.id === folderId)?.name ?? "Folder") : "Default"}
-        onPress={() => setFolderPickerOpen(true)}
-        colors={colors}
-      />
-      <FolderPickerModal
-        visible={folderPickerOpen}
-        onClose={() => setFolderPickerOpen(false)}
-        folders={foldersList}
-        selectedFolderId={folderId}
-        onSelect={(id) => {
-          setFolderId(id);
-          setFolderPickerOpen(false);
-        }}
-        colors={colors}
       />
       {Platform.OS === "web" ? (
         <View className="flex-1 bg-background" style={{ flex: 1, height: "100%" }}>
@@ -535,98 +509,5 @@ export default function NoteEditorScreen() {
         onInsert={handleImageInsert}
       />
     </>
-  );
-}
-
-function FolderPickerRow({
-  folderName,
-  onPress,
-  colors,
-}: {
-  folderName: string;
-  onPress: () => void;
-  colors: ReturnType<typeof useThemeColors>["colors"];
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        backgroundColor: colors.background,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-      }}
-    >
-      <Folder size={18} color={colors.mutedForeground} style={{ marginRight: 8 }} />
-      <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Folder: </Text>
-      <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }} numberOfLines={1}>
-        {folderName}
-      </Text>
-    </Pressable>
-  );
-}
-
-function FolderPickerModal({
-  visible,
-  onClose,
-  folders,
-  selectedFolderId,
-  onSelect,
-  colors,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  folders: { id: string; name: string }[];
-  selectedFolderId: string | null;
-  onSelect: (id: string | null) => void;
-  colors: ReturnType<typeof useThemeColors>["colors"];
-}) {
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 24 }} onPress={onClose}>
-        <Pressable style={{ backgroundColor: colors.muted, borderRadius: 12, padding: 16, maxHeight: 400 }} onPress={(e) => e.stopPropagation()}>
-          <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 12 }}>Choose folder</Text>
-          <ScrollView style={{ maxHeight: 320 }}>
-            <Pressable
-              onPress={() => onSelect(null)}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                paddingVertical: 12,
-                paddingHorizontal: 8,
-                borderRadius: 8,
-                backgroundColor: selectedFolderId === null ? colors.accent : "transparent",
-              }}
-            >
-              <Folder size={20} color={colors.mutedForeground} style={{ marginRight: 10 }} />
-              <Text style={{ fontSize: 15, color: colors.foreground }}>Default</Text>
-            </Pressable>
-            {folders.map((f) => (
-              <Pressable
-                key={f.id}
-                onPress={() => onSelect(f.id)}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  paddingVertical: 12,
-                  paddingHorizontal: 8,
-                  borderRadius: 8,
-                  backgroundColor: selectedFolderId === f.id ? colors.accent : "transparent",
-                }}
-              >
-                <Folder size={20} color={colors.mutedForeground} style={{ marginRight: 10 }} />
-                <Text style={{ fontSize: 15, color: colors.foreground }} numberOfLines={1}>{f.name}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-          <Pressable onPress={onClose} style={{ marginTop: 12 }}>
-            <Text style={{ color: colors.mutedForeground }}>Cancel</Text>
-          </Pressable>
-        </Pressable>
-      </Pressable>
-    </Modal>
   );
 }

@@ -26,14 +26,26 @@ export const listNotes = async (userId?: string): Promise<Note[]> => {
     }
     
     // Filter out archived items in JavaScript (treat null/undefined as false)
-    return (fallbackQuery.data || []).map((n: any) => ({ ...n, folder_id: n.folder_id ?? null }));
+    return (fallbackQuery.data || []).map((n: any) => {
+      const folderId = n.folder_id;
+      return { 
+        ...n, 
+        folder_id: folderId === null || folderId === undefined || folderId === "" ? null : folderId 
+      };
+    });
   }
 
   if (error) {
     throw new Error(`Failed to fetch notes: ${error.message}`);
   }
 
-  return (data || []).map((n: any) => ({ ...n, folder_id: n.folder_id ?? null }));
+  return (data || []).map((n: any) => {
+    const folderId = n.folder_id;
+    return { 
+      ...n, 
+      folder_id: folderId === null || folderId === undefined || folderId === "" ? null : folderId 
+    };
+  });
 };
 
 /** List non-archived notes in a folder. Use DEFAULT_FOLDER_ID for default (folder_id is null). */
@@ -41,31 +53,62 @@ export const listNotesByFolder = async (
   userId: string,
   folderId: string
 ): Promise<Note[]> => {
+  if (!userId) {
+    console.error("[listNotesByFolder] userId is required");
+    return [];
+  }
+  
   const isDefault = folderId === DEFAULT_FOLDER_ID;
-  let query = supabase
-    .from("notes")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("is_archived", false)
-    .order("updated_at", { ascending: false });
-
+  
+  // For default folder, always fetch all notes and filter in JavaScript
+  // This is more reliable than querying with .is("folder_id", null) which can hang
   if (isDefault) {
-    query = query.is("folder_id", null);
-  } else {
-    query = query.eq("folder_id", folderId);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    if (error.message?.includes("column") || error.message?.includes("folder_id")) {
+    try {
       const all = await listNotes(userId);
-      return all.filter((n) => (n.folder_id ?? null) === (isDefault ? null : folderId));
+      const filtered = all.filter((n) => {
+        const noteFolderId = n.folder_id;
+        // Include notes where folder_id is null, undefined, or empty string
+        return !noteFolderId || noteFolderId === null || noteFolderId === "";
+      });
+      console.log(`[listNotesByFolder] Default folder: Found ${filtered.length} notes out of ${all.length} total`);
+      return filtered;
+    } catch (err: any) {
+      console.error("[listNotesByFolder] Error fetching default folder notes:", err);
+      return [];
     }
-    throw new Error(`Failed to fetch notes: ${error.message}`);
   }
+  
+  // For specific folders, use direct query
+  try {
+    const { data, error } = await supabase
+      .from("notes")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("is_archived", false)
+      .eq("folder_id", folderId)
+      .order("updated_at", { ascending: false });
 
-  return (data || []).map((n: any) => ({ ...n, folder_id: n.folder_id ?? null }));
+    if (error) {
+      console.warn("[listNotesByFolder] Query error:", error);
+      if (error.message?.includes("column") || error.message?.includes("folder_id")) {
+        // Fallback: fetch all and filter
+        const all = await listNotes(userId);
+        return all.filter((n) => n.folder_id === folderId);
+      }
+      throw new Error(`Failed to fetch notes: ${error.message}`);
+    }
+
+    return (data || []).map((n: any) => {
+      const folderIdValue = n.folder_id;
+      return { 
+        ...n, 
+        folder_id: folderIdValue === null || folderIdValue === undefined || folderIdValue === "" ? null : folderIdValue 
+      };
+    });
+  } catch (err: any) {
+    console.error("[listNotesByFolder] Error:", err);
+    return [];
+  }
 };
 
 export const listArchivedNotes = async (userId?: string): Promise<Note[]> => {

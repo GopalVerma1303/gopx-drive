@@ -10,7 +10,10 @@ import {
   getUnsyncedNoteIds,
   listNotes,
   syncNotesFromSupabase,
+  updateNote,
 } from "@/lib/notes";
+import { listFolders } from "@/lib/folders";
+import { DEFAULT_FOLDER_ID } from "@/lib/supabase";
 import { invalidateNotesQueries } from "@/lib/query-utils";
 import type { Note } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
@@ -20,20 +23,26 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Check, CheckCheck, LayoutGrid, Plus, Rows2, Search } from "lucide-react-native";
+import { Check, CheckCheck, Folder, LayoutGrid, Plus, Rows2, Search, Archive } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
-  Modal,
   Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   View,
 } from "react-native";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const NOTES_VIEW_MODE_STORAGE_KEY = "@notes_view_mode";
@@ -164,8 +173,14 @@ export default function NotesScreen() {
     enabled: !!user?.id,
   });
 
-  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
-  const [noteToArchive, setNoteToArchive] = useState<{
+  const { data: foldersList = [] } = useQuery({
+    queryKey: ["folders", user?.id],
+    queryFn: () => listFolders(user?.id),
+    enabled: !!user?.id,
+  });
+
+  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
+  const [noteToAction, setNoteToAction] = useState<{
     id: string;
     title: string;
   } | null>(null);
@@ -175,37 +190,45 @@ export default function NotesScreen() {
     onSuccess: () => {
       invalidateNotesQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setArchiveDialogOpen(false);
-      setNoteToArchive(null);
+      setDropdownOpen(null);
+      setNoteToAction(null);
     },
   });
 
+  const moveNoteMutation = useMutation({
+    mutationFn: ({ id, folderId }: { id: string; folderId: string | null }) =>
+      updateNote(id, { folder_id: folderId }),
+    onSuccess: () => {
+      invalidateNotesQueries(queryClient, user?.id);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setDropdownOpen(null);
+      setNoteToAction(null);
+    },
+  });
 
-  const handleArchiveNote = (id: string, title: string) => {
-    Alert.alert("Archive Note", `Are you sure you want to archive "${title}"?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Archive",
-        style: "default",
-        onPress: () => archiveMutation.mutate(id),
-      },
-    ]);
-  };
-
-  const handleRightClickArchive = (id: string, title: string) => {
+  const handleRightClickAction = (id: string, title: string) => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    setNoteToArchive({ id, title });
-    setArchiveDialogOpen(true);
+    setNoteToAction({ id, title });
+    setDropdownOpen(id);
   };
 
-  const handleArchiveConfirm = () => {
-    if (noteToArchive) {
+  const handleMoveToFolder = (folderId: string | null) => {
+    if (noteToAction) {
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
-      archiveMutation.mutate(noteToArchive.id);
+      moveNoteMutation.mutate({ id: noteToAction.id, folderId });
+    }
+  };
+
+  const handleArchive = () => {
+    if (noteToAction) {
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      archiveMutation.mutate(noteToAction.id);
     }
   };
 
@@ -415,12 +438,24 @@ export default function NotesScreen() {
                                 cardWidth={cardWidth}
                                 isSynced={!unsyncedNoteIds.includes(note.id)}
                                 onPress={() => router.push(`/(app)/note/${note.id}`)}
-                                onDelete={() => handleRightClickArchive(note.id, note.title)}
+                                onDelete={() => handleRightClickAction(note.id, note.title)}
                                 onRightClickDelete={
                                   Platform.OS === "web"
-                                    ? () => handleRightClickArchive(note.id, note.title)
+                                    ? () => handleRightClickAction(note.id, note.title)
                                     : undefined
                                 }
+                            dropdownOpen={dropdownOpen === note.id}
+                            onDropdownOpenChange={(open) => {
+                              if (open) {
+                                handleRightClickAction(note.id, note.title);
+                              } else {
+                                setDropdownOpen(null);
+                                setNoteToAction(null);
+                              }
+                            }}
+                                foldersList={foldersList}
+                                onMoveToFolder={handleMoveToFolder}
+                                onArchive={handleArchive}
                               />
                             </View>
                           ))}
@@ -454,12 +489,24 @@ export default function NotesScreen() {
                             cardWidth={cardWidth}
                             isSynced={!unsyncedNoteIds.includes(note.id)}
                             onPress={() => router.push(`/(app)/note/${note.id}`)}
-                            onDelete={() => handleRightClickArchive(note.id, note.title)}
+                            onDelete={() => handleRightClickAction(note.id, note.title)}
                             onRightClickDelete={
                               Platform.OS === "web"
-                                ? () => handleRightClickArchive(note.id, note.title)
+                                ? () => handleRightClickAction(note.id, note.title)
                                 : undefined
                             }
+                            dropdownOpen={dropdownOpen === note.id}
+                            onDropdownOpenChange={(open) => {
+                              if (open) {
+                                handleRightClickAction(note.id, note.title);
+                              } else {
+                                setDropdownOpen(null);
+                                setNoteToAction(null);
+                              }
+                            }}
+                            foldersList={foldersList}
+                            onMoveToFolder={handleMoveToFolder}
+                            onArchive={handleArchive}
                           />
                         </View>
                       ))}
@@ -472,198 +519,6 @@ export default function NotesScreen() {
         )}
       </View>
 
-      {/* Simple Archive Confirmation Dialog */}
-      {Platform.OS === "web" ? (
-        archiveDialogOpen && (
-          <View
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            style={{
-              position: "fixed" as any,
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 50,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(8px)",
-            }}
-          >
-            <Pressable
-              className="absolute inset-0"
-              style={{ position: "absolute" as any }}
-              onPress={() => setArchiveDialogOpen(false)}
-            />
-            <View
-              className="bg-background border-border w-full max-w-md rounded-lg border p-6 shadow-lg"
-              style={{
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                borderRadius: 8,
-                padding: 24,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-              }}
-            >
-              <Text
-                className="text-lg font-semibold mb-2"
-                style={{
-                  color: colors.foreground,
-                  fontSize: 18,
-                  fontWeight: "600",
-                  marginBottom: 8,
-                }}
-              >
-                Archive Note
-              </Text>
-              <Text
-                className="text-sm mb-6"
-                style={{
-                  color: colors.mutedForeground,
-                  fontSize: 14,
-                  marginBottom: 24,
-                }}
-              >
-                Are you sure you want to archive "{noteToArchive?.title}"? You can restore it from the archive later.
-              </Text>
-              <View
-                className="flex-row justify-end gap-3"
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  gap: 12,
-                }}
-              >
-                <Pressable
-                  className="px-4 py-2"
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                  }}
-                  onPress={() => setArchiveDialogOpen(false)}
-                >
-                  <Text style={{ color: colors.foreground }}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  className="px-4 py-2 rounded-md"
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 6,
-                  }}
-                  onPress={handleArchiveConfirm}
-                >
-                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>
-                    Archive
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        )
-      ) : (
-        <Modal
-          visible={archiveDialogOpen}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setArchiveDialogOpen(false)}
-        >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-            }}
-          >
-            <BlurView
-              intensity={20}
-              tint="dark"
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-                padding: 16,
-              }}
-            >
-              <Pressable
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                }}
-                onPress={() => setArchiveDialogOpen(false)}
-              />
-              <View
-                style={{
-                  backgroundColor: colors.muted,
-                  borderColor: colors.border,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  padding: 24,
-                  width: "100%",
-                  maxWidth: 400,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 5,
-                }}
-              >
-                <Text
-                  style={{
-                    color: colors.foreground,
-                    fontSize: 18,
-                    fontWeight: "600",
-                    marginBottom: 8,
-                  }}
-                >
-                  Archive Note
-                </Text>
-                <Text
-                  style={{
-                    color: colors.mutedForeground,
-                    fontSize: 14,
-                    marginBottom: 24,
-                  }}
-                >
-                  Are you sure you want to archive "{noteToArchive?.title}"? You can restore it from the archive later.
-                </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "flex-end",
-                    gap: 12,
-                  }}
-                >
-                  <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                    }}
-                    onPress={() => setArchiveDialogOpen(false)}
-                  >
-                    <Text style={{ color: colors.foreground }}>Cancel</Text>
-                  </Pressable>
-                  <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 6,
-                    }}
-                    onPress={handleArchiveConfirm}
-                  >
-                    <Text style={{ color: "#ef4444", fontWeight: "600" }}>
-                      Archive
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-            </BlurView>
-          </View>
-        </Modal>
-      )}
     </View>
   );
 }
@@ -676,6 +531,11 @@ interface NoteCardProps {
   onPress: () => void;
   onDelete: () => void;
   onRightClickDelete?: () => void;
+  dropdownOpen: boolean;
+  onDropdownOpenChange: (open: boolean) => void;
+  foldersList: Array<{ id: string; name: string }>;
+  onMoveToFolder: (folderId: string | null) => void;
+  onArchive: () => void;
 }
 
 function NoteCard({
@@ -685,6 +545,11 @@ function NoteCard({
   onPress,
   onDelete,
   onRightClickDelete,
+  dropdownOpen,
+  onDropdownOpenChange,
+  foldersList,
+  onMoveToFolder,
+  onArchive,
 }: NoteCardProps) {
   const { colors } = useThemeColors();
   const scale = new Animated.Value(1);
@@ -748,67 +613,96 @@ function NoteCard({
   const cardHeight = Math.min(calculatedHeight, a4MaxHeight);
 
   return (
-    <Pressable
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      onLongPress={onDelete}
-      {...(Platform.OS === "web" && {
-        onContextMenu: handleContextMenu,
-      })}
-    >
-      <Animated.View style={{ transform: [{ scale }] }}>
-        <Card
-          className="rounded-2xl bg-muted border border-border"
-          style={{
-            width: cardWidth,
-            minHeight: cardHeight,
-            maxHeight: a4MaxHeight,
-            padding: padding,
+    <DropdownMenu {...({ open: dropdownOpen, onOpenChange: onDropdownOpenChange } as any)}>
+      <DropdownMenuTrigger asChild>
+        <Pressable
+          onPress={onPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          onLongPress={() => {
+            onDelete();
+            onDropdownOpenChange(true);
           }}
+          {...(Platform.OS === "web" && {
+            onContextMenu: (e: any) => {
+              handleContextMenu(e);
+              if (onRightClickDelete) {
+                onDropdownOpenChange(true);
+              }
+            },
+          })}
         >
-          <Text
-            className="text-lg font-semibold text-foreground"
-            numberOfLines={1}
-          >
-            {note.title || "Untitled"}
-          </Text>
-          <Text
-            className="text-sm text-muted-foreground leading-4"
-            numberOfLines={contentLength > 200 ? 8 : 6}
-          >
-            {note.content ? note.content : "No content"}
-          </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "flex-end",
-              marginTop: 8,
-              gap: 4,
-            }}
-          >
-            <Text
-              className="text-xs text-muted-foreground/70"
+          <Animated.View style={{ transform: [{ scale }] }}>
+            <Card
+              className="rounded-2xl bg-muted border border-border"
+              style={{
+                width: cardWidth,
+                minHeight: cardHeight,
+                maxHeight: a4MaxHeight,
+                padding: padding,
+              }}
             >
-              {formatDate(note.updated_at)}
-            </Text>
-            {isSynced ? (
-              <CheckCheck
-                size={14}
-                color={colors.mutedForeground + "90"}
-                strokeWidth={2.5}
-              />
-            ) : (
-              <Check
-                size={14}
-                color={colors.mutedForeground + "90"}
-                strokeWidth={2.5}
-              />
-            )}
-          </View>
-        </Card>
-      </Animated.View>
-    </Pressable>
+              <Text
+                className="text-lg font-semibold text-foreground"
+                numberOfLines={1}
+              >
+                {note.title || "Untitled"}
+              </Text>
+              <Text
+                className="text-sm text-muted-foreground leading-4"
+                numberOfLines={contentLength > 200 ? 8 : 6}
+              >
+                {note.content ? note.content : "No content"}
+              </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  marginTop: 8,
+                  gap: 4,
+                }}
+              >
+                <Text
+                  className="text-xs text-muted-foreground/70"
+                >
+                  {formatDate(note.updated_at)}
+                </Text>
+                {isSynced ? (
+                  <CheckCheck
+                    size={14}
+                    color={colors.mutedForeground + "90"}
+                    strokeWidth={2.5}
+                  />
+                ) : (
+                  <Check
+                    size={14}
+                    color={colors.mutedForeground + "90"}
+                    strokeWidth={2.5}
+                  />
+                )}
+              </View>
+            </Card>
+          </Animated.View>
+        </Pressable>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem onPress={() => onMoveToFolder(null)}>
+          <Folder size={16} color={colors.foreground} style={{ marginRight: 8 }} />
+          <Text style={{ color: colors.foreground }}>Default</Text>
+        </DropdownMenuItem>
+        {foldersList.map((folder) => (
+          <DropdownMenuItem key={folder.id} onPress={() => onMoveToFolder(folder.id)}>
+            <Folder size={16} color={colors.foreground} style={{ marginRight: 8 }} />
+            <Text style={{ color: colors.foreground }}>{folder.name}</Text>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" onPress={onArchive}>
+          <Archive size={16} color="#ef4444" style={{ marginRight: 8 }} />
+          <Text style={{ color: "#ef4444" }}>Archive</Text>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -76,6 +76,16 @@ export const uploadFile = async (input: {
   return supabaseFiles.uploadFile(input);
 };
 
+export const updateFile = async (
+  id: string,
+  updates: Partial<Pick<File, "folder_id">>
+): Promise<File | null> => {
+  if (UI_DEV) {
+    return mockFiles.updateFile?.(id, updates) || null;
+  }
+  return supabaseFiles.updateFile(id, updates);
+};
+
 export const archiveFile = async (id: string): Promise<void> => {
   if (UI_DEV) {
     return mockFiles.archiveFile?.(id) || Promise.resolve();

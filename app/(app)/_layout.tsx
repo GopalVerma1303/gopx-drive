@@ -44,7 +44,8 @@ function AppLayoutContent() {
   const isLg = screenWidth >= 1024;
   const isNoteDetail = pathname?.includes("/note/") && pathname !== "/(app)/notes";
   const isFolderDetail = pathname?.includes("/folders/") && pathname !== "/(app)/folders" && pathname !== "/(app)/folders/";
-  const isDetailPage = isNoteDetail || isFolderDetail;
+  // Only note detail pages hide navbar; folder detail pages show navbar like archive
+  const isDetailPage = isNoteDetail;
 
   // On small screens: bottom bar (absolute positioned)
   if (isSm) {
