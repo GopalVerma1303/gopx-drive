@@ -201,20 +201,9 @@ export default function SettingsScreen() {
                     fontSize: 16,
                     color: colors.foreground,
                     fontWeight: "500",
-                    marginBottom: 4,
                   }}
                 >
                   Dark Mode
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    color: colors.mutedForeground,
-                  }}
-                >
-                  {resolvedTheme === "dark"
-                    ? "Dark theme enabled"
-                    : "Light theme enabled"}
                 </Text>
               </View>
               <Switch
