@@ -1,4 +1,9 @@
 import { useThemeColors } from "@/lib/use-theme-colors";
+import {
+  getToolbarPreferences,
+  type ToolbarItemId,
+  DEFAULT_PREFERENCES,
+} from "@/lib/toolbar-preferences";
 import { cn } from "@/lib/utils";
 import * as Haptics from "expo-haptics";
 import {
@@ -24,7 +29,8 @@ import {
   Table
 } from "lucide-react-native";
 import * as React from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { useEffect, useState, useRef } from "react";
+import { AppState, AppStateStatus, Platform, Pressable, ScrollView, Text, View } from "react-native";
 
 // Helper function to toggle checkbox in markdown text
 export function toggleCheckboxInMarkdown(
@@ -123,8 +129,53 @@ export function MarkdownToolbar({
 }: MarkdownToolbarProps) {
   const { colors } = useThemeColors();
   const TAB_SPACES = "   ";
+  const [visibleItems, setVisibleItems] = useState<ToolbarItemId[]>(
+    DEFAULT_PREFERENCES.visible
+  );
+  const appState = useRef(AppState.currentState);
+
+  useEffect(() => {
+    loadPreferences();
+
+    // Reload preferences when app comes to foreground
+    const subscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === "active"
+      ) {
+        loadPreferences();
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const loadPreferences = async () => {
+    try {
+      const prefs = await getToolbarPreferences();
+      setVisibleItems(prefs.visible);
+    } catch (error) {
+      console.error("Error loading toolbar preferences:", error);
+    }
+  };
 
   if (isPreview) {
+    return null;
+  }
+
+  // Filter visible items - exclude aiAssistant if callback is not provided
+  const filteredVisibleItems = visibleItems.filter((itemId) => {
+    if (itemId === "aiAssistant" && !onAIAssistant) {
+      return false;
+    }
+    return true;
+  });
+
+  // Hide toolbar if there are no visible items
+  if (filteredVisibleItems.length === 0) {
     return null;
   }
 
@@ -254,6 +305,98 @@ export function MarkdownToolbar({
     onAIAssistant?.();
   };
 
+  // Map item IDs to handlers and icons
+  const itemHandlers: Record<ToolbarItemId, () => void> = {
+    undo: handleUndo,
+    redo: handleRedo,
+    bold: handleBold,
+    italic: handleItalic,
+    strikethrough: handleStrikethrough,
+    heading: handleHeading,
+    inlineCode: handleInlineCode,
+    indent: handleIndent,
+    outdent: handleOutdent,
+    quote: handleQuote,
+    link: handleLink,
+    image: handleImage,
+    bulletList: handleBulletList,
+    numberedList: handleNumberedList,
+    taskList: handleTaskList,
+    codeBlock: handleCodeBlock,
+    table: handleTable,
+    horizontalRule: handleHorizontalRule,
+    date: handleDate,
+    aiAssistant: handleAIAssistant,
+  };
+
+  const itemIcons: Record<ToolbarItemId, React.ComponentType<{ size?: number; color?: string }>> = {
+    undo: RotateCcw,
+    redo: RotateCw,
+    bold: Bold,
+    italic: Italic,
+    strikethrough: Strikethrough,
+    heading: Hash,
+    inlineCode: Code,
+    indent: IndentIncrease,
+    outdent: IndentDecrease,
+    quote: Quote,
+    link: Link,
+    image: Image,
+    bulletList: List,
+    numberedList: ListOrdered,
+    taskList: ListChecks,
+    codeBlock: Code2,
+    table: Table,
+    horizontalRule: Minus,
+    date: Calendar,
+    aiAssistant: Sparkles,
+  };
+
+  const itemLabels: Record<ToolbarItemId, string> = {
+    undo: "Undo",
+    redo: "Redo",
+    bold: "Bold",
+    italic: "Italic",
+    strikethrough: "Strikethrough",
+    heading: "Heading",
+    inlineCode: "Inline Code",
+    indent: "Indent (Tab)",
+    outdent: "Outdent (Shift+Tab)",
+    quote: "Quote",
+    link: "Link",
+    image: "Image",
+    bulletList: "Bullet List",
+    numberedList: "Numbered List",
+    taskList: "Task List",
+    codeBlock: "Code Block",
+    table: "Table",
+    horizontalRule: "Horizontal Rule",
+    date: "Insert Date",
+    aiAssistant: "AI Assistant",
+  };
+
+  const itemDisabled: Record<ToolbarItemId, boolean | undefined> = {
+    undo: canUndo === false,
+    redo: canRedo === false,
+    bold: false,
+    italic: false,
+    strikethrough: false,
+    heading: false,
+    inlineCode: false,
+    indent: false,
+    outdent: false,
+    quote: false,
+    link: false,
+    image: false,
+    bulletList: false,
+    numberedList: false,
+    taskList: false,
+    codeBlock: false,
+    table: false,
+    horizontalRule: false,
+    date: false,
+    aiAssistant: false,
+  };
 
   const iconSize = 20;
   const iconColor = colors.foreground;
@@ -325,83 +468,26 @@ export function MarkdownToolbar({
           alignItems: "center",
         }}
       >
-        {/* Undo / Redo */}
-        <View style={{ flexDirection: "row", gap: 4 }}>
-          <ToolbarButton
-            onPress={handleUndo}
-            ariaLabel="Undo"
-            IconComponent={RotateCcw}
-            disabled={canUndo === false}
-          />
-          <ToolbarButton
-            onPress={handleRedo}
-            ariaLabel="Redo"
-            IconComponent={RotateCw}
-            disabled={canRedo === false}
-          />
-        </View>
+        {filteredVisibleItems.map((itemId) => {
+          const handler = itemHandlers[itemId];
+          const Icon = itemIcons[itemId];
+          const label = itemLabels[itemId];
+          const disabled = itemDisabled[itemId];
 
-        {/* Divider */}
-        <View
-          style={{
-            width: 1,
-            height: 32,
-            backgroundColor: colors.border,
-            marginHorizontal: 4,
-          }}
-        />
+          if (!handler || !Icon) {
+            return null;
+          }
 
-        {/* Essential Formatting Icons */}
-        <View style={{ flexDirection: "row", gap: 4 }}>
-          <ToolbarButton onPress={handleBold} ariaLabel="Bold" IconComponent={Bold} />
-          <ToolbarButton onPress={handleItalic} ariaLabel="Italic" IconComponent={Italic} />
-          <ToolbarButton onPress={handleStrikethrough} ariaLabel="Strikethrough" IconComponent={Strikethrough} />
-          <ToolbarButton onPress={handleHeading} ariaLabel="Heading" IconComponent={Hash} />
-          <ToolbarButton onPress={handleInlineCode} ariaLabel="Inline Code" IconComponent={Code} />
-          <ToolbarButton onPress={handleIndent} ariaLabel="Indent (Tab)" IconComponent={IndentIncrease} />
-          <ToolbarButton onPress={handleOutdent} ariaLabel="Outdent (Shift+Tab)" IconComponent={IndentDecrease} />
-          <ToolbarButton onPress={handleQuote} ariaLabel="Quote" IconComponent={Quote} />
-          <ToolbarButton onPress={handleLink} ariaLabel="Link" IconComponent={Link} />
-          <ToolbarButton onPress={handleImage} ariaLabel="Image" IconComponent={Image} />
-        </View>
-
-        {/* Divider */}
-        <View
-          style={{
-            width: 1,
-            height: 32,
-            backgroundColor: colors.border,
-            marginHorizontal: 4,
-          }}
-        />
-
-        {/* List and Structure Icons */}
-        <View style={{ flexDirection: "row", gap: 4 }}>
-          <ToolbarButton onPress={handleBulletList} ariaLabel="Bullet List" IconComponent={List} />
-          <ToolbarButton onPress={handleNumberedList} ariaLabel="Numbered List" IconComponent={ListOrdered} />
-          <ToolbarButton onPress={handleTaskList} ariaLabel="Task List" IconComponent={ListChecks} />
-        </View>
-
-        {/* Divider */}
-        <View
-          style={{
-            width: 1,
-            height: 32,
-            backgroundColor: colors.border,
-            marginHorizontal: 4,
-          }}
-        />
-
-        {/* Advanced Actions */}
-        <View style={{ flexDirection: "row", gap: 4 }}>
-          <ToolbarButton onPress={handleCodeBlock} ariaLabel="Code Block" IconComponent={Code2} />
-          <ToolbarButton onPress={handleTable} ariaLabel="Table" IconComponent={Table} />
-          <ToolbarButton onPress={handleHorizontalRule} ariaLabel="Horizontal Rule" IconComponent={Minus} />
-          <ToolbarButton onPress={handleDate} ariaLabel="Insert Date" IconComponent={Calendar} />
-          {onAIAssistant && (
-            <ToolbarButton onPress={handleAIAssistant} ariaLabel="AI Assistant" IconComponent={Sparkles} />
-          )}
-        </View>
+          return (
+            <ToolbarButton
+              key={itemId}
+              onPress={handler}
+              ariaLabel={label}
+              IconComponent={Icon}
+              disabled={disabled}
+            />
+          );
+        })}
       </ScrollView>
     </View>
   );

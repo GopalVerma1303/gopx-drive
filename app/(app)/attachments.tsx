@@ -208,19 +208,17 @@ export default function AttachmentsScreen() {
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-            {isSmallScreen && (
-              <Pressable
-                onPress={() => {
-                  if (Platform.OS !== "web") {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }
-                  router.push("/(app)/settings");
-                }}
-                style={{ padding: 8, marginRight: 8 }}
-              >
-                <ArrowLeft color={colors.foreground} size={24} />
-              </Pressable>
-            )}
+            <Pressable
+              onPress={() => {
+                if (Platform.OS !== "web") {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+                router.back();
+              }}
+              style={{ padding: 8, marginRight: 8 }}
+            >
+              <ArrowLeft color={colors.foreground} size={24} />
+            </Pressable>
             <Text
               style={{
                 fontSize: 18,

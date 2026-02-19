@@ -10,7 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Archive, Eraser, Heart, ImageIcon, LogOut, WandSparkles } from "lucide-react-native";
+import { Archive, Eraser, Heart, ImageIcon, LogOut, Settings2, WandSparkles } from "lucide-react-native";
 import { useState } from "react";
 import {
   Alert,
@@ -224,6 +224,48 @@ export default function SettingsScreen() {
                   toggleTheme();
                 }}
               />
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Editor Section */}
+        <View className="w-full max-w-2xl mx-auto">
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: "600",
+              color: colors.mutedForeground,
+              marginBottom: 12,
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
+            Editor
+          </Text>
+          <View className="bg-muted border border-border rounded-2xl overflow-hidden">
+            <Pressable
+              className="flex flex-row items-center gap-12 p-4"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/(app)/toolbar-order");
+              }}
+            >
+              <View className="flex flex-row items-center gap-2">
+                <Settings2
+                  color={colors.foreground}
+                  size={20}
+                  strokeWidth={2}
+                />
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: colors.foreground,
+                    fontWeight: "500",
+                  }}
+                >
+                  Toolbar Order
+                </Text>
+              </View>
             </Pressable>
           </View>
         </View>
