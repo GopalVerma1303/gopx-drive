@@ -23,18 +23,23 @@ const model = "llama-3.1-8b-instant"; // Hardcoded
 
 **Updated Implementation:**
 ```javascript
-// Accept model from request body
+// Accept model, temperature, and max_tokens from request body
 const { model, messages, temperature, max_tokens } = req.body;
 
 // Use the provided model or fallback to default
 const selectedModel = model || "llama-3.1-8b-instant";
 
+// Use provided temperature/max_tokens or fallback to defaults
+// Note: Frontend sends optimized values per mode, so prefer those
+const selectedTemperature = temperature ?? 0.5;
+const selectedMaxTokens = max_tokens ?? 2048;
+
 // Use selectedModel when calling Groq API
 const response = await groq.chat.completions.create({
   model: selectedModel,
   messages: messages,
-  temperature: temperature || 0.5,
-  max_tokens: max_tokens || 2048,
+  temperature: selectedTemperature,
+  max_tokens: selectedMaxTokens,
 });
 ```
 
@@ -42,18 +47,22 @@ const response = await groq.chat.completions.create({
 
 The frontend will send these model names based on the selected mode:
 
-| Mode | Model Name |
-|------|-----------|
-| Friendly | `llama-3.1-8b-instant` |
-| Professional | `llama-3.3-70b-versatile` |
-| Concise | `llama-3.1-8b-instant` |
-| Summary | `llama-3.3-70b-versatile` |
-| Key Points | `llama-3.1-8b-instant` |
-| List | `llama-3.1-8b-instant` |
-| Table | `llama-3.3-70b-versatile` |
-| Code | `qwen-2.5-coder-32b` |
+| Mode | Model Name | Temperature | Max Tokens |
+|------|-----------|-------------|------------|
+| Friendly | `llama-3.1-8b-instant` | 0.7 | 2048 |
+| Professional | `llama-3.3-70b-versatile` | 0.5 | 2048 |
+| Concise | `llama-3.1-8b-instant` | 0.3 | 2048 |
+| Summary | `llama-3.1-8b-instant` | 0.4 | 4096 |
+| Key Points | `llama-3.3-70b-versatile` | 0.3 | 2048 |
+| List | `llama-3.3-70b-versatile` | 0.5 | 2048 |
+| Table | `llama-3.3-70b-versatile` | 0.2 | 3072 |
+| Code | `openai/gpt-oss-120b` | 0.2 | 4096 |
+| Proofread | `llama-3.3-70b-versatile` | 0.5 | 2048 |
+| Rewrite | `llama-3.3-70b-versatile` | 0.5 | 2048 |
 
-**Important:** Ensure your Groq API key has access to all these models. Some models like `qwen-2.5-coder-32b` and `llama-3.3-70b-versatile` may require specific access or may have different availability.
+**Important:** 
+- Ensure your Groq API key has access to all these models. Some models like `openai/gpt-oss-120b` and `llama-3.3-70b-versatile` may require specific access or may have different availability.
+- The frontend sends `temperature` and `max_tokens` parameters optimized for each mode. Your backend should use these values when provided, or fall back to defaults if not specified.
 
 ### 3. Model Validation (Recommended)
 
@@ -63,7 +72,7 @@ Add validation to ensure only supported models are used:
 const SUPPORTED_MODELS = [
   "llama-3.1-8b-instant",
   "llama-3.3-70b-versatile",
-  "qwen-2.5-coder-32b",
+  "openai/gpt-oss-120b",
   // Add other models you want to support
 ];
 
@@ -84,8 +93,8 @@ try {
   const response = await groq.chat.completions.create({
     model: selectedModel,
     messages: messages,
-    temperature: temperature || 0.5,
-    max_tokens: max_tokens || 2048,
+    temperature: temperature ?? 0.5,
+    max_tokens: max_tokens ?? 2048,
   });
   // ... handle success
 } catch (error) {
@@ -139,13 +148,15 @@ Your backend should continue returning responses in this format:
 
 ## Implementation Checklist
 
-- [ ] Update `/api/chat` endpoint to accept `model` from request body
-- [ ] Remove hardcoded model name
+- [ ] Update `/api/chat` endpoint to accept `model`, `temperature`, and `max_tokens` from request body
+- [ ] Remove hardcoded model name, temperature, and max_tokens
 - [ ] Use `model` parameter when calling Groq API
+- [ ] Use `temperature` and `max_tokens` from request (with fallbacks)
 - [ ] Add model validation (optional but recommended)
 - [ ] Add error handling for unavailable models
-- [ ] Test with all supported models
-- [ ] Verify Groq API key has access to all models
+- [ ] Test with all supported models (including new Proofread and Rewrite modes)
+- [ ] Verify Groq API key has access to all models (especially `openai/gpt-oss-120b`)
+- [ ] Test mode-specific temperature and max_tokens values are properly used
 
 ## Testing
 
@@ -162,29 +173,57 @@ curl -X POST http://localhost:3001/api/chat \
     ]
   }'
 
-# Test with Code mode (qwen-2.5-coder-32b)
+# Test with Code mode (openai/gpt-oss-120b)
 curl -X POST http://localhost:3001/api/chat \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "qwen-2.5-coder-32b",
+    "model": "openai/gpt-oss-120b",
     "messages": [
       {"role": "user", "content": "Write a function to sort an array"}
-    ]
+    ],
+    "temperature": 0.2,
+    "max_tokens": 4096
+  }'
+
+# Test with Summary mode (includes mode-specific max_tokens)
+curl -X POST http://localhost:3001/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama-3.1-8b-instant",
+    "messages": [
+      {"role": "user", "content": "Summarize this text..."}
+    ],
+    "temperature": 0.4,
+    "max_tokens": 4096
   }'
 ```
 
 ## Notes
 
-1. **Model Availability**: Some models like `qwen-2.5-coder-32b` and `llama-3.3-70b-versatile` may have limited availability or require specific API access. Check Groq's documentation for current model availability.
+1. **Model Availability**: 
+   - `openai/gpt-oss-120b` is a newer model that may have limited availability or require specific API access
+   - `llama-3.3-70b-versatile` is a larger model that may have different availability
+   - Check Groq's documentation for current model availability
 
-2. **Fallback**: If a model is not available, you can fallback to `llama-3.1-8b-instant` which is widely available.
+2. **Mode-Specific Parameters**: The frontend sends optimized `temperature` and `max_tokens` values for each mode:
+   - Lower temperatures (0.2-0.3) for precise tasks like Code, Table, Concise, Key Points
+   - Higher temperatures (0.7) for creative tasks like Friendly
+   - Higher max_tokens (3072-4096) for complex outputs like Code, Table, Summary
+   - Your backend should respect these values when provided
 
-3. **Rate Limits**: Different models may have different rate limits. Consider implementing rate limiting per model if needed.
+3. **Fallback**: If a model is not available, you can fallback to `llama-3.1-8b-instant` which is widely available.
 
-4. **Cost**: Larger models like `llama-3.3-70b-versatile` may have different pricing. Check Groq's pricing page for details.
+4. **Rate Limits**: Different models may have different rate limits. Consider implementing rate limiting per model if needed.
+
+5. **Cost**: Larger models like `llama-3.3-70b-versatile` and `openai/gpt-oss-120b` may have different pricing. Check Groq's pricing page for details.
+
+6. **New Modes**: Two new modes have been added:
+   - **Proofread**: Uses `llama-3.3-70b-versatile` for grammar and spelling corrections
+   - **Rewrite**: Uses `llama-3.3-70b-versatile` for content rewriting
 
 ## Additional Resources
 
 - [Groq Models Documentation](https://console.groq.com/docs/models)
 - [Groq API Reference](https://console.groq.com/docs)
-- [Qwen-2.5-Coder Documentation](https://console.groq.com/docs/model/qwen-2.5-coder-32b)
+- [GPT-OSS-120B Documentation](https://console.groq.com/docs/model/openai-gpt-oss-120b)
+- [Llama 3.3 70B Versatile Documentation](https://console.groq.com/docs/model/llama-3.3-70b-versatile)

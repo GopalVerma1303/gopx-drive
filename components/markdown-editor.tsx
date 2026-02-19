@@ -30,6 +30,16 @@ import { linkifyMarkdown } from "./markdown-editor/utils/text-helpers";
 
 const COPIED_FEEDBACK_MS = 2000;
 
+// Helper function to add opacity to hex colors
+const hexToRgba = (hex: string, opacity: number): string => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return hex;
+  const r = parseInt(result[1], 16);
+  const g = parseInt(result[2], 16);
+  const b = parseInt(result[3], 16);
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+};
+
 function CodeBlockCopyButton({
   code,
   iconColor,
@@ -1481,12 +1491,26 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         // fontFamily: "monospace",
       },
       table: {
-        borderWidth: 1,
+        // Single-source: table draws left+top only; rows/cells draw right+bottom and inner lines (avoids 2px stacking).
+        borderLeftWidth: 1,
+        borderTopWidth: 1,
+        borderRightWidth: 0,
+        borderBottomWidth: 0,
         borderColor: colors.ring,
-        borderRadius: 4,
-        marginTop: 8,
-        marginBottom: 8,
+        borderRadius: 0,
+        marginTop: 16,
+        marginBottom: 16,
         overflow: "hidden" as const,
+        backgroundColor: colors.background,
+        // Add subtle shadow/elevation for depth
+        ...(Platform.OS === 'ios' ? {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+        } : {
+          elevation: 2,
+        }),
       },
       thead: {
         backgroundColor: colors.muted,
@@ -1495,23 +1519,22 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         backgroundColor: colors.muted,
       },
       th: {
-        borderWidth: 1,
-        borderColor: colors.ring,
-        padding: 8,
-        fontWeight: "bold" as const,
+        padding: 12,
+        paddingVertical: 14,
+        fontWeight: "600" as const,
         color: colors.foreground,
         fontSize: 14,
+        letterSpacing: 0.3,
       },
       tr: {
-        borderBottomWidth: 1,
-        borderBottomColor: colors.ring,
+        // Border handled in renderer
       },
       td: {
-        borderWidth: 1,
-        borderColor: colors.ring,
-        padding: 8,
+        padding: 12,
+        paddingVertical: 12,
         color: colors.foreground,
         fontSize: 14,
+        lineHeight: 20,
       },
       hr: {
         backgroundColor: colors.ring,
@@ -2267,8 +2290,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         );
       },
       tr: (node: any, children: any, parent: any, styles: any) => {
-        // Ensure children is an array for proper rendering
         const rowChildren = Array.isArray(children) ? children : [children];
+        // Table draws top; each row draws bottom only → uniform 1px
         return (
           <View
             key={node.key}
@@ -2286,6 +2309,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         );
       },
       th: (node: any, children: any, parent: any, styles: any) => {
+        // Find index to determine if first or last column
+        const columnIndex = parent?.children?.findIndex((child: any) => child.key === node.key) ?? -1;
+        const isFirstColumn = columnIndex === 0;
+        const isLastColumn = columnIndex === (parent?.children?.length ?? 1) - 1;
+
         return (
           <View
             key={node.key}
@@ -2293,21 +2321,33 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               styles.th,
               {
                 flex: 1,
-                borderWidth: 1,
-                borderColor: colors.ring,
-                padding: 8,
-                backgroundColor: colors.muted,
+                paddingLeft: isFirstColumn ? 16 : 12,
+                paddingRight: isLastColumn ? 16 : 12,
                 minWidth: 0, // Allow flex shrinking
+                backgroundColor: colors.foreground + '10', // Dull version for header cells
+                borderLeftWidth: 0, // Table draws left edge
+                borderRightWidth: 1,
+                borderRightColor: colors.ring,
               }
             ]}
           >
-            <RNText style={{ fontWeight: 'bold', color: colors.foreground, fontSize: 14 }} selectable={true}>
+            <RNText style={{
+              fontWeight: '600',
+              color: colors.foreground,
+              fontSize: 14,
+              letterSpacing: 0.3,
+            }} selectable={true}>
               {children}
             </RNText>
           </View>
         );
       },
       td: (node: any, children: any, parent: any, styles: any) => {
+        // Find index to determine if first or last column
+        const columnIndex = parent?.children?.findIndex((child: any) => child.key === node.key) ?? -1;
+        const isFirstColumn = columnIndex === 0;
+        const isLastColumn = columnIndex === (parent?.children?.length ?? 1) - 1;
+
         return (
           <View
             key={node.key}
@@ -2315,14 +2355,21 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               styles.td,
               {
                 flex: 1,
-                borderWidth: 1,
-                borderColor: colors.ring,
-                padding: 8,
+                paddingLeft: isFirstColumn ? 16 : 12,
+                paddingRight: isLastColumn ? 16 : 12,
                 minWidth: 0, // Allow flex shrinking
+                backgroundColor: colors.muted, // Same as original table body color
+                borderLeftWidth: 0, // Table draws left edge
+                borderRightWidth: 1,
+                borderRightColor: colors.ring,
               }
             ]}
           >
-            <RNText style={{ color: colors.foreground, fontSize: 14 }} selectable={true}>
+            <RNText style={{
+              color: colors.foreground,
+              fontSize: 14,
+              lineHeight: 20,
+            }} selectable={true}>
               {children}
             </RNText>
           </View>
