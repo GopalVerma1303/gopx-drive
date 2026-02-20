@@ -13,7 +13,7 @@ import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { Stack, useRouter } from "expo-router";
-import { ArrowLeft, ImageIcon, LayoutGrid, Rows2, Search } from "lucide-react-native";
+import { ArrowLeft, ImageIcon, LayoutGrid, Rows2, Search, X } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -263,6 +263,18 @@ export default function AttachmentsScreen() {
             onChangeText={setSearchQuery}
             placeholderTextColor="muted-foreground"
           />
+          {searchQuery ? (
+            <Pressable
+              onPress={() => {
+                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setSearchQuery("");
+              }}
+              className="p-1.5 rounded-full"
+              hitSlop={8}
+            >
+              <X color={THEME.light.mutedForeground} size={18} />
+            </Pressable>
+          ) : null}
         </View>
       </View>
 

@@ -19,7 +19,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Check, CheckCheck, LayoutGrid, Plus, Rows2, Search } from "lucide-react-native";
+import { Check, CheckCheck, LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -309,6 +309,18 @@ export default function NotesScreen() {
               onChangeText={setSearchQuery}
               placeholderTextColor="muted-foreground"
             />
+            {searchQuery ? (
+              <Pressable
+                onPress={() => {
+                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSearchQuery("");
+                }}
+                className="p-1.5 rounded-full"
+                hitSlop={8}
+              >
+                <X color={THEME.light.mutedForeground} size={18} />
+              </Pressable>
+            ) : null}
           </View>
         </View>
 

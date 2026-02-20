@@ -404,6 +404,18 @@ export default function CalendarScreen() {
               onChangeText={setSearchQuery}
               placeholderTextColor="muted-foreground"
             />
+            {searchQuery ? (
+              <Pressable
+                onPress={() => {
+                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSearchQuery("");
+                }}
+                className="p-1.5 rounded-full"
+                hitSlop={8}
+              >
+                <X color={THEME.light.mutedForeground} size={18} />
+              </Pressable>
+            ) : null}
           </View>
         </View>
 

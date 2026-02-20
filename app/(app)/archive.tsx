@@ -26,7 +26,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Archive, ArrowLeft, Check, CheckCheck, FileText, Files, Search, Trash2, Undo2 } from "lucide-react-native";
+import { Archive, ArrowLeft, Check, CheckCheck, FileText, Files, Search, Trash2, Undo2, X } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -481,6 +481,18 @@ export default function ArchiveScreen() {
                   onChangeText={setSearchQuery}
                   placeholderTextColor="muted-foreground"
                 />
+                {searchQuery ? (
+                  <Pressable
+                    onPress={() => {
+                      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setSearchQuery("");
+                    }}
+                    className="p-1.5 rounded-full"
+                    hitSlop={8}
+                  >
+                    <X color={THEME.light.mutedForeground} size={18} />
+                  </Pressable>
+                ) : null}
               </View>
 
               {/* Toggle Button */}
