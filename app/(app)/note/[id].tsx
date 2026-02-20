@@ -91,10 +91,17 @@ export default function NoteEditorScreen() {
   useEffect(() => {
     if (isNewNote || !id || !note || !user?.id) return;
 
-    type NoteArray = Array<{ id: string; updated_at: string }>;
-    const notesListData = queryClient.getQueryData<NoteArray>(["notes", user.id]);
-    if (notesListData) {
-      const listNote = notesListData.find((n) => n.id === id);
+    // Use getQueryState to check if query exists and is not currently fetching
+    // This prevents triggering unnecessary refetches when accessing query data
+    const notesListQueryState = queryClient.getQueryState<Array<{ id: string; updated_at: string }>>([
+      "notes",
+      user.id,
+    ]);
+    
+    // Only proceed if query exists, has data, and is not currently fetching
+    // This prevents duplicate API calls
+    if (notesListQueryState?.data && !notesListQueryState.isFetching) {
+      const listNote = notesListQueryState.data.find((n) => n.id === id);
       if (listNote && listNote.updated_at !== note.updated_at) {
         // List shows a different updated_at, refetch the note to get latest content
         refetch().catch(() => {
