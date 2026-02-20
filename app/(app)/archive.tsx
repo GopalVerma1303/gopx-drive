@@ -112,7 +112,7 @@ export default function ArchiveScreen() {
     queryKey: ["archivedNotes", user?.id],
     queryFn: () => listArchivedNotes(user?.id),
     enabled: !!user?.id,
-    refetchOnMount: true, // Refetch when opening archive so mobile sees items deleted on web
+    refetchOnMount: false, // Use cache; pull-to-refresh for latest (reduces Supabase hits)
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
@@ -139,7 +139,7 @@ export default function ArchiveScreen() {
     queryKey: ["archivedFiles", user?.id],
     queryFn: () => listArchivedFiles(user?.id),
     enabled: !!user?.id,
-    refetchOnMount: true, // Refetch when opening archive so mobile sees items deleted on web
+    refetchOnMount: false, // Use cache; pull-to-refresh for latest (reduces Supabase hits)
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
@@ -174,7 +174,8 @@ export default function ArchiveScreen() {
   });
 
   const deleteFileMutation = useMutation({
-    mutationFn: (id: string) => deleteFile(id),
+    mutationFn: ({ id, filePath }: { id: string; filePath?: string }) =>
+      deleteFile(id, filePath ? { filePath } : undefined),
     onSuccess: () => {
       invalidateFilesQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -222,7 +223,10 @@ export default function ArchiveScreen() {
         setSelectedNotes(new Set());
       } else {
         for (const file of filteredFiles) {
-          await deleteFileMutation.mutateAsync(file.id);
+          await deleteFileMutation.mutateAsync({
+            id: file.id,
+            filePath: file.file_path,
+          });
         }
         setSelectedFiles(new Set());
       }
@@ -234,7 +238,11 @@ export default function ArchiveScreen() {
         setSelectedNotes(new Set());
       } else {
         for (const id of selectedFiles) {
-          await deleteFileMutation.mutateAsync(id);
+          const file = filteredFiles.find((f) => f.id === id);
+          await deleteFileMutation.mutateAsync({
+            id,
+            filePath: file?.file_path,
+          });
         }
         setSelectedFiles(new Set());
       }
@@ -242,7 +250,11 @@ export default function ArchiveScreen() {
       if (activeTab === "notes") {
         await deleteNoteMutation.mutateAsync(deleteAction.id);
       } else {
-        await deleteFileMutation.mutateAsync(deleteAction.id);
+        const file = filteredFiles.find((f) => f.id === deleteAction.id);
+        await deleteFileMutation.mutateAsync({
+          id: deleteAction.id,
+          filePath: file?.file_path,
+        });
       }
     }
 

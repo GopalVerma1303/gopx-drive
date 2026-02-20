@@ -75,11 +75,14 @@ export const restoreFile = async (id: string): Promise<void> => {
   return supabaseFiles.restoreFile(id);
 };
 
-export const deleteFile = async (id: string): Promise<void> => {
+export const deleteFile = async (
+  id: string,
+  options?: { filePath?: string }
+): Promise<void> => {
   if (UI_DEV) {
     return mockFiles.deleteFile(id);
   }
-  return supabaseFiles.deleteFile(id);
+  return supabaseFiles.deleteFile(id, options);
 };
 
 export const getFileDownloadUrl = async (filePath: string): Promise<string> => {

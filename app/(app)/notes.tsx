@@ -9,9 +9,8 @@ import {
   getNotesSyncStatus,
   getUnsyncedNoteIds,
   listNotes,
-  syncNotesFromSupabase,
 } from "@/lib/notes";
-import { invalidateNotesQueries } from "@/lib/query-utils";
+import { invalidateNotesListQueries } from "@/lib/query-utils";
 import type { Note } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -56,16 +55,11 @@ export default function NotesScreen() {
     return Dimensions.get("window").width;
   });
 
-  // Sync notes from Supabase in background (non-blocking) when screen mounts
-  useEffect(() => {
-    if (!user?.id) return;
-    // Sync in background without blocking UI
-    syncNotesFromSupabase(user.id)?.then(() => {
-      invalidateNotesQueries(queryClient, user.id);
-    }).catch(() => {
-      // Sync failed, but UI already shows cached data
-    });
-  }, [user?.id, queryClient]);
+  // Do not sync/invalidate on every mount (e.g. when switching back to Notes tab).
+  // That caused unwanted Supabase refetches every time. Rely on:
+  // - App foreground sync in (app)/_layout.tsx
+  // - Pull-to-refresh on this screen
+  // - staleTime so cached data is used when returning to the tab
 
   // Load saved view mode preference on mount
   useEffect(() => {
@@ -172,8 +166,10 @@ export default function NotesScreen() {
 
   const archiveMutation = useMutation({
     mutationFn: (id: string) => archiveNote(id),
-    onSuccess: () => {
-      invalidateNotesQueries(queryClient, user?.id);
+    onSuccess: (_data, archivedNoteId) => {
+      invalidateNotesListQueries(queryClient, user?.id);
+      // Invalidate only the archived note's detail so it refetches (e.g. is_archived)
+      queryClient.invalidateQueries({ queryKey: ["note", archivedNoteId] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setArchiveDialogOpen(false);
       setNoteToArchive(null);

@@ -279,17 +279,23 @@ export const restoreFile = async (id: string): Promise<void> => {
   }
 };
 
-export const deleteFile = async (id: string): Promise<void> => {
-  // First get the file to get the storage path
-  const file = await getFileById(id);
-  if (!file) {
-    throw new Error("File not found");
+export const deleteFile = async (
+  id: string,
+  options?: { filePath?: string }
+): Promise<void> => {
+  let filePath = options?.filePath;
+  if (!filePath) {
+    const file = await getFileById(id);
+    if (!file) {
+      throw new Error("File not found");
+    }
+    filePath = file.file_path;
   }
 
   // Delete from storage
   const { error: storageError } = await supabase.storage
     .from("files")
-    .remove([file.file_path]);
+    .remove([filePath]);
 
   if (storageError) {
     console.error("Failed to delete file from storage:", storageError);

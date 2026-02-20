@@ -30,18 +30,24 @@ export const QueryKeys = {
 } as const;
 
 /**
- * Invalidate all notes-related queries after a mutation
- * Also invalidates all individual note queries to ensure consistency
+ * Invalidate only notes list and sync status (not individual note detail queries).
+ * Use after saving a single note when cache was already updated via setQueryData.
  */
-export function invalidateNotesQueries(queryClient: QueryClient, userId?: string): void {
+export function invalidateNotesListQueries(queryClient: QueryClient, userId?: string): void {
   batchInvalidateQueries(queryClient, [
     QueryKeys.notes(userId),
     QueryKeys.archivedNotes(userId),
     QueryKeys.notesSyncStatus(userId),
     QueryKeys.notesUnsyncedIds(userId),
   ]);
-  // Also invalidate all individual note queries to ensure they show latest content
-  // This fixes the issue where note list updates but individual notes show stale data
+}
+
+/**
+ * Invalidate all notes-related queries after a mutation (list + sync + every note detail).
+ * Use after archive/restore/delete or when the list changed from elsewhere.
+ */
+export function invalidateNotesQueries(queryClient: QueryClient, userId?: string): void {
+  invalidateNotesListQueries(queryClient, userId);
   queryClient.invalidateQueries({ queryKey: ["note"] });
 }
 

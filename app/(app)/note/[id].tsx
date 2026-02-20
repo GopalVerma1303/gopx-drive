@@ -8,7 +8,7 @@ import { MarkdownToolbar } from "@/components/markdown-toolbar";
 import { useAuth } from "@/contexts/auth-context";
 import { generateAIContent } from "@/lib/ai-providers";
 import { createNote, getNoteById, updateNote } from "@/lib/notes";
-import { invalidateNotesQueries } from "@/lib/query-utils";
+import { invalidateNotesListQueries } from "@/lib/query-utils";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
@@ -231,7 +231,8 @@ export default function NoteEditorScreen() {
         }
       });
 
-      invalidateNotesQueries(queryClient, user?.id);
+      // Only invalidate list/sync so they refetch; note detail cache already updated above
+      invalidateNotesListQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     onError: (error: any) => {

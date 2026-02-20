@@ -1,9 +1,7 @@
 import { Navigation } from "@/components/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { NavigationProvider, useNavigation } from "@/contexts/navigation-context";
-import { syncNotesFromSupabase } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";
-import { invalidateNotesQueries, invalidateFilesQueries } from "@/lib/query-utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Redirect, Stack, usePathname } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -109,19 +107,15 @@ export default function AppLayout() {
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
-    // Only refetch stale queries when app comes to foreground (non-blocking)
+    // When app comes to foreground (e.g. user switches browser tab back), do not
+    // sync or invalidate notes — that was causing a Supabase notes request every time.
+    // Rely on staleTime and pull-to-refresh for notes. Optionally refetch files/events
+    // only if stale (reduces unnecessary API hits).
     const subscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
       if (
         appState.current.match(/inactive|background/) &&
         nextAppState === "active"
       ) {
-        // Sync in background without blocking UI
-        syncNotesFromSupabase(user?.id)?.then(() => {
-          invalidateNotesQueries(queryClient, user?.id);
-        }).catch(() => {
-          // Sync failed, but UI already shows cached data
-        });
-        // Refetch queries in background (non-blocking) - batch refetch for efficiency
         Promise.all([
           queryClient.refetchQueries({
             queryKey: ["files"],
@@ -143,7 +137,7 @@ export default function AppLayout() {
     return () => {
       subscription.remove();
     };
-  }, [queryClient, user?.id]);
+  }, [queryClient]);
 
   if (isLoading) {
     return (

@@ -33,8 +33,16 @@ export const listStorageBuckets = async (): Promise<string[]> => {
   }
 };
 
+// Cache bucket verification to avoid repeated Supabase hits on every image upload (TTL 5 min)
+let bucketVerifyCache: {
+  result: { exists: boolean; error?: string; availableBuckets?: string[]; actualBucketName?: string };
+  expiresAt: number;
+} | null = null;
+const BUCKET_VERIFY_TTL_MS = 5 * 60 * 1000;
+
 /**
- * Verify that the attachments bucket exists and is accessible
+ * Verify that the attachments bucket exists and is accessible.
+ * Result is cached for 5 minutes to reduce API hits when uploading multiple images.
  */
 export const verifyAttachmentsBucket = async (): Promise<{
   exists: boolean;
@@ -42,6 +50,11 @@ export const verifyAttachmentsBucket = async (): Promise<{
   availableBuckets?: string[];
   actualBucketName?: string;
 }> => {
+  const now = Date.now();
+  if (bucketVerifyCache && bucketVerifyCache.expiresAt > now) {
+    return bucketVerifyCache.result;
+  }
+
   const bucketName = getBucketName();
 
   try {
@@ -71,6 +84,13 @@ export const verifyAttachmentsBucket = async (): Promise<{
       limit: 1,
     });
 
+    let result: {
+      exists: boolean;
+      error?: string;
+      availableBuckets?: string[];
+      actualBucketName?: string;
+    };
+
     if (error) {
       const statusCode = (error as any).statusCode;
       if (
@@ -82,7 +102,7 @@ export const verifyAttachmentsBucket = async (): Promise<{
           availableBuckets.length > 0
             ? ` Available buckets: ${availableBuckets.join(", ")}.`
             : " Please check your Supabase Storage dashboard to see available buckets.";
-        return {
+        result = {
           exists: false,
           error: `Bucket '${bucketName}' does not exist (404).${bucketList} Please create the '${bucketName}' bucket in Supabase Storage or set EXPO_PUBLIC_ATTACHMENTS_BUCKET_NAME in your .env file.`,
           availableBuckets:
@@ -90,21 +110,25 @@ export const verifyAttachmentsBucket = async (): Promise<{
           actualBucketName:
             availableBuckets.length > 0 ? availableBuckets[0] : undefined,
         };
+      } else {
+        result = {
+          exists: false,
+          error: error.message,
+          availableBuckets:
+            availableBuckets.length > 0 ? availableBuckets : undefined,
+        };
       }
-      return {
-        exists: false,
-        error: error.message,
+    } else {
+      result = {
+        exists: true,
         availableBuckets:
           availableBuckets.length > 0 ? availableBuckets : undefined,
+        actualBucketName: bucketName,
       };
     }
 
-    return {
-      exists: true,
-      availableBuckets:
-        availableBuckets.length > 0 ? availableBuckets : undefined,
-      actualBucketName: bucketName,
-    };
+    bucketVerifyCache = { result, expiresAt: now + BUCKET_VERIFY_TTL_MS };
+    return result;
   } catch (error: any) {
     return { exists: false, error: error.message || "Failed to verify bucket" };
   }

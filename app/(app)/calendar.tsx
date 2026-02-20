@@ -89,20 +89,16 @@ export default function CalendarScreen() {
     }, 300) // 300ms debounce delay
   ).current;
 
-  // Refetch events when month changes (non-blocking, debounced)
+  // Refetch events when month changes (non-blocking, debounced). Skip refetch on mount if we have cache.
   useEffect(() => {
     if (!user?.id) return;
 
     const currentMonthKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth()}`;
     const previousMonthKey = previousMonthRef.current;
 
-    // Skip refetch on initial mount - use cached data
+    // Skip refetch on initial mount - use cached data (avoids duplicate Supabase hit when opening calendar)
     if (previousMonthKey === null) {
       previousMonthRef.current = currentMonthKey;
-      // Try to refetch in background without blocking
-      refetch().catch(() => {
-        // Refetch failed, but UI already shows cached data
-      });
       return;
     }
 
@@ -111,7 +107,7 @@ export default function CalendarScreen() {
       previousMonthRef.current = currentMonthKey;
       debouncedRefetch();
     }
-  }, [currentMonth, user?.id, refetch, debouncedRefetch]);
+  }, [currentMonth, user?.id, debouncedRefetch]);
 
   const createMutation = useMutation({
     mutationFn: (input: {
