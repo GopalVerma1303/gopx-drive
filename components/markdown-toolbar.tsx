@@ -1,9 +1,9 @@
-import { useThemeColors } from "@/lib/use-theme-colors";
 import {
+  DEFAULT_PREFERENCES,
   getToolbarPreferences,
   type ToolbarItemId,
-  DEFAULT_PREFERENCES,
 } from "@/lib/toolbar-preferences";
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
 import * as Haptics from "expo-haptics";
 import {
@@ -29,7 +29,7 @@ import {
   Table
 } from "lucide-react-native";
 import * as React from "react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppState, AppStateStatus, Platform, Pressable, ScrollView, Text, View } from "react-native";
 
 // Helper function to toggle checkbox in markdown text
@@ -205,7 +205,7 @@ export function MarkdownToolbar({
 
   const handleHeading = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onInsertText("# ", 2);
+    onInsertText("#", 2);
   };
 
   const handleInlineCode = () => {
