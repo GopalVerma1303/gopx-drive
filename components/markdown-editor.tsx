@@ -5,8 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
-import { Check, Copy } from "lucide-react-native";
 import * as Clipboard from "expo-clipboard";
+import { Check, Copy } from "lucide-react-native";
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Image, Linking, Platform, Pressable, Text as RNText, ScrollView, TextInput, useWindowDimensions, View } from "react-native";
 import Markdown, { renderRules } from "react-native-markdown-display";
@@ -1812,6 +1812,16 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       );
     };
 
+    // Only use meta for aspect ratio when both width and height are valid positive numbers
+    // (on web, nativeEvent.source may not provide them; we also read from onLoad fallbacks).
+    const getAspectRatioFromMeta = (m: { width: number; height: number } | undefined): number | null => {
+      if (!m) return null;
+      const w = Number(m.width);
+      const h = Number(m.height);
+      if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
+      return w / h;
+    };
+
     const renderImage = (node: any) => {
       const src =
         node?.attributes?.src ||
@@ -1821,22 +1831,23 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         "";
       const alt = node?.attributes?.alt || node?.alt || "";
 
-      // In preview we use paddingHorizontal: 32, so subtract that to get the available width.
-      const availableWidth = Math.max(0, windowWidth - 64);
-      const maxWidth = Math.min(availableWidth, 720);
-
       const meta = src ? imageMeta[src] : undefined;
-      const aspectRatio =
-        meta && meta.width > 0 && meta.height > 0 ? meta.width / meta.height : 16 / 9;
+      const aspectRatio = getAspectRatioFromMeta(meta) ?? 16 / 9;
+
+      // Use 100% width so the image fits its container (avoids cropping on web when
+      // the content column is narrower than useWindowDimensions()). Cap at 720px and
+      // at window width minus padding so it never overflows; alignSelf center for wide viewports.
+      const cappedMaxWidth = Math.min(720, Math.max(0, windowWidth - 64));
 
       // Ensure the image always reserves layout space so following content cannot overlap it.
       return (
-        <View key={node.key} style={{ marginTop: 8, marginBottom: 8 }}>
+        <View key={node.key} style={{ marginTop: 8, marginBottom: 8, width: "100%" }}>
           <Image
             source={{ uri: src }}
             resizeMode="contain"
             style={{
-              width: maxWidth,
+              width: "100%" as any,
+              maxWidth: cappedMaxWidth,
               aspectRatio,
               borderRadius: 8,
               backgroundColor: colors.muted,
@@ -1845,14 +1856,37 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               alignSelf: "center",
             }}
             onLoad={(e) => {
-              const w = e?.nativeEvent?.source?.width;
-              const h = e?.nativeEvent?.source?.height;
-              if (!src || !w || !h) return;
-              setImageMeta((prev) => {
-                const existing = prev[src];
-                if (existing && existing.width === w && existing.height === h) return prev;
-                return { ...prev, [src]: { width: w, height: h } };
-              });
+              if (!src) return;
+              const applyMeta = (w: number, h: number) => {
+                if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return;
+                setImageMeta((prev) => {
+                  const existing = prev[src];
+                  if (existing && existing.width === w && existing.height === h) return prev;
+                  return { ...prev, [src]: { width: w, height: h } };
+                });
+              };
+              // nativeEvent.source works on native; on web try target (DOM img) naturalWidth/naturalHeight
+              const source = e?.nativeEvent?.source;
+              const ev = e?.nativeEvent as { target?: { naturalWidth?: number; naturalHeight?: number } };
+              const target = ev?.target;
+              let w: number | undefined = source?.width != null ? Number(source.width) : undefined;
+              let h: number | undefined = source?.height != null ? Number(source.height) : undefined;
+              if ((w == null || h == null) && target != null && typeof target === "object") {
+                const tw = (target as any).naturalWidth;
+                const th = (target as any).naturalHeight;
+                if (w == null && tw != null) w = Number(tw);
+                if (h == null && th != null) h = Number(th);
+              }
+              if (w != null && h != null) {
+                applyMeta(w, h);
+                return;
+              }
+              // Fallback: Image.getSize (e.g. when onLoad doesn't provide dimensions on web)
+              Image.getSize(
+                src,
+                (width, height) => applyMeta(width, height),
+                () => { }
+              );
             }}
           />
           {alt ? (
