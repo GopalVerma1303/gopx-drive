@@ -3,10 +3,12 @@ import { forwardRef } from "react";
 import { Platform, TextInput, type TextInputProps } from "react-native";
 
 const Input = forwardRef<TextInput, TextInputProps>(
-  function Input({ className, ...props }, ref) {
+  function Input({ className, multiline, ...props }, ref) {
     return (
       <TextInput
         ref={ref}
+        multiline={multiline}
+        textAlignVertical={multiline ? "top" : undefined}
         className={cn(
           " border-input bg-background text-foreground flex h-10 w-full min-w-0 flex-row items-center rounded-md border px-3 py-1 text-base leading-5 shadow-sm shadow-black/5",
           props.editable === false &&

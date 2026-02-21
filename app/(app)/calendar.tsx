@@ -16,11 +16,11 @@ import {
   listEvents,
   updateEvent,
 } from "@/lib/events";
+import { debounce, invalidateEventsQueries } from "@/lib/query-utils";
 import type { Event } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { invalidateEventsQueries, debounce } from "@/lib/query-utils";
 import * as Haptics from "expo-haptics";
 import { Stack } from "expo-router";
 import { ChevronDown, ChevronUp, Plus, Search, X } from "lucide-react-native";
@@ -434,74 +434,74 @@ export default function CalendarScreen() {
           {/* Calendar always visible */}
           <View className="w-full max-w-2xl mx-auto mb-6">
             <CustomCalendar
-                events={expandedEvents}
-                selectedDate={selectedDate}
-                onDateSelect={setSelectedDate}
-                currentMonth={currentMonth}
-                onMonthChange={setCurrentMonth}
-              />
-            </View>
+              events={expandedEvents}
+              selectedDate={selectedDate}
+              onDateSelect={setSelectedDate}
+              currentMonth={currentMonth}
+              onMonthChange={setCurrentMonth}
+            />
+          </View>
 
-            {/* Selected Date Indicator */}
-            {selectedDate && (
-              <View className="w-full max-w-2xl mx-auto mb-4">
-                <Pressable
-                  onPress={() => setSelectedDate(null)}
-                  className="flex-row items-center justify-between p-3 rounded-lg border border-border bg-muted"
+          {/* Selected Date Indicator */}
+          {selectedDate && (
+            <View className="w-full max-w-2xl mx-auto mb-4">
+              <Pressable
+                onPress={() => setSelectedDate(null)}
+                className="flex-row items-center justify-between p-3 rounded-lg border border-border bg-muted"
+              >
+                <Text
+                  style={{
+                    color: colors.foreground,
+                    fontSize: 14,
+                    fontWeight: "500",
+                  }}
                 >
-                  <Text
-                    style={{
-                      color: colors.foreground,
-                      fontSize: 14,
-                      fontWeight: "500",
-                    }}
-                  >
-                    Showing events for: {formatDateDisplay(selectedDate)}
-                  </Text>
-                  <X color={colors.mutedForeground} size={18} />
-                </Pressable>
-              </View>
-            )}
+                  Showing events for: {formatDateDisplay(selectedDate)}
+                </Text>
+                <X color={colors.mutedForeground} size={18} />
+              </Pressable>
+            </View>
+          )}
 
-            {/* Events List */}
-            {isLoading ? (
-              <View className="w-full max-w-2xl mx-auto flex-1 justify-center items-center pt-12">
-                <ActivityIndicator size="small" color={colors.foreground} />
-                <Text className="text-sm text-muted-foreground mt-2">
-                  Loading events...
-                </Text>
-              </View>
-            ) : filteredEvents.length === 0 ? (
-              <View className="w-full max-w-2xl mx-auto flex-1 justify-center items-center pt-24">
-                <Text className="text-xl font-semibold text-muted-foreground mb-2">
-                  {searchQuery || selectedDate
-                    ? "No events found"
-                    : "No upcoming events"}
-                </Text>
-                <Text className="text-sm text-muted-foreground text-center">
-                  {searchQuery || selectedDate
-                    ? "Try a different search or date"
-                    : "Tap the + button to create your first event"}
-                </Text>
-              </View>
-            ) : (
-              <View className="w-full max-w-2xl mx-auto">
-                {filteredEvents.map((event, index) => (
-                  <EventCard
-                    key={`${event.id}-${event.instanceDate || event.event_date.split("T")[0]}-${index}`}
-                    event={event}
-                    onSelectDate={setSelectedDate}
-                    onEdit={() => {
-                      // Find the original event (not the instance) for editing
-                      const originalEvent = events.find(e => e.id === event.id);
-                      if (originalEvent) {
-                        handleOpenEditModal(originalEvent);
-                      }
-                    }}
-                  />
-                ))}
-              </View>
-            )}
+          {/* Events List */}
+          {isLoading ? (
+            <View className="w-full max-w-2xl mx-auto flex-1 justify-center items-center pt-12">
+              <ActivityIndicator size="small" color={colors.foreground} />
+              <Text className="text-sm text-muted-foreground mt-2">
+                Loading events...
+              </Text>
+            </View>
+          ) : filteredEvents.length === 0 ? (
+            <View className="w-full max-w-2xl mx-auto flex-1 justify-center items-center pt-24">
+              <Text className="text-xl font-semibold text-muted-foreground mb-2">
+                {searchQuery || selectedDate
+                  ? "No events found"
+                  : "No upcoming events"}
+              </Text>
+              <Text className="text-sm text-muted-foreground text-center">
+                {searchQuery || selectedDate
+                  ? "Try a different search or date"
+                  : "Tap the + button to create your first event"}
+              </Text>
+            </View>
+          ) : (
+            <View className="w-full max-w-2xl mx-auto">
+              {filteredEvents.map((event, index) => (
+                <EventCard
+                  key={`${event.id}-${event.instanceDate || event.event_date.split("T")[0]}-${index}`}
+                  event={event}
+                  onSelectDate={setSelectedDate}
+                  onEdit={() => {
+                    // Find the original event (not the instance) for editing
+                    const originalEvent = events.find(e => e.id === event.id);
+                    if (originalEvent) {
+                      handleOpenEditModal(originalEvent);
+                    }
+                  }}
+                />
+              ))}
+            </View>
+          )}
         </ScrollView>
       </View>
 
@@ -635,34 +635,34 @@ export default function CalendarScreen() {
                 setEventToDelete(null);
               }}
             />
-              <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
-                <Text className="mb-2 text-lg font-semibold text-foreground">
-                  Delete Event
-                </Text>
-                <Text className="mb-6 text-sm text-muted-foreground">
-                  Are you sure you want to delete "{eventToDelete?.title}"? This
-                  action cannot be undone.
-                </Text>
-                <View className="flex-row justify-end gap-3">
-                  <Pressable
-                    className="px-4 py-2"
-                    onPress={() => {
-                      setDeleteDialogOpen(false);
-                      setEventToDelete(null);
-                    }}
-                  >
-                    <Text className="text-foreground">Cancel</Text>
-                  </Pressable>
-                  <Pressable
-                    className="rounded-md px-4 py-2"
-                    onPress={handleDeleteConfirm}
-                  >
-                    <Text className="font-semibold text-red-500">
-                      Delete
-                    </Text>
-                  </Pressable>
-                </View>
+            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                Delete Event
+              </Text>
+              <Text className="mb-6 text-sm text-muted-foreground">
+                Are you sure you want to delete "{eventToDelete?.title}"? This
+                action cannot be undone.
+              </Text>
+              <View className="flex-row justify-end gap-3">
+                <Pressable
+                  className="px-4 py-2"
+                  onPress={() => {
+                    setDeleteDialogOpen(false);
+                    setEventToDelete(null);
+                  }}
+                >
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleDeleteConfirm}
+                >
+                  <Text className="font-semibold text-red-500">
+                    Delete
+                  </Text>
+                </Pressable>
               </View>
+            </View>
           </View>
         </Modal>
       )}
@@ -1789,7 +1789,7 @@ function EventModal({
                 placeholder="Event description"
                 multiline
                 numberOfLines={4}
-                className="min-h-[80px] border-border bg-background text-foreground"
+                className="min-h-[80px] border-border bg-background py-3 text-foreground"
               />
             </View>
 
@@ -1936,7 +1936,7 @@ function EventModal({
                         placeholder="Event description"
                         multiline
                         numberOfLines={4}
-                        className="min-h-[80px] border-border bg-background text-foreground"
+                        className="min-h-[80px] border-border bg-background py-3 text-foreground"
                       />
                     </View>
 
@@ -2084,30 +2084,30 @@ function EventModal({
               onPress={() => setDeleteDialogOpen(false)}
             />
             <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
-                <Text className="mb-2 text-lg font-semibold text-foreground">
-                  Delete Event
-                </Text>
-                <Text className="mb-6 text-sm text-muted-foreground">
-                  Are you sure you want to delete "{event?.title}"? This action
-                  cannot be undone.
-                </Text>
-                <View className="flex-row justify-end gap-3">
-                  <Pressable
-                    className="px-4 py-2"
-                    onPress={() => setDeleteDialogOpen(false)}
-                  >
-                    <Text className="text-foreground">Cancel</Text>
-                  </Pressable>
-                  <Pressable
-                    className="rounded-md px-4 py-2"
-                    onPress={handleDeleteConfirm}
-                  >
-                    <Text className="font-semibold text-red-500">
-                      Delete
-                    </Text>
-                  </Pressable>
-                </View>
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                Delete Event
+              </Text>
+              <Text className="mb-6 text-sm text-muted-foreground">
+                Are you sure you want to delete "{event?.title}"? This action
+                cannot be undone.
+              </Text>
+              <View className="flex-row justify-end gap-3">
+                <Pressable
+                  className="px-4 py-2"
+                  onPress={() => setDeleteDialogOpen(false)}
+                >
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleDeleteConfirm}
+                >
+                  <Text className="font-semibold text-red-500">
+                    Delete
+                  </Text>
+                </Pressable>
               </View>
+            </View>
           </View>
         </Modal>
       )}

@@ -136,6 +136,7 @@ export function AIPromptModal({
                 placeholderTextColor={colors.mutedForeground}
                 multiline
                 numberOfLines={4}
+                textAlignVertical="top"
                 className="min-h-[100px] rounded-md border border-border bg-background p-3 text-sm text-foreground mb-4"
                 autoFocus
               />
@@ -265,6 +266,7 @@ export function AIPromptModal({
                       placeholderTextColor={colors.mutedForeground}
                       multiline
                       numberOfLines={4}
+                      textAlignVertical="top"
                       className="min-h-[100px] rounded-md border border-border bg-background p-3 text-sm text-foreground mb-4"
                       autoFocus
                     />
