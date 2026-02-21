@@ -68,7 +68,7 @@ export function NoteDetailHeader({
       style={{
         paddingTop: insets.top,
         backgroundColor: colors.background,
-        borderBottomWidth: 0,
+        borderBottomWidth: 1,
         borderBottomColor: colors.border,
       }}
     >
