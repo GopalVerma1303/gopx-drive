@@ -1,5 +1,5 @@
-import { supabase, type Note } from "@/lib/supabase";
 import { withSupabaseTimeout } from "@/lib/network-timeout";
+import { supabase, type Note } from "@/lib/supabase";
 
 export const listNotes = async (userId?: string): Promise<Note[]> => {
   if (!userId) {
@@ -248,6 +248,7 @@ export const getNoteByShareToken = async (
     id: row.id,
     title: row.title ?? "",
     content: row.content ?? "",
+    created_at: row.created_at ?? undefined,
     updated_at: row.updated_at ?? new Date().toISOString(),
     shared_by_email: row.shared_by_email ?? null,
   };

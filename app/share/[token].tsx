@@ -1,13 +1,21 @@
 "use client";
 
 import { MarkdownEditor } from "@/components/markdown-editor";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { getNoteByShareToken } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQuery } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, Copy } from "lucide-react-native";
+import { Check, Copy, Info } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -51,6 +59,24 @@ function formatLastUpdated(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+function formatDateTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function wordCount(text: string): number {
+  if (!text.trim()) return 0;
+  return text.trim().split(/\s+/).length;
 }
 
 export default function SharedNoteScreen() {
@@ -150,30 +176,20 @@ export default function SharedNoteScreen() {
               flexDirection: "row",
               alignItems: "center",
               flex: 1,
+              minWidth: 0,
             }}
           >
-            <Pressable
-              onPress={openGopxDrive}
-              style={({ pressed }) => [
-                { flexDirection: "row", alignItems: "center", gap: 8, padding: 8 },
-                pressed && { opacity: 0.7 },
-              ]}
+            <Text
+              style={{
+                fontSize: 18,
+                color: colors.foreground,
+                flex: 1,
+              }}
+              numberOfLines={1}
+              ellipsizeMode="tail"
             >
-              <Image
-                source={GopxDriveIcon}
-                style={{ width: 22, height: 22 }}
-                resizeMode="contain"
-                className="filter dark:invert rounded-[2px]"
-              />
-              <Text
-                style={{
-                  color: colors.foreground,
-                  fontSize: 18,
-                }}
-              >
-                Gopx Drive
-              </Text>
-            </Pressable>
+              {note.title || "Untitled"}
+            </Text>
           </View>
           <View
             style={{
@@ -197,6 +213,43 @@ export default function SharedNoteScreen() {
               )}
             </Pressable>
             <ThemeToggle size={22} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Pressable style={{ padding: 8 }} accessibilityLabel="Note information">
+                  <Info size={22} color={colors.foreground} strokeWidth={2.5} />
+                </Pressable>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="bottom" align="end" className="min-w-[240px]">
+                <DropdownMenuLabel>Note information</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled className="flex flex-col items-start gap-0.5">
+                  <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Title</Text>
+                  <Text style={{ color: colors.foreground, fontSize: 14 }} numberOfLines={1}>
+                    {note.title || "Untitled"}
+                  </Text>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled className="flex flex-col items-start gap-0.5">
+                  <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Last updated</Text>
+                  <Text style={{ color: colors.foreground, fontSize: 14 }}>
+                    {formatDateTime(note.updated_at)}
+                  </Text>
+                </DropdownMenuItem>
+                {note.shared_by_email ? (
+                  <DropdownMenuItem disabled className="flex flex-col items-start gap-0.5">
+                    <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Shared by</Text>
+                    <Text style={{ color: colors.foreground, fontSize: 14 }} numberOfLines={1}>
+                      {note.shared_by_email}
+                    </Text>
+                  </DropdownMenuItem>
+                ) : null}
+                <DropdownMenuItem disabled className="flex flex-col items-start gap-0.5">
+                  <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Content</Text>
+                  <Text style={{ color: colors.foreground, fontSize: 14 }}>
+                    {note.content?.length ?? 0} characters · {wordCount(note.content ?? "")} words
+                  </Text>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </View>
         </View>
       </View>
@@ -215,7 +268,7 @@ export default function SharedNoteScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{
             paddingHorizontal: contentPaddingHorizontal,
-            paddingTop: 28,
+            paddingTop: 10,
             paddingBottom: contentPaddingBottom,
             flexGrow: 1,
             ...(Platform.OS === "web" ? { minHeight: "100%" } : {}),
@@ -224,34 +277,6 @@ export default function SharedNoteScreen() {
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}
         >
-          {/* Title as main heading — clear visual hierarchy */}
-          <Text
-            style={{
-              color: colors.foreground,
-              fontSize: 22,
-              fontWeight: "700",
-              letterSpacing: -0.3,
-              marginBottom: 8,
-            }}
-            numberOfLines={2}
-            ellipsizeMode="tail"
-          >
-            {note.title || "Untitled"}
-          </Text>
-          {/* Single-line metadata — minimal, unobtrusive */}
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4, marginBottom: 24 }}>
-            <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
-              {formatLastUpdated(note.updated_at)}
-            </Text>
-            {note.shared_by_email ? (
-              <>
-                <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>·</Text>
-                <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
-                  {note.shared_by_email}
-                </Text>
-              </>
-            ) : null}
-          </View>
           {note.content ? (
             <MarkdownEditor
               value={note.content}
