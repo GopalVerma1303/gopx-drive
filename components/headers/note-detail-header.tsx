@@ -4,6 +4,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -13,7 +14,6 @@ import { ArrowLeft, Check, Edit, Eye, MoreVertical, RefreshCcw, Share2 } from "l
 import { useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Icon } from "@/components/ui/icon";
 
 interface NoteDetailHeaderProps {
   title: string;
@@ -149,12 +149,13 @@ export function NoteDetailHeader({
           </View>
         </View>
 
-        {/* Right: Action buttons */}
+        {/* Right: Action buttons — marginLeft matches gap between icons for symmetry */}
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
             gap: 8,
+            marginLeft: 18,
           }}
         >
           <Pressable

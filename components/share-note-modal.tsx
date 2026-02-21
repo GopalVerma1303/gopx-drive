@@ -7,7 +7,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { BlurView } from "expo-blur";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
-import { Check, Copy, Share2 } from "lucide-react-native";
+import { Check, Link, Share2 } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { Modal, Platform, Pressable, View } from "react-native";
 
@@ -153,34 +153,27 @@ export function ShareNoteModal({
                 <Text className="mb-2 text-sm text-muted-foreground">
                   Anyone with this link can view the note.
                 </Text>
-                <View className="mb-4 flex-row items-center gap-2">
-                  <View className="flex-1 rounded-md border border-border bg-background px-3 py-2.5">
-                    <Text
-                      numberOfLines={2}
-                      className="text-sm text-foreground"
-                    >
-                      {shareUrl}
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={handleCopy}
-                    className="rounded-md bg-primary p-2.5"
-                  >
-                    {copied ? (
-                      <Check
-                        color={colors.primaryForeground}
-                        size={20}
-                        strokeWidth={2}
-                      />
-                    ) : (
-                      <Copy
-                        color={colors.primaryForeground}
-                        size={20}
-                        strokeWidth={2}
-                      />
-                    )}
-                  </Pressable>
-                </View>
+                <Pressable
+                  onPress={handleCopy}
+                  className="mt-2 mb-4 flex-row items-center justify-center gap-2 self-start rounded-md bg-foreground/20 px-3 py-2.5 w-full"
+                >
+                  {copied ? (
+                    <Check
+                      color={colors.foreground}
+                      size={18}
+                      strokeWidth={2}
+                    />
+                  ) : (
+                    <Link
+                      color={colors.foreground}
+                      size={18}
+                      strokeWidth={2}
+                    />
+                  )}
+                  <Text className="text-sm font-medium text-foreground">
+                    {copied ? "Copied!" : "Copy link"}
+                  </Text>
+                </Pressable>
               </>
             )}
 
