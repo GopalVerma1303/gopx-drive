@@ -9,7 +9,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Archive, Eraser, Heart, ImageIcon, LogOut, Settings2, WandSparkles } from "lucide-react-native";
+import { Archive, Eraser, Heart, ImageIcon, LogOut, Settings2, Share2, WandSparkles } from "lucide-react-native";
 import { useState } from "react";
 import {
   Alert,
@@ -252,6 +252,48 @@ export default function SettingsScreen() {
                   }}
                 >
                   Toolbar Order
+                </Text>
+              </View>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Sharing Section */}
+        <View className="w-full max-w-2xl mx-auto">
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: "600",
+              color: colors.mutedForeground,
+              marginBottom: 12,
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
+            Sharing
+          </Text>
+          <View className="bg-muted border border-border rounded-2xl overflow-hidden">
+            <Pressable
+              className="flex flex-row items-center gap-12 p-4"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/(app)/shared-notes");
+              }}
+            >
+              <View className="flex flex-row items-center gap-2">
+                <Share2
+                  color={colors.foreground}
+                  size={20}
+                  strokeWidth={2}
+                />
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: colors.foreground,
+                    fontWeight: "500",
+                  }}
+                >
+                  Manage shared notes
                 </Text>
               </View>
             </Pressable>

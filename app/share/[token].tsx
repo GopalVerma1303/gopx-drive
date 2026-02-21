@@ -137,9 +137,59 @@ export default function SharedNoteScreen() {
           padding: 24,
         }}
       >
-        <Text style={{ color: colors.foreground, fontSize: 18, textAlign: "center" }}>
-          This link is invalid or the note is no longer shared.
-        </Text>
+        <View style={{ alignItems: "center", gap: 24, maxWidth: 320 }}>
+          <View style={{ alignItems: "center", gap: 12 }}>
+            <Image
+              source={GopxDriveIcon}
+              style={{ width: 48, height: 48 }}
+              resizeMode="contain"
+              className="filter dark:invert rounded-[4px]"
+            />
+            <Text
+              style={{
+                color: colors.foreground,
+                fontSize: 18,
+                fontWeight: "600",
+                textAlign: "center",
+              }}
+            >
+              Gopx Drive
+            </Text>
+          </View>
+          <Text
+            style={{
+              color: colors.mutedForeground,
+              fontSize: 16,
+              textAlign: "center",
+              lineHeight: 22,
+            }}
+          >
+            This link is invalid or the note is no longer shared.
+          </Text>
+          <Pressable
+            onPress={openGopxDrive}
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              paddingVertical: 10,
+              paddingHorizontal: 16,
+              borderRadius: 8,
+              backgroundColor: colors.muted,
+              opacity: pressed ? 0.8 : 1,
+            })}
+          >
+            <Image
+              source={GopxDriveIcon}
+              style={{ width: 18, height: 18 }}
+              resizeMode="contain"
+              className="filter dark:invert rounded-[2px]"
+            />
+            <Text style={{ color: colors.primary, fontSize: 15, fontWeight: "600" }}>
+              Open Gopx Drive
+            </Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
