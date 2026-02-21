@@ -49,7 +49,7 @@ function AppLayoutContent() {
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         {/* Navigation component handles its own absolute positioning on sm */}
         {!isDetailPage && <Navigation isOpen={isOpen} onClose={close} />}
-        <View style={{ 
+        <View style={{
           flex: 1,
           paddingBottom: isDetailPage ? 0 : 70, // Add padding for bottom bar on small screens only when navbar is visible
         }}>

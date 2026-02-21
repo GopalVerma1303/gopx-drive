@@ -475,11 +475,14 @@ export async function updateNote(
   if (!row) return null;
 
   try {
-    const updated = await supabaseNotes.updateNote(id, {
+    const payload: Parameters<typeof supabaseNotes.updateNote>[1] = {
       title,
       content,
-      share_token: share_token ?? undefined,
-    });
+    };
+    if (updates.share_token !== undefined) {
+      payload.share_token = updates.share_token;
+    }
+    const updated = await supabaseNotes.updateNote(id, payload);
     if (updated) {
       await db.runAsync(
         `UPDATE ${TABLE} SET updated_at = ?, dirty = 0 WHERE id = ?`,

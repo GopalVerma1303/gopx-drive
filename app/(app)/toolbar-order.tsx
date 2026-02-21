@@ -271,7 +271,7 @@ export default function ToolbarOrderScreen() {
                 if (Platform.OS !== "web") {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }
-                router.back();
+                router.replace("/(app)/settings");
               }}
               style={{ padding: 8, marginRight: 8 }}
             >

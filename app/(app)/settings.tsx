@@ -9,7 +9,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Archive, Eraser, Heart, ImageIcon, LogOut, Settings2, Share2, WandSparkles } from "lucide-react-native";
+import { Archive, Eraser, FileText, Heart, ImageIcon, LogOut, Settings2, WandSparkles } from "lucide-react-native";
 import { useState } from "react";
 import {
   Alert,
@@ -281,7 +281,7 @@ export default function SettingsScreen() {
               }}
             >
               <View className="flex flex-row items-center gap-2">
-                <Share2
+                <FileText
                   color={colors.foreground}
                   size={20}
                   strokeWidth={2}
@@ -293,7 +293,7 @@ export default function SettingsScreen() {
                     fontWeight: "500",
                   }}
                 >
-                  Manage shared notes
+                  Manage Shared Notes
                 </Text>
               </View>
             </Pressable>
@@ -381,7 +381,7 @@ export default function SettingsScreen() {
                     fontWeight: "500",
                   }}
                 >
-                  {clearingCache ? "Clearing…" : "Clear cache"}
+                  {clearingCache ? "Clearing…" : "Clear Cache"}
                 </Text>
               </View>
             </Pressable>
@@ -485,7 +485,7 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
-      {/* Clear cache confirmation dialog — same style as archive.tsx */}
+      {/* Clear Cache confirmation dialog — same style as archive.tsx */}
       {Platform.OS === "web" ? (
         clearCacheDialogOpen && (
           <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -495,7 +495,7 @@ export default function SettingsScreen() {
             />
             <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
               <Text className="mb-2 text-lg font-semibold text-foreground">
-                Clear cache
+                Clear Cache
               </Text>
               <Text className="mb-6 text-sm text-muted-foreground">
                 This will clear cached files, notes, and calendar data. You will stay signed in. Data will load again when you open each screen.
@@ -511,7 +511,7 @@ export default function SettingsScreen() {
                   className="rounded-md px-4 py-2"
                   onPress={handleClearCacheConfirm}
                 >
-                  <Text className="font-semibold text-red-500">Clear cache</Text>
+                  <Text className="font-semibold text-red-500">Clear Cache</Text>
                 </Pressable>
               </View>
             </View>
@@ -530,27 +530,27 @@ export default function SettingsScreen() {
               onPress={() => setClearCacheDialogOpen(false)}
             />
             <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
-                <Text className="mb-2 text-lg font-semibold text-foreground">
-                  Clear cache
-                </Text>
-                <Text className="mb-6 text-sm text-muted-foreground">
-                  This will clear cached files, notes, and calendar data. You will stay signed in. Data will load again when you open each screen.
-                </Text>
-                <View className="flex-row justify-end gap-3">
-                  <Pressable
-                    className="px-4 py-2"
-                    onPress={() => setClearCacheDialogOpen(false)}
-                  >
-                    <Text className="text-foreground">Cancel</Text>
-                  </Pressable>
-                  <Pressable
-                    className="rounded-md px-4 py-2"
-                    onPress={handleClearCacheConfirm}
-                  >
-                    <Text className="font-semibold text-red-500">Clear cache</Text>
-                  </Pressable>
-                </View>
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                Clear Cache
+              </Text>
+              <Text className="mb-6 text-sm text-muted-foreground">
+                This will clear cached files, notes, and calendar data. You will stay signed in. Data will load again when you open each screen.
+              </Text>
+              <View className="flex-row justify-end gap-3">
+                <Pressable
+                  className="px-4 py-2"
+                  onPress={() => setClearCacheDialogOpen(false)}
+                >
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleClearCacheConfirm}
+                >
+                  <Text className="font-semibold text-red-500">Clear Cache</Text>
+                </Pressable>
               </View>
+            </View>
           </View>
         </Modal>
       )}
@@ -600,27 +600,27 @@ export default function SettingsScreen() {
               onPress={() => setLogoutDialogOpen(false)}
             />
             <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
-                <Text className="mb-2 text-lg font-semibold text-foreground">
-                  Sign Out
-                </Text>
-                <Text className="mb-6 text-sm text-muted-foreground">
-                  Are you sure you want to sign out?
-                </Text>
-                <View className="flex-row justify-end gap-3">
-                  <Pressable
-                    className="px-4 py-2"
-                    onPress={() => setLogoutDialogOpen(false)}
-                  >
-                    <Text className="text-foreground">Cancel</Text>
-                  </Pressable>
-                  <Pressable
-                    className="rounded-md px-4 py-2"
-                    onPress={handleLogoutConfirm}
-                  >
-                    <Text className="font-semibold text-red-500">Sign Out</Text>
-                  </Pressable>
-                </View>
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                Sign Out
+              </Text>
+              <Text className="mb-6 text-sm text-muted-foreground">
+                Are you sure you want to sign out?
+              </Text>
+              <View className="flex-row justify-end gap-3">
+                <Pressable
+                  className="px-4 py-2"
+                  onPress={() => setLogoutDialogOpen(false)}
+                >
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleLogoutConfirm}
+                >
+                  <Text className="font-semibold text-red-500">Sign Out</Text>
+                </Pressable>
               </View>
+            </View>
           </View>
         </Modal>
       )}

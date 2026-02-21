@@ -29,7 +29,7 @@ function getShareBaseUrl(): string {
   if (Platform.OS === "web" && typeof window !== "undefined") {
     return window.location.origin;
   }
-  return process.env.EXPO_PUBLIC_APP_URL ?? "https://yourapp.com";
+  return process.env.EXPO_PUBLIC_APP_URL ?? "https://drive.gopx.dev";
 }
 
 export interface ShareNoteModalProps {
@@ -155,7 +155,15 @@ export function ShareNoteModal({
         )}
 
         <View className="flex-row justify-end">
-          <Pressable onPress={onClose} className="py-2 pl-4 pr-0">
+          <Pressable
+            onPress={() => {
+              if (Platform.OS !== "web") {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }
+              onClose();
+            }}
+            className="py-2 pl-4 pr-0"
+          >
             <Text className="font-medium text-foreground">Done</Text>
           </Pressable>
         </View>

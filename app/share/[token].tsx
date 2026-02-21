@@ -325,7 +325,7 @@ export default function SharedNoteScreen() {
           }}
           removeClippedSubviews={false}
           nestedScrollEnabled
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={true}
         >
           {note.content ? (
             <MarkdownEditor

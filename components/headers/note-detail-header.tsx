@@ -159,6 +159,17 @@ export function NoteDetailHeader({
           }}
         >
           <Pressable
+            onPress={onSave}
+            disabled={!canSave}
+            style={[{ padding: 8 }, !canSave && { opacity: 0.4 }]}
+          >
+            <Check
+              color={canSave ? colors.foreground : colors.mutedForeground}
+              size={22}
+              strokeWidth={2.5}
+            />
+          </Pressable>
+          <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               onPreviewToggle();
@@ -170,17 +181,6 @@ export function NoteDetailHeader({
             ) : (
               <Eye color={colors.foreground} size={22} strokeWidth={2.5} />
             )}
-          </Pressable>
-          <Pressable
-            onPress={onSave}
-            disabled={!canSave}
-            style={[{ padding: 8 }, !canSave && { opacity: 0.4 }]}
-          >
-            <Check
-              color={canSave ? colors.foreground : colors.mutedForeground}
-              size={22}
-              strokeWidth={2.5}
-            />
           </Pressable>
           {!isNewNote && (
             <DropdownMenu>

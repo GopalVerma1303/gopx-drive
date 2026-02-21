@@ -7,9 +7,10 @@ import { invalidateNotesQueries } from "@/lib/query-utils";
 import type { Note } from "@/lib/supabase";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { ArrowLeft, FileText, Share2, Unlink } from "lucide-react-native";
+import { ArrowLeft, Check, FileText, Link, Unlink } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,10 +18,18 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+function getShareBaseUrl(): string {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return process.env.EXPO_PUBLIC_APP_URL ?? "https://drive.gopx.dev";
+}
 
 export default function SharedNotesScreen() {
   const { user } = useAuth();
@@ -31,18 +40,27 @@ export default function SharedNotesScreen() {
 
   const [disableModalOpen, setDisableModalOpen] = useState(false);
   const [noteToDisable, setNoteToDisable] = useState<Note | null>(null);
+  const [copiedLinkNoteId, setCopiedLinkNoteId] = useState<string | null>(null);
 
-  const { data: notes = [], isLoading: notesLoading } = useQuery({
+  const { data: notes = [], isLoading: notesLoading, refetch: refetchNotes, isRefetching: notesRefetching } = useQuery({
     queryKey: ["notes", user?.id],
     queryFn: () => listNotes(user?.id),
     enabled: !!user?.id,
   });
 
-  const { data: archivedNotes = [] } = useQuery({
+  const { data: archivedNotes = [], refetch: refetchArchived, isRefetching: archivedRefetching } = useQuery({
     queryKey: ["archivedNotes", user?.id],
     queryFn: () => listArchivedNotes(user?.id),
     enabled: !!user?.id,
   });
+
+  const refreshing = notesRefetching || archivedRefetching;
+  const onRefresh = async () => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    await Promise.all([refetchNotes(), refetchArchived()]);
+  };
 
   const sharedNotes = useMemo(() => {
     const all = [...notes, ...archivedNotes];
@@ -88,6 +106,21 @@ export default function SharedNotesScreen() {
     disableShareMutation.mutate(noteToDisable.id);
   };
 
+  const handleCopyLink = async (note: Note) => {
+    if (!note.share_token) return;
+    const shareUrl = `${getShareBaseUrl()}/share/${note.share_token}`;
+    try {
+      await Clipboard.setStringAsync(shareUrl);
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      setCopiedLinkNoteId(note.id);
+      setTimeout(() => setCopiedLinkNoteId(null), 1500);
+    } catch {
+      // clipboard not available
+    }
+  };
+
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -106,14 +139,14 @@ export default function SharedNotesScreen() {
                 if (Platform.OS !== "web") {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }
-                router.back();
+                router.replace("/(app)/settings");
               }}
               className="p-2 -ml-2 mr-2"
             >
               <ArrowLeft color={colors.foreground} size={24} />
             </Pressable>
             <Text className="text-lg font-semibold text-foreground">
-              Manage shared notes
+              Manage Shared Notes
             </Text>
           </View>
         </View>
@@ -127,10 +160,19 @@ export default function SharedNotesScreen() {
         <ScrollView
           className="flex-1"
           contentContainerClassName="p-4 pb-8"
+          refreshControl={
+            <RefreshControl
+              progressBackgroundColor={colors.background}
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.foreground}
+              colors={[colors.foreground]}
+            />
+          }
         >
           {sharedNotes.length === 0 ? (
             <View className="flex-1 items-center justify-center pt-24">
-              <Share2
+              <FileText
                 color={colors.mutedForeground}
                 size={48}
                 strokeWidth={1.5}
@@ -166,6 +208,17 @@ export default function SharedNotesScreen() {
                     >
                       {note.title || "Untitled"}
                     </Text>
+                    <Pressable
+                      onPress={() => handleCopyLink(note)}
+                      className="p-2 rounded-lg active:opacity-70"
+                      accessibilityLabel="Copy share link"
+                    >
+                      {copiedLinkNoteId === note.id ? (
+                        <Check color="#3b82f6" size={20} strokeWidth={2} />
+                      ) : (
+                        <Link color="#3b82f6" size={20} strokeWidth={2} />
+                      )}
+                    </Pressable>
                     <Pressable
                       onPress={() => openDisableModal(note)}
                       className="p-2 rounded-lg active:opacity-70"

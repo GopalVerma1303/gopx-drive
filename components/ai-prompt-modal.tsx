@@ -28,7 +28,6 @@ import {
 import * as React from "react";
 import { Keyboard, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import Svg, { Defs, Stop, LinearGradient as SvgLinearGradient, Text as SvgText, TSpan } from "react-native-svg";
 
 interface AIPromptModalProps {
   visible: boolean;
@@ -37,99 +36,6 @@ interface AIPromptModalProps {
   initialPrompt?: string;
   isLoading?: boolean;
 }
-
-// Gradient text component for cross-platform gradient text
-const GradientText = ({ children, style, disabled }: { children: React.ReactNode; style?: any; disabled?: boolean }) => {
-  const { colors } = useThemeColors();
-  const textRef = React.useRef<Text>(null);
-  const [textLayout, setTextLayout] = React.useState({ width: 0, height: 0 });
-
-  // Use a unique gradient ID to avoid conflicts - must be called before any conditional returns
-  const gradientId = React.useMemo(() => `gradient-${Math.random().toString(36).substr(2, 9)}`, []);
-
-  const fontSize = style?.fontSize || 15;
-  const fontWeight = style?.fontWeight || "700";
-  const textString = typeof children === "string" ? children : String(children);
-
-  if (Platform.OS === "web") {
-    if (disabled) {
-      return <Text style={[{ color: colors.mutedForeground, fontSize }, style]}>{children}</Text>;
-    }
-    return (
-      <Text
-        style={[
-          style,
-          {
-            fontSize,
-            fontWeight,
-            background: "linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #3b82f6 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-          },
-        ]}
-      >
-        {children}
-      </Text>
-    );
-  }
-
-  // For native platforms, always use the same container structure to prevent layout shifts
-  // Always render Text first for measurement, then overlay SVG when enabled
-  return (
-    <View className="items-center justify-center">
-      {/* Always render Text for consistent sizing - this prevents layout shift */}
-      {/* Make text fully transparent when gradient is enabled (disabled=false) */}
-      <Text
-        ref={textRef}
-        style={[
-          style,
-          {
-            color: disabled ? colors.mutedForeground : "transparent",
-            fontSize,
-            fontWeight,
-            letterSpacing: style?.letterSpacing || 0.1,
-          },
-        ]}
-        onLayout={(event) => {
-          const { width, height } = event.nativeEvent.layout;
-          if (width > 0 && height > 0 && (textLayout.width !== width || textLayout.height !== height)) {
-            setTextLayout({ width, height });
-          }
-        }}
-      >
-        {children}
-      </Text>
-
-      {/* Overlay gradient SVG when enabled - uses same dimensions as Text */}
-      {!disabled && textLayout.width > 0 && textLayout.height > 0 && (
-        <Svg
-          width={textLayout.width}
-          height={textLayout.height}
-          className="absolute"
-        >
-          <Defs>
-            <SvgLinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-              <Stop offset="0%" stopColor="#ec4899" stopOpacity="1" />
-              <Stop offset="50%" stopColor="#a855f7" stopOpacity="1" />
-              <Stop offset="100%" stopColor="#3b82f6" stopOpacity="1" />
-            </SvgLinearGradient>
-          </Defs>
-          <SvgText
-            x="0"
-            y={fontSize + 1}
-            fontSize={fontSize}
-            fontWeight={fontWeight}
-            fill={`url(#${gradientId})`}
-            letterSpacing={style?.letterSpacing || 0.7}
-          >
-            <TSpan>{textString}</TSpan>
-          </SvgText>
-        </Svg>
-      )}
-    </View>
-  );
-};
 
 // Icon mapping for modes
 const MODE_ICONS: Record<AIMode, typeof Smile> = {
@@ -311,15 +217,9 @@ export function AIPromptModal({
                   onPress={handleGenerate}
                   disabled={!prompt.trim() || isLoading}
                 >
-                  <GradientText
-                    disabled={!prompt.trim() || isLoading}
-                    style={{
-                      fontSize: 15,
-                      fontWeight: "700",
-                    }}
-                  >
+                  <Text className="font-semibold text-blue-500">
                     {isLoading ? "Generating..." : "Generate"}
-                  </GradientText>
+                  </Text>
                 </Pressable>
               </View>
             </View>
@@ -446,15 +346,9 @@ export function AIPromptModal({
                         onPress={handleGenerate}
                         disabled={!prompt.trim() || isLoading}
                       >
-                        <GradientText
-                          disabled={!prompt.trim() || isLoading}
-                          style={{
-                            fontSize: 15,
-                            fontWeight: "700",
-                          }}
-                        >
+                        <Text className="font-semibold text-blue-500">
                           {isLoading ? "Generating..." : "Generate"}
-                        </GradientText>
+                        </Text>
                       </Pressable>
                     </View>
                   </View>

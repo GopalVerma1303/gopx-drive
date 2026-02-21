@@ -1937,18 +1937,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       // Some markdown parsers use `img` instead of `image`.
       img: (node: any) => renderImage(node),
       fence: (node: any, children: any, parent: any, styles: any) => {
-        // Debug: Log node structure to understand what we're working with
-        if (__DEV__) {
-          console.log('=== FENCE RENDERER CALLED ===');
-          console.log('Node keys:', Object.keys(node));
-          console.log('Node content:', node.content);
-          console.log('Node source:', node.source);
-          console.log('Node info:', node.info);
-          console.log('Node language:', node.language);
-          console.log('Children:', children);
-          console.log('Children type:', typeof children);
-        }
-
         // Extract code and language from the fence node
         // react-native-markdown-display uses node.content for code and node.info for language
         // Try multiple possible properties - preserve newlines for code
@@ -1956,18 +1944,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         // Language is in node.info (the text after the opening fence)
         const language = (node.info || node.language || '').trim();
 
-        if (__DEV__) {
-          console.log('Extracted code length:', code.length);
-          console.log('Extracted language:', language);
-          console.log('Code preview:', code.substring(0, 100));
-        }
-
         // Always use our custom renderer - don't fall back to default
         // This ensures syntax highlighting is always attempted
-
-        if (__DEV__) {
-          console.log('Rendering with SyntaxHighlighter');
-        }
 
         return (
           <View
