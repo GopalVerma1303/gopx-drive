@@ -218,7 +218,8 @@ export default function SharedNoteScreen() {
             flexDirection: "row",
             alignItems: "center",
             height: 56,
-            paddingHorizontal: 16,
+            paddingLeft: 24,
+            paddingRight: 16,
           }}
         >
           <View
