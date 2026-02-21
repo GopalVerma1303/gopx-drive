@@ -177,7 +177,7 @@ function DropdownMenuContent({
           statusBarTranslucent
           onRequestClose={() => {}}
         >
-          <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          <View className="absolute inset-0" pointerEvents="box-none">
             {content}
           </View>
         </Modal>

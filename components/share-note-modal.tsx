@@ -4,7 +4,6 @@ import { Switch } from "@/components/ui/switch";
 import { Text } from "@/components/ui/text";
 import { updateNote } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";
-import { BlurView } from "expo-blur";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Check, Link, Share2 } from "lucide-react-native";
@@ -104,39 +103,8 @@ export function ShareNoteModal({
 
   const overlayContent = (
     <>
-      <Pressable
-        className="absolute inset-0"
-        style={
-          Platform.OS === "web"
-            ? ({ position: "absolute" as const } as any)
-            : {
-                position: "absolute" as const,
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-              }
-        }
-        onPress={onClose}
-      />
-      <View
-        className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg shadow-black/5"
-        style={
-          Platform.OS === "web"
-            ? undefined
-            : {
-                elevation: 5,
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                borderRadius: 8,
-                padding: 24,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-              }
-        }
-      >
+      <Pressable className="absolute inset-0" onPress={onClose} />
+      <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg shadow-black/5">
         <View className="mb-4 flex-row items-center gap-3">
           <Share2 color={colors.foreground} size={22} strokeWidth={2} />
           <Text className="text-lg font-semibold text-foreground">
@@ -164,7 +132,7 @@ export function ShareNoteModal({
             </Text>
             <Pressable
               onPress={handleCopy}
-              className="mt-2 mb-4 flex-row items-center justify-center gap-2 self-start rounded-md bg-foreground/20 px-3 py-2.5 w-full"
+              className="mt-2 mb-4 flex-row items-center justify-center gap-2 self-start rounded-md bg-foreground/10 px-3 py-2.5 w-full"
             >
               {copied ? (
                 <Check
@@ -198,19 +166,7 @@ export function ShareNoteModal({
   if (Platform.OS === "web") {
     if (!visible) return null;
     return (
-      <View
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-        style={{
-          position: "fixed" as any,
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 50,
-          backgroundColor: "rgba(0, 0, 0, 0.5)",
-          backdropFilter: "blur(8px)",
-        }}
-      >
+      <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
         {overlayContent}
       </View>
     );
@@ -223,24 +179,8 @@ export function ShareNoteModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0, 0, 0, 0.5)",
-        }}
-      >
-        <BlurView
-          intensity={20}
-          tint="dark"
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 16,
-          }}
-        >
-          {overlayContent}
-        </BlurView>
+      <View className="flex-1 items-center justify-center bg-black/50 p-4">
+        {overlayContent}
       </View>
     </Modal>
   );

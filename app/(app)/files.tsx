@@ -10,7 +10,6 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidateFilesQueries } from "@/lib/query-utils";
-import { BlurView } from "expo-blur";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
 import { Stack } from "expo-router";
@@ -515,89 +514,33 @@ export default function FilesScreen() {
       {/* Action Dialog (Download/Delete) */}
       {Platform.OS === "web" ? (
         actionDialogOpen && (
-          <View
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            style={{
-              position: "fixed" as any,
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 50,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(8px)",
-            }}
-          >
+          <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <Pressable
               className="absolute inset-0"
-              style={{ position: "absolute" as any }}
               onPress={() => setActionDialogOpen(false)}
             />
-            <View
-              className="bg-background border-border w-full max-w-md rounded-lg border p-6 shadow-lg"
-              style={{
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                borderRadius: 8,
-                padding: 24,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-              }}
-            >
-              <Text
-                className="text-lg font-semibold mb-2"
-                style={{
-                  color: colors.foreground,
-                  fontSize: 18,
-                  fontWeight: "600",
-                  marginBottom: 8,
-                }}
-              >
+            <View className="w-full max-w-md rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
                 Archive File
               </Text>
-              <Text
-                className="text-sm mb-6"
-                style={{
-                  color: colors.mutedForeground,
-                  fontSize: 14,
-                  marginBottom: 24,
-                }}
-              >
+              <Text className="mb-6 text-sm text-muted-foreground">
                 Are you sure you want to archive "{fileToAction?.name}"? You can restore it from the archive later.
               </Text>
-              <View
-                className="flex-row justify-end gap-3"
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  gap: 12,
-                }}
-              >
+              <View className="flex-row justify-end gap-3">
                 <Pressable
                   className="px-4 py-2"
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                  }}
                   onPress={() => {
                     setActionDialogOpen(false);
                     setFileToAction(null);
                   }}
                 >
-                  <Text style={{ color: colors.foreground }}>Cancel</Text>
+                  <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
-                  className="px-4 py-2 rounded-md"
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 6,
-                  }}
+                  className="rounded-md px-4 py-2"
                   onPress={handleArchiveConfirm}
                 >
-                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>
+                  <Text className="font-semibold text-red-500">
                     Archive
                   </Text>
                 </Pressable>
@@ -612,101 +555,38 @@ export default function FilesScreen() {
           animationType="fade"
           onRequestClose={() => setActionDialogOpen(false)}
         >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-            }}
-          >
-            <BlurView
-              intensity={20}
-              tint="dark"
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-                padding: 16,
-              }}
-            >
-              <Pressable
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                }}
-                onPress={() => setActionDialogOpen(false)}
-              />
-              <View
-                style={{
-                  backgroundColor: colors.muted,
-                  borderColor: colors.border,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  padding: 24,
-                  width: "100%",
-                  maxWidth: 400,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 5,
-                }}
-              >
-                <Text
-                  style={{
-                    color: colors.foreground,
-                    fontSize: 18,
-                    fontWeight: "600",
-                    marginBottom: 8,
-                  }}
-                >
+          <View className="flex-1 items-center justify-center bg-black/50 p-4">
+            <Pressable
+              className="absolute inset-0"
+              onPress={() => setActionDialogOpen(false)}
+            />
+            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+                <Text className="mb-2 text-lg font-semibold text-foreground">
                   Archive File
                 </Text>
-                <Text
-                  style={{
-                    color: colors.mutedForeground,
-                    fontSize: 14,
-                    marginBottom: 24,
-                  }}
-                >
+                <Text className="mb-6 text-sm text-muted-foreground">
                   Are you sure you want to archive "{fileToAction?.name}"? You can restore it from the archive later.
                 </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "flex-end",
-                    gap: 12,
-                  }}
-                >
+                <View className="flex-row justify-end gap-3">
                   <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                    }}
+                    className="px-4 py-2"
                     onPress={() => {
                       setActionDialogOpen(false);
                       setFileToAction(null);
                     }}
                   >
-                    <Text style={{ color: colors.foreground }}>Cancel</Text>
+                    <Text className="text-foreground">Cancel</Text>
                   </Pressable>
                   <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 6,
-                    }}
+                    className="rounded-md px-4 py-2"
                     onPress={handleArchiveConfirm}
                   >
-                    <Text style={{ color: "#ef4444", fontWeight: "600" }}>
+                    <Text className="font-semibold text-red-500">
                       Archive
                     </Text>
                   </Pressable>
                 </View>
               </View>
-            </BlurView>
           </View>
         </Modal>
       )}
@@ -719,46 +599,28 @@ export default function FilesScreen() {
           presentationStyle="fullScreen"
           onRequestClose={closePreview}
         >
-          <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <View className="flex-1 bg-background">
             <View
-              style={{
-                paddingTop: insets.top,
-                paddingBottom: 12,
-                paddingHorizontal: 16,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                borderBottomWidth: 1,
-                borderBottomColor: colors.border,
-                backgroundColor: colors.background,
-              }}
+              className="flex-row items-center justify-between border-b border-border bg-background px-4 pb-3"
+              style={{ paddingTop: insets.top }}
             >
               <Text
                 numberOfLines={1}
-                style={{
-                  flex: 1,
-                  fontSize: 16,
-                  fontWeight: "600",
-                  color: colors.foreground,
-                  marginRight: 8,
-                }}
+                className="mr-2 flex-1 text-base font-semibold text-foreground"
               >
                 {previewFileName ?? "Preview"}
               </Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <View className="flex-row items-center gap-1">
                 <Pressable
                   onPress={() => {
                     const url = previewRawUrl ?? previewUrl;
                     if (url) Linking.openURL(url);
                   }}
-                  style={{ padding: 8 }}
+                  className="p-2"
                 >
                   <ExternalLink color={colors.foreground} size={22} strokeWidth={2} />
                 </Pressable>
-                <Pressable
-                  onPress={closePreview}
-                  style={{ padding: 8 }}
-                >
+                <Pressable onPress={closePreview} className="p-2">
                   <X color={colors.foreground} size={24} strokeWidth={2} />
                 </Pressable>
               </View>

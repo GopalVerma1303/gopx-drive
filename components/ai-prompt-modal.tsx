@@ -11,7 +11,6 @@ import { Icon } from "@/components/ui/icon";
 import { DEFAULT_MODE, getModeConfig, type AIMode } from "@/lib/ai-providers/mode-config";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import * as DropdownMenuPrimitive from "@rn-primitives/dropdown-menu";
-import { BlurView } from "expo-blur";
 import {
   Briefcase,
   ChevronDown,
@@ -78,12 +77,7 @@ const GradientText = ({ children, style, disabled }: { children: React.ReactNode
   // For native platforms, always use the same container structure to prevent layout shifts
   // Always render Text first for measurement, then overlay SVG when enabled
   return (
-    <View
-      style={{
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
+    <View className="items-center justify-center">
       {/* Always render Text for consistent sizing - this prevents layout shift */}
       {/* Make text fully transparent when gradient is enabled (disabled=false) */}
       <Text
@@ -112,7 +106,7 @@ const GradientText = ({ children, style, disabled }: { children: React.ReactNode
         <Svg
           width={textLayout.width}
           height={textLayout.height}
-          style={{ position: "absolute" }}
+          className="absolute"
         >
           <Defs>
             <SvgLinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
@@ -200,28 +194,9 @@ export function AIPromptModal({
     const { open } = DropdownMenuPrimitive.useRootContext();
     return (
       <DropdownMenuTrigger ref={ref} {...props}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 8,
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            backgroundColor: colors.background,
-            borderColor: colors.border,
-            borderWidth: 1,
-            borderRadius: 6,
-            minWidth: 200,
-          }}
-        >
+        <View className="min-w-[200px] flex-row items-center gap-2 rounded-md border border-border bg-background px-3 py-2">
           <Icon as={ModeIcon} size={16} className="text-foreground" />
-          <Text
-            style={{
-              color: colors.foreground,
-              fontSize: 14,
-              flex: 1,
-            }}
-          >
+          <Text className="flex-1 text-sm text-foreground">
             {currentModeConfig.label}
           </Text>
           <Icon
@@ -239,64 +214,13 @@ export function AIPromptModal({
     <>
       {Platform.OS === "web" ? (
         visible && (
-          <View
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(8px)",
-              zIndex: 10000,
-              justifyContent: "center",
-              alignItems: "center",
-              padding: 16,
-            }}
-          >
-            <Pressable
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-              }}
-              onPress={onClose}
-            />
-            <View
-              style={{
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                borderRadius: 8,
-                borderWidth: 1,
-                padding: 24,
-                width: "100%",
-                maxWidth: 500,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-                elevation: 5,
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.foreground,
-                  fontSize: 18,
-                  fontWeight: "600",
-                  marginBottom: 8,
-                }}
-              >
+          <View className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
+            <Pressable className="absolute inset-0" onPress={onClose} />
+            <View className="w-full max-w-[500px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
                 AI Assistant
               </Text>
-              <Text
-                style={{
-                  color: colors.mutedForeground,
-                  fontSize: 14,
-                  marginBottom: 16,
-                }}
-              >
+              <Text className="mb-4 text-sm text-muted-foreground">
                 Enter your prompt to generate content.
               </Text>
               <TextInput
@@ -306,56 +230,34 @@ export function AIPromptModal({
                 placeholderTextColor={colors.mutedForeground}
                 multiline
                 numberOfLines={4}
-                style={{
-                  backgroundColor: colors.background,
-                  borderColor: colors.border,
-                  borderWidth: 1,
-                  borderRadius: 6,
-                  padding: 12,
-                  color: colors.foreground,
-                  fontSize: 14,
-                  minHeight: 100,
-                  textAlignVertical: "top",
-                  marginBottom: 16,
-                }}
+                className="min-h-[100px] rounded-md border border-border bg-background p-3 text-sm text-foreground mb-4"
                 autoFocus
               />
-              <Text
-                style={{
-                  color: colors.foreground,
-                  fontSize: 14,
-                  fontWeight: "500",
-                  marginBottom: 8,
-                }}
-              >
+              <Text className="mb-2 text-sm font-medium text-foreground">
                 Mode
               </Text>
-              <View
-                style={{
-                  marginBottom: 24,
-                }}
-              >
+              <View className="mb-6">
                 <DropdownMenu>
                   <CustomDropdownTrigger />
                   <DropdownMenuContent>
                     <DropdownMenuLabel>Style</DropdownMenuLabel>
                     <DropdownMenuRadioGroup value={selectedMode} onValueChange={(value) => setSelectedMode(value as AIMode)}>
                       <DropdownMenuRadioItem value="friendly">
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <View className="flex-row items-center gap-2">
                           <Icon as={Smile} size={16} className="text-foreground" />
-                          <Text style={{ color: colors.foreground }}>Friendly</Text>
+                          <Text className="text-foreground">Friendly</Text>
                         </View>
                       </DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value="professional">
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <View className="flex-row items-center gap-2">
                           <Icon as={Briefcase} size={16} className="text-foreground" />
-                          <Text style={{ color: colors.foreground }}>Professional</Text>
+                          <Text className="text-foreground">Professional</Text>
                         </View>
                       </DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value="concise">
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <View className="flex-row items-center gap-2">
                           <Icon as={Scale} size={16} className="text-foreground" />
-                          <Text style={{ color: colors.foreground }}>Concise</Text>
+                          <Text className="text-foreground">Concise</Text>
                         </View>
                       </DropdownMenuRadioItem>
                     </DropdownMenuRadioGroup>
@@ -363,64 +265,49 @@ export function AIPromptModal({
                     <DropdownMenuLabel>Format</DropdownMenuLabel>
                     <DropdownMenuRadioGroup value={selectedMode} onValueChange={(value) => setSelectedMode(value as AIMode)}>
                       <DropdownMenuRadioItem value="summary">
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <View className="flex-row items-center gap-2">
                           <Icon as={FileText} size={16} className="text-foreground" />
-                          <Text style={{ color: colors.foreground }}>Summary</Text>
+                          <Text className="text-foreground">Summary</Text>
                         </View>
                       </DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value="key-points">
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <View className="flex-row items-center gap-2">
                           <Icon as={ListChecks} size={16} className="text-foreground" />
-                          <Text style={{ color: colors.foreground }}>Key Points</Text>
+                          <Text className="text-foreground">Key Points</Text>
                         </View>
                       </DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value="list">
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <View className="flex-row items-center gap-2">
                           <Icon as={List} size={16} className="text-foreground" />
-                          <Text style={{ color: colors.foreground }}>List</Text>
+                          <Text className="text-foreground">List</Text>
                         </View>
                       </DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value="table">
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <View className="flex-row items-center gap-2">
                           <Icon as={Table} size={16} className="text-foreground" />
-                          <Text style={{ color: colors.foreground }}>Table</Text>
+                          <Text className="text-foreground">Table</Text>
                         </View>
                       </DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value="code">
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <View className="flex-row items-center gap-2">
                           <Icon as={Code} size={16} className="text-foreground" />
-                          <Text style={{ color: colors.foreground }}>Code</Text>
+                          <Text className="text-foreground">Code</Text>
                         </View>
                       </DropdownMenuRadioItem>
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </View>
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  alignItems: "center",
-                  gap: 12,
-                }}
-              >
+              <View className="flex-row items-center justify-end gap-3">
                 <Pressable
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                  }}
+                  className="px-4 py-2"
                   onPress={onClose}
                   disabled={isLoading}
                 >
-                  <Text style={{ color: colors.foreground }}>Cancel</Text>
+                  <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 6,
-                    opacity: prompt.trim() && !isLoading ? 1 : 0.5,
-                  }}
+                  className={`rounded-md px-4 py-2 ${prompt.trim() && !isLoading ? "opacity-100" : "opacity-50"}`}
                   onPress={handleGenerate}
                   disabled={!prompt.trim() || isLoading}
                 >
@@ -446,34 +333,14 @@ export function AIPromptModal({
           onRequestClose={onClose}
         >
           <KeyboardAvoidingView
-            style={{ flex: 1 }}
+            className="flex-1"
             behavior="padding"
             keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
             enabled={keyboardVisible}
           >
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
-              }}
-            >
-              <BlurView
-                intensity={20}
-                tint="dark"
-                style={{
-                  flex: 1,
-                }}
-              >
-                <Pressable
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                  }}
-                  onPress={onClose}
-                />
+            <View className="flex-1 bg-black/50">
+              <View className="flex-1">
+                <Pressable className="absolute inset-0" onPress={onClose} />
                 <ScrollView
                   contentContainerStyle={{
                     flexGrow: 1,
@@ -484,39 +351,11 @@ export function AIPromptModal({
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
                 >
-                  <View
-                    style={{
-                      backgroundColor: colors.muted,
-                      borderColor: colors.border,
-                      borderRadius: 8,
-                      borderWidth: 1,
-                      padding: 24,
-                      width: "100%",
-                      maxWidth: 500,
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.1,
-                      shadowRadius: 8,
-                      elevation: 5,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: colors.foreground,
-                        fontSize: 18,
-                        fontWeight: "600",
-                        marginBottom: 8,
-                      }}
-                    >
+                  <View className="w-full max-w-[500px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+                    <Text className="mb-2 text-lg font-semibold text-foreground">
                       AI Assistant
                     </Text>
-                    <Text
-                      style={{
-                        color: colors.mutedForeground,
-                        fontSize: 14,
-                        marginBottom: 16,
-                      }}
-                    >
+                    <Text className="mb-4 text-sm text-muted-foreground">
                       Enter your prompt to generate content.
                     </Text>
                     <TextInput
@@ -526,56 +365,34 @@ export function AIPromptModal({
                       placeholderTextColor={colors.mutedForeground}
                       multiline
                       numberOfLines={4}
-                      style={{
-                        backgroundColor: colors.background,
-                        borderColor: colors.border,
-                        borderWidth: 1,
-                        borderRadius: 6,
-                        padding: 12,
-                        color: colors.foreground,
-                        fontSize: 14,
-                        minHeight: 100,
-                        textAlignVertical: "top",
-                        marginBottom: 16,
-                      }}
+                      className="min-h-[100px] rounded-md border border-border bg-background p-3 text-sm text-foreground mb-4"
                       autoFocus
                     />
-                    <Text
-                      style={{
-                        color: colors.foreground,
-                        fontSize: 14,
-                        fontWeight: "500",
-                        marginBottom: 8,
-                      }}
-                    >
+                    <Text className="mb-2 text-sm font-medium text-foreground">
                       Mode
                     </Text>
-                    <View
-                      style={{
-                        marginBottom: 24,
-                      }}
-                    >
+                    <View className="mb-6">
                       <DropdownMenu>
                         <CustomDropdownTrigger />
                         <DropdownMenuContent>
                           <DropdownMenuLabel>Style</DropdownMenuLabel>
                           <DropdownMenuRadioGroup value={selectedMode} onValueChange={(value) => setSelectedMode(value as AIMode)}>
                             <DropdownMenuRadioItem value="friendly">
-                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                              <View className="flex-row items-center gap-2">
                                 <Icon as={Smile} size={16} className="text-foreground" />
-                                <Text style={{ color: colors.foreground }}>Friendly</Text>
+                                <Text className="text-foreground">Friendly</Text>
                               </View>
                             </DropdownMenuRadioItem>
                             <DropdownMenuRadioItem value="professional">
-                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                              <View className="flex-row items-center gap-2">
                                 <Icon as={Briefcase} size={16} className="text-foreground" />
-                                <Text style={{ color: colors.foreground }}>Professional</Text>
+                                <Text className="text-foreground">Professional</Text>
                               </View>
                             </DropdownMenuRadioItem>
                             <DropdownMenuRadioItem value="concise">
-                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                              <View className="flex-row items-center gap-2">
                                 <Icon as={Scale} size={16} className="text-foreground" />
-                                <Text style={{ color: colors.foreground }}>Concise</Text>
+                                <Text className="text-foreground">Concise</Text>
                               </View>
                             </DropdownMenuRadioItem>
                           </DropdownMenuRadioGroup>
@@ -583,64 +400,49 @@ export function AIPromptModal({
                           <DropdownMenuLabel>Format</DropdownMenuLabel>
                           <DropdownMenuRadioGroup value={selectedMode} onValueChange={(value) => setSelectedMode(value as AIMode)}>
                             <DropdownMenuRadioItem value="summary">
-                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                              <View className="flex-row items-center gap-2">
                                 <Icon as={FileText} size={16} className="text-foreground" />
-                                <Text style={{ color: colors.foreground }}>Summary</Text>
+                                <Text className="text-foreground">Summary</Text>
                               </View>
                             </DropdownMenuRadioItem>
                             <DropdownMenuRadioItem value="key-points">
-                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                              <View className="flex-row items-center gap-2">
                                 <Icon as={ListChecks} size={16} className="text-foreground" />
-                                <Text style={{ color: colors.foreground }}>Key Points</Text>
+                                <Text className="text-foreground">Key Points</Text>
                               </View>
                             </DropdownMenuRadioItem>
                             <DropdownMenuRadioItem value="list">
-                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                              <View className="flex-row items-center gap-2">
                                 <Icon as={List} size={16} className="text-foreground" />
-                                <Text style={{ color: colors.foreground }}>List</Text>
+                                <Text className="text-foreground">List</Text>
                               </View>
                             </DropdownMenuRadioItem>
                             <DropdownMenuRadioItem value="table">
-                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                              <View className="flex-row items-center gap-2">
                                 <Icon as={Table} size={16} className="text-foreground" />
-                                <Text style={{ color: colors.foreground }}>Table</Text>
+                                <Text className="text-foreground">Table</Text>
                               </View>
                             </DropdownMenuRadioItem>
                             <DropdownMenuRadioItem value="code">
-                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                              <View className="flex-row items-center gap-2">
                                 <Icon as={Code} size={16} className="text-foreground" />
-                                <Text style={{ color: colors.foreground }}>Code</Text>
+                                <Text className="text-foreground">Code</Text>
                               </View>
                             </DropdownMenuRadioItem>
                           </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </View>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "flex-end",
-                        alignItems: "center",
-                        gap: 12,
-                      }}
-                    >
+                    <View className="flex-row items-center justify-end gap-3">
                       <Pressable
-                        style={{
-                          paddingHorizontal: 16,
-                          paddingVertical: 8,
-                        }}
+                        className="px-4 py-2"
                         onPress={onClose}
                         disabled={isLoading}
                       >
-                        <Text style={{ color: colors.foreground }}>Cancel</Text>
+                        <Text className="text-foreground">Cancel</Text>
                       </Pressable>
                       <Pressable
-                        style={{
-                          paddingHorizontal: 16,
-                          paddingVertical: 8,
-                          borderRadius: 6,
-                          opacity: prompt.trim() && !isLoading ? 1 : 0.5,
-                        }}
+                        className={`rounded-md px-4 py-2 ${prompt.trim() && !isLoading ? "opacity-100" : "opacity-50"}`}
                         onPress={handleGenerate}
                         disabled={!prompt.trim() || isLoading}
                       >
@@ -657,7 +459,7 @@ export function AIPromptModal({
                     </View>
                   </View>
                 </ScrollView>
-              </BlurView>
+              </View>
             </View>
           </KeyboardAvoidingView>
         </Modal>

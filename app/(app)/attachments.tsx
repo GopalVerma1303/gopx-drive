@@ -9,7 +9,6 @@ import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { Stack, useRouter } from "expo-router";
@@ -401,102 +400,50 @@ export default function AttachmentsScreen() {
       {/* Action modal: Delete (left), Cancel (center), Copy URL (right) */}
       {Platform.OS === "web" ? (
         deleteDialogOpen && selectedAttachment && (
-          <View
-            style={{
-              position: "fixed" as any,
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 50,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(8px)",
-              justifyContent: "center",
-              alignItems: "center",
-              padding: 16,
-            }}
-          >
+          <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <Pressable
-              style={{
-                position: "absolute" as any,
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-              }}
+              className="absolute inset-0"
               onPress={() => setDeleteDialogOpen(false)}
             />
-            <View
-              style={{
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                borderRadius: 8,
-                borderWidth: 1,
-                padding: 24,
-                width: "100%",
-                maxWidth: 400,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-              }}
-            >
+            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
               <Text
                 numberOfLines={2}
-                style={{
-                  color: colors.foreground,
-                  fontSize: 18,
-                  fontWeight: "600",
-                  marginBottom: 8,
-                }}
+                className="mb-2 text-lg font-semibold text-foreground"
               >
                 {selectedAttachment?.name ?? "Attachment"}
               </Text>
-              <Text
-                style={{
-                  color: colors.mutedForeground,
-                  fontSize: 14,
-                  marginBottom: 20,
-                  lineHeight: 20,
-                }}
-              >
+              <Text className="mb-5 text-sm leading-5 text-muted-foreground">
                 Click "Copy URL" to copy the URL to the clipboard. Delete is
                 permanent and cannot be recovered.
               </Text>
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
+              <View className="flex-row items-center justify-between">
                 <Pressable
-                  style={{ paddingLeft: 0, paddingRight: 16, paddingVertical: 8 }}
+                  className="pr-4 py-2"
                   onPress={() => {
                     confirmDelete();
                   }}
                   disabled={deleteMutation.isPending}
                 >
-                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>
+                  <Text className="font-semibold text-red-500">
                     Delete
                   </Text>
                 </Pressable>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View className="flex-row items-center gap-3">
                   <Pressable
-                    style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                    className="px-4 py-2"
                     onPress={() => setDeleteDialogOpen(false)}
                   >
-                    <Text style={{ color: colors.foreground }}>Cancel</Text>
+                    <Text className="text-foreground">Cancel</Text>
                   </Pressable>
                   <Pressable
-                    style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                    className="px-4 py-2"
                     onPress={async () => {
                       await handleCopyLink(selectedAttachment);
                       setDeleteDialogOpen(false);
                       setSelectedAttachment(null);
                     }}
                   >
-                    <Text style={{ color: "#3b82f6", fontWeight: "600" }}>
+                    <Text className="font-semibold text-blue-500">
                       Copy URL
                     </Text>
                   </Pressable>
@@ -512,106 +459,52 @@ export default function AttachmentsScreen() {
           animationType="fade"
           onRequestClose={() => setDeleteDialogOpen(false)}
         >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-            }}
-          >
-            <BlurView
-              intensity={20}
-              tint="dark"
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-                padding: 16,
-              }}
-            >
-              <Pressable
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                }}
-                onPress={() => setDeleteDialogOpen(false)}
-              />
-              <View
-                style={{
-                  backgroundColor: colors.muted,
-                  borderColor: colors.border,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  padding: 24,
-                  width: "100%",
-                  maxWidth: 400,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 5,
-                }}
-              >
+          <View className="flex-1 items-center justify-center bg-black/50 p-4">
+            <Pressable
+              className="absolute inset-0"
+              onPress={() => setDeleteDialogOpen(false)}
+            />
+            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
                 {selectedAttachment && (
                   <>
                     <Text
                       numberOfLines={2}
-                      style={{
-                        color: colors.foreground,
-                        fontSize: 18,
-                        fontWeight: "600",
-                        marginBottom: 8,
-                      }}
+                      className="mb-2 text-lg font-semibold text-foreground"
                     >
                       {selectedAttachment?.name ?? "Attachment"}
                     </Text>
-                    <Text
-                      style={{
-                        color: colors.mutedForeground,
-                        fontSize: 14,
-                        marginBottom: 20,
-                        lineHeight: 20,
-                      }}
-                    >
+                    <Text className="mb-5 text-sm leading-5 text-muted-foreground">
                       Click "Copy URL" to copy the URL to the clipboard. Delete is
                       permanent and cannot be recovered.
                     </Text>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
+                    <View className="flex-row items-center justify-between">
                       <Pressable
-                        style={{ paddingLeft: 0, paddingRight: 16, paddingVertical: 8 }}
+                        className="pr-4 py-2"
                         onPress={() => {
                           confirmDelete();
                         }}
                         disabled={deleteMutation.isPending}
                       >
-                        <Text style={{ color: "#ef4444", fontWeight: "600" }}>
+                        <Text className="font-semibold text-red-500">
                           Delete
                         </Text>
                       </Pressable>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                      <View className="flex-row items-center gap-3">
                         <Pressable
-                          style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                          className="px-4 py-2"
                           onPress={() => setDeleteDialogOpen(false)}
                         >
-                          <Text style={{ color: colors.foreground }}>Cancel</Text>
+                          <Text className="text-foreground">Cancel</Text>
                         </Pressable>
                         <Pressable
-                          style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                          className="px-4 py-2"
                           onPress={async () => {
                             await handleCopyLink(selectedAttachment);
                             setDeleteDialogOpen(false);
                             setSelectedAttachment(null);
                           }}
                         >
-                          <Text style={{ color: "#3b82f6", fontWeight: "600" }}>
+                          <Text className="font-semibold text-blue-500">
                             Copy URL
                           </Text>
                         </Pressable>
@@ -620,7 +513,6 @@ export default function AttachmentsScreen() {
                   </>
                 )}
               </View>
-            </BlurView>
           </View>
         </Modal>
       )}

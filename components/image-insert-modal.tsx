@@ -5,7 +5,6 @@ import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
 import { uploadImageToNoteImages } from "@/lib/supabase-images";
 import { useThemeColors } from "@/lib/use-theme-colors";
-import { BlurView } from "expo-blur";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
 import { Link as LinkIcon, Upload, X } from "lucide-react-native";
@@ -180,70 +179,21 @@ export function ImageInsertModal({
     <>
       {Platform.OS === "web" ? (
         visible && (
-          <View
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            style={{
-              position: "fixed" as any,
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 50,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(8px)",
-            }}
-          >
-            <Pressable
-              className="absolute inset-0"
-              style={{ position: "absolute" as any }}
-              onPress={handleClose}
-            />
-            <View
-              className="bg-background border-border w-full max-w-md rounded-lg border p-6 shadow-lg"
-              style={{
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                borderRadius: 8,
-                padding: 24,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 20,
-                }}
-              >
-                <Text
-                  className="text-lg font-semibold"
-                  style={{
-                    color: colors.foreground,
-                    fontSize: 18,
-                    fontWeight: "600",
-                  }}
-                >
+          <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <Pressable className="absolute inset-0" onPress={handleClose} />
+            <View className="w-full max-w-md rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <View className="mb-5 flex-row items-center justify-between">
+                <Text className="text-lg font-semibold text-foreground">
                   Insert Image
                 </Text>
-                <Pressable onPress={handleClose} style={{ padding: 4 }}>
+                <Pressable onPress={handleClose} className="p-1">
                   <X color={colors.foreground} size={20} />
                 </Pressable>
               </View>
 
               {/* Alt Text Input */}
-              <View style={{ marginBottom: 16 }}>
-                <Text
-                  style={{
-                    color: colors.foreground,
-                    fontSize: 14,
-                    fontWeight: "500",
-                    marginBottom: 8,
-                  }}
-                >
+              <View className="mb-4">
+                <Text className="mb-2 text-sm font-medium text-foreground">
                   Alt Text (Label)
                 </Text>
                 <Input
@@ -256,45 +206,21 @@ export function ImageInsertModal({
               </View>
 
               {/* Mode Selection */}
-              <View style={{ marginBottom: 16 }}>
-                <Text
-                  style={{
-                    color: colors.foreground,
-                    fontSize: 14,
-                    fontWeight: "500",
-                    marginBottom: 8,
-                  }}
-                >
+              <View className="mb-4">
+                <Text className="mb-2 text-sm font-medium text-foreground">
                   Image Source
                 </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    gap: 8,
-                    marginBottom: 12,
-                  }}
-                >
+                <View className="mb-3 flex-row gap-2">
                   <Pressable
                     onPress={() => {
                       setUploadMode("url");
                       setImageUrl("");
                     }}
-                    style={{
-                      flex: 1,
-                      padding: 12,
-                      borderRadius: 8,
-                      borderWidth: 1,
-                      borderColor:
-                        uploadMode === "url"
-                          ? colors.foreground
-                          : colors.border,
-                      backgroundColor:
-                        uploadMode === "url"
-                          ? colors.background
-                          : "transparent",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
+                    className={`flex-1 items-center gap-2 rounded-lg border p-3 ${
+                      uploadMode === "url"
+                        ? "border-foreground bg-background"
+                        : "border-border bg-transparent"
+                    }`}
                   >
                     <LinkIcon
                       color={
@@ -305,14 +231,11 @@ export function ImageInsertModal({
                       size={20}
                     />
                     <Text
-                      style={{
-                        color:
-                          uploadMode === "url"
-                            ? colors.foreground
-                            : colors.mutedForeground,
-                        fontSize: 14,
-                        fontWeight: uploadMode === "url" ? "600" : "400",
-                      }}
+                      className={
+                        uploadMode === "url"
+                          ? "text-sm font-semibold text-foreground"
+                          : "text-sm text-muted-foreground"
+                      }
                     >
                       Paste URL
                     </Text>
@@ -322,22 +245,11 @@ export function ImageInsertModal({
                       setUploadMode("upload");
                       setImageUrl("");
                     }}
-                    style={{
-                      flex: 1,
-                      padding: 12,
-                      borderRadius: 8,
-                      borderWidth: 1,
-                      borderColor:
-                        uploadMode === "upload"
-                          ? colors.foreground
-                          : colors.border,
-                      backgroundColor:
-                        uploadMode === "upload"
-                          ? colors.background
-                          : "transparent",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
+                    className={`flex-1 items-center gap-2 rounded-lg border p-3 ${
+                      uploadMode === "upload"
+                        ? "border-foreground bg-background"
+                        : "border-border bg-transparent"
+                    }`}
                   >
                     <Upload
                       color={
@@ -348,14 +260,11 @@ export function ImageInsertModal({
                       size={20}
                     />
                     <Text
-                      style={{
-                        color:
-                          uploadMode === "upload"
-                            ? colors.foreground
-                            : colors.mutedForeground,
-                        fontSize: 14,
-                        fontWeight: uploadMode === "upload" ? "600" : "400",
-                      }}
+                      className={
+                        uploadMode === "upload"
+                          ? "text-sm font-semibold text-foreground"
+                          : "text-sm text-muted-foreground"
+                      }
                     >
                       Upload Image
                     </Text>
@@ -365,15 +274,8 @@ export function ImageInsertModal({
 
               {/* URL Input or Upload Button */}
               {uploadMode === "url" ? (
-                <View style={{ marginBottom: 20 }}>
-                  <Text
-                    style={{
-                      color: colors.foreground,
-                      fontSize: 14,
-                      fontWeight: "500",
-                      marginBottom: 8,
-                    }}
-                  >
+                <View className="mb-5">
+                  <Text className="mb-2 text-sm font-medium text-foreground">
                     Image URL
                   </Text>
                   <Input
@@ -387,21 +289,11 @@ export function ImageInsertModal({
                   />
                 </View>
               ) : (
-                <View style={{ marginBottom: 20 }}>
+                <View className="mb-5">
                   <Pressable
                     onPress={handleUploadImage}
                     disabled={uploading}
-                    style={{
-                      padding: 12,
-                      borderRadius: 8,
-                      backgroundColor: colors.background,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      minHeight: 48,
-                      opacity: uploading ? 0.6 : 1,
-                    }}
+                    className={`min-h-[48px] items-center justify-center rounded-lg border border-border bg-background p-3 ${uploading ? "opacity-60" : ""}`}
                   >
                     {uploading ? (
                       <ActivityIndicator
@@ -409,21 +301,9 @@ export function ImageInsertModal({
                         color={colors.foreground}
                       />
                     ) : (
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
-                      >
+                      <View className="flex-row items-center gap-2">
                         <Upload color={colors.foreground} size={20} />
-                        <Text
-                          style={{
-                            color: colors.foreground,
-                            fontSize: 14,
-                            fontWeight: "500",
-                          }}
-                        >
+                        <Text className="text-sm font-medium text-foreground">
                           Choose Image
                         </Text>
                       </View>
@@ -431,11 +311,7 @@ export function ImageInsertModal({
                   </Pressable>
                   {imageUrl ? (
                     <Text
-                      style={{
-                        color: colors.mutedForeground,
-                        fontSize: 12,
-                        marginTop: 8,
-                      }}
+                      className="mt-2 text-xs text-muted-foreground"
                       numberOfLines={1}
                     >
                       ✓ Image uploaded: {imageUrl.substring(0, 50)}...
@@ -445,38 +321,16 @@ export function ImageInsertModal({
               )}
 
               {/* Action Buttons */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  gap: 12,
-                }}
-              >
-                <Pressable
-                  onPress={handleClose}
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                  }}
-                >
-                  <Text style={{ color: colors.foreground }}>Cancel</Text>
+              <View className="flex-row justify-end gap-3">
+                <Pressable onPress={handleClose} className="px-4 py-2">
+                  <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
                   onPress={handleInsert}
                   disabled={!imageUrl.trim()}
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 6,
-                    opacity: imageUrl.trim() ? 1 : 0.4,
-                  }}
+                  className={`rounded-md px-4 py-2 ${imageUrl.trim() ? "opacity-100" : "opacity-40"}`}
                 >
-                  <Text
-                    style={{
-                      color: "#3b82f6",
-                      fontWeight: "600",
-                    }}
-                  >
+                  <Text className="font-semibold text-blue-500">
                     Insert
                   </Text>
                 </Pressable>
@@ -492,34 +346,14 @@ export function ImageInsertModal({
           onRequestClose={handleClose}
         >
           <KeyboardAvoidingView
-            style={{ flex: 1 }}
+            className="flex-1"
             behavior="padding"
             keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
             enabled={keyboardVisible}
           >
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
-              }}
-            >
-              <BlurView
-                intensity={20}
-                tint="dark"
-                style={{
-                  flex: 1,
-                }}
-              >
-                <Pressable
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                  }}
-                  onPress={handleClose}
-                />
+            <View className="flex-1 bg-black/50">
+              <View className="flex-1">
+                <Pressable className="absolute inset-0" onPress={handleClose} />
                 <ScrollView
                   contentContainerStyle={{
                     flexGrow: 1,
@@ -530,54 +364,19 @@ export function ImageInsertModal({
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
                 >
-                  <View
-                    style={{
-                      backgroundColor: colors.muted,
-                      borderColor: colors.border,
-                      borderRadius: 8,
-                      borderWidth: 1,
-                      padding: 24,
-                      width: "100%",
-                      maxWidth: 400,
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.1,
-                      shadowRadius: 8,
-                      elevation: 5,
-                    }}
-                  >
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        marginBottom: 20,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: colors.foreground,
-                          fontSize: 18,
-                          fontWeight: "600",
-                        }}
-                      >
+                  <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+                    <View className="mb-5 flex-row items-center justify-between">
+                      <Text className="text-lg font-semibold text-foreground">
                         Insert Image
                       </Text>
-                      <Pressable onPress={handleClose} style={{ padding: 4 }}>
+                      <Pressable onPress={handleClose} className="p-1">
                         <X color={colors.foreground} size={20} />
                       </Pressable>
                     </View>
 
                     {/* Alt Text Input */}
-                    <View style={{ marginBottom: 16 }}>
-                      <Text
-                        style={{
-                          color: colors.foreground,
-                          fontSize: 14,
-                          fontWeight: "500",
-                          marginBottom: 8,
-                        }}
-                      >
+                    <View className="mb-4">
+                      <Text className="mb-2 text-sm font-medium text-foreground">
                         Alt Text (Label)
                       </Text>
                       <Input
@@ -590,45 +389,21 @@ export function ImageInsertModal({
                     </View>
 
                     {/* Mode Selection */}
-                    <View style={{ marginBottom: 16 }}>
-                      <Text
-                        style={{
-                          color: colors.foreground,
-                          fontSize: 14,
-                          fontWeight: "500",
-                          marginBottom: 8,
-                        }}
-                      >
+                    <View className="mb-4">
+                      <Text className="mb-2 text-sm font-medium text-foreground">
                         Image Source
                       </Text>
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          gap: 8,
-                          marginBottom: 12,
-                        }}
-                      >
+                      <View className="mb-3 flex-row gap-2">
                         <Pressable
                           onPress={() => {
                             setUploadMode("url");
                             setImageUrl("");
                           }}
-                          style={{
-                            flex: 1,
-                            padding: 12,
-                            borderRadius: 8,
-                            borderWidth: 1,
-                            borderColor:
-                              uploadMode === "url"
-                                ? colors.foreground
-                                : colors.border,
-                            backgroundColor:
-                              uploadMode === "url"
-                                ? colors.background
-                                : "transparent",
-                            alignItems: "center",
-                            gap: 8,
-                          }}
+                          className={`flex-1 items-center gap-2 rounded-lg border p-3 ${
+                            uploadMode === "url"
+                              ? "border-foreground bg-background"
+                              : "border-border bg-transparent"
+                          }`}
                         >
                           <LinkIcon
                             color={
@@ -639,14 +414,11 @@ export function ImageInsertModal({
                             size={20}
                           />
                           <Text
-                            style={{
-                              color:
-                                uploadMode === "url"
-                                  ? colors.foreground
-                                  : colors.mutedForeground,
-                              fontSize: 14,
-                              fontWeight: uploadMode === "url" ? "600" : "400",
-                            }}
+                            className={
+                              uploadMode === "url"
+                                ? "text-sm font-semibold text-foreground"
+                                : "text-sm text-muted-foreground"
+                            }
                           >
                             Paste URL
                           </Text>
@@ -656,22 +428,11 @@ export function ImageInsertModal({
                             setUploadMode("upload");
                             setImageUrl("");
                           }}
-                          style={{
-                            flex: 1,
-                            padding: 12,
-                            borderRadius: 8,
-                            borderWidth: 1,
-                            borderColor:
-                              uploadMode === "upload"
-                                ? colors.foreground
-                                : colors.border,
-                            backgroundColor:
-                              uploadMode === "upload"
-                                ? colors.background
-                                : "transparent",
-                            alignItems: "center",
-                            gap: 8,
-                          }}
+                          className={`flex-1 items-center gap-2 rounded-lg border p-3 ${
+                            uploadMode === "upload"
+                              ? "border-foreground bg-background"
+                              : "border-border bg-transparent"
+                          }`}
                         >
                           <Upload
                             color={
@@ -682,14 +443,11 @@ export function ImageInsertModal({
                             size={20}
                           />
                           <Text
-                            style={{
-                              color:
-                                uploadMode === "upload"
-                                  ? colors.foreground
-                                  : colors.mutedForeground,
-                              fontSize: 14,
-                              fontWeight: uploadMode === "upload" ? "600" : "400",
-                            }}
+                            className={
+                              uploadMode === "upload"
+                                ? "text-sm font-semibold text-foreground"
+                                : "text-sm text-muted-foreground"
+                            }
                           >
                             Upload Image
                           </Text>
@@ -699,15 +457,8 @@ export function ImageInsertModal({
 
                     {/* URL Input or Upload Button */}
                     {uploadMode === "url" ? (
-                      <View style={{ marginBottom: 20 }}>
-                        <Text
-                          style={{
-                            color: colors.foreground,
-                            fontSize: 14,
-                            fontWeight: "500",
-                            marginBottom: 8,
-                          }}
-                        >
+                      <View className="mb-5">
+                        <Text className="mb-2 text-sm font-medium text-foreground">
                           Image URL
                         </Text>
                         <Input
@@ -721,21 +472,11 @@ export function ImageInsertModal({
                         />
                       </View>
                     ) : (
-                      <View style={{ marginBottom: 20 }}>
+                      <View className="mb-5">
                         <Pressable
                           onPress={handleUploadImage}
                           disabled={uploading}
-                          style={{
-                            padding: 12,
-                            borderRadius: 8,
-                            backgroundColor: colors.background,
-                            borderWidth: 1,
-                            borderColor: colors.border,
-                            alignItems: "center",
-                            justifyContent: "center",
-                            minHeight: 48,
-                            opacity: uploading ? 0.6 : 1,
-                          }}
+                          className={`min-h-[48px] items-center justify-center rounded-lg border border-border bg-background p-3 ${uploading ? "opacity-60" : ""}`}
                         >
                           {uploading ? (
                             <ActivityIndicator
@@ -743,21 +484,9 @@ export function ImageInsertModal({
                               color={colors.foreground}
                             />
                           ) : (
-                            <View
-                              style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                gap: 8,
-                              }}
-                            >
+                            <View className="flex-row items-center gap-2">
                               <Upload color={colors.foreground} size={20} />
-                              <Text
-                                style={{
-                                  color: colors.foreground,
-                                  fontSize: 14,
-                                  fontWeight: "500",
-                                }}
-                              >
+                              <Text className="text-sm font-medium text-foreground">
                                 Choose Image
                               </Text>
                             </View>
@@ -765,11 +494,7 @@ export function ImageInsertModal({
                         </Pressable>
                         {imageUrl ? (
                           <Text
-                            style={{
-                              color: colors.mutedForeground,
-                              fontSize: 12,
-                              marginTop: 8,
-                            }}
+                            className="mt-2 text-xs text-muted-foreground"
                             numberOfLines={1}
                           >
                             ✓ Image uploaded: {imageUrl.substring(0, 50)}...
@@ -779,45 +504,23 @@ export function ImageInsertModal({
                     )}
 
                     {/* Action Buttons */}
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "flex-end",
-                        gap: 12,
-                      }}
-                    >
-                      <Pressable
-                        onPress={handleClose}
-                        style={{
-                          paddingHorizontal: 16,
-                          paddingVertical: 8,
-                        }}
-                      >
-                        <Text style={{ color: colors.foreground }}>Cancel</Text>
+                    <View className="flex-row justify-end gap-3">
+                      <Pressable onPress={handleClose} className="px-4 py-2">
+                        <Text className="text-foreground">Cancel</Text>
                       </Pressable>
                       <Pressable
                         onPress={handleInsert}
                         disabled={!imageUrl.trim()}
-                        style={{
-                          paddingHorizontal: 16,
-                          paddingVertical: 8,
-                          borderRadius: 6,
-                          opacity: imageUrl.trim() ? 1 : 0.4,
-                        }}
+                        className={`rounded-md px-4 py-2 ${imageUrl.trim() ? "opacity-100" : "opacity-40"}`}
                       >
-                        <Text
-                          style={{
-                            color: "#3b82f6",
-                            fontWeight: "600",
-                          }}
-                        >
+                        <Text className="font-semibold text-blue-500">
                           Insert
                         </Text>
                       </Pressable>
                     </View>
                   </View>
                 </ScrollView>
-              </BlurView>
+              </View>
             </View>
           </KeyboardAvoidingView>
         </Modal>

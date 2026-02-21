@@ -21,7 +21,6 @@ import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidateEventsQueries, debounce } from "@/lib/query-utils";
-import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack } from "expo-router";
 import { ChevronDown, ChevronUp, Plus, Search, X } from "lucide-react-native";
@@ -628,105 +627,42 @@ export default function CalendarScreen() {
             setEventToDelete(null);
           }}
         >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-            }}
-          >
-            <BlurView
-              intensity={20}
-              tint="dark"
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-                padding: 16,
+          <View className="flex-1 items-center justify-center bg-black/50 p-4">
+            <Pressable
+              className="absolute inset-0"
+              onPress={() => {
+                setDeleteDialogOpen(false);
+                setEventToDelete(null);
               }}
-            >
-              <Pressable
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                }}
-                onPress={() => {
-                  setDeleteDialogOpen(false);
-                  setEventToDelete(null);
-                }}
-              />
-              <View
-                style={{
-                  backgroundColor: colors.muted,
-                  borderColor: colors.border,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  padding: 24,
-                  width: "100%",
-                  maxWidth: 400,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 5,
-                }}
-              >
-                <Text
-                  style={{
-                    color: colors.foreground,
-                    fontSize: 18,
-                    fontWeight: "600",
-                    marginBottom: 8,
-                  }}
-                >
+            />
+              <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+                <Text className="mb-2 text-lg font-semibold text-foreground">
                   Delete Event
                 </Text>
-                <Text
-                  style={{
-                    color: colors.mutedForeground,
-                    fontSize: 14,
-                    marginBottom: 24,
-                  }}
-                >
+                <Text className="mb-6 text-sm text-muted-foreground">
                   Are you sure you want to delete "{eventToDelete?.title}"? This
                   action cannot be undone.
                 </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "flex-end",
-                    gap: 12,
-                  }}
-                >
+                <View className="flex-row justify-end gap-3">
                   <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                    }}
+                    className="px-4 py-2"
                     onPress={() => {
                       setDeleteDialogOpen(false);
                       setEventToDelete(null);
                     }}
                   >
-                    <Text style={{ color: colors.foreground }}>Cancel</Text>
+                    <Text className="text-foreground">Cancel</Text>
                   </Pressable>
                   <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 6,
-                    }}
+                    className="rounded-md px-4 py-2"
                     onPress={handleDeleteConfirm}
                   >
-                    <Text style={{ color: "#ef4444", fontWeight: "600" }}>
+                    <Text className="font-semibold text-red-500">
                       Delete
                     </Text>
                   </Pressable>
                 </View>
               </View>
-            </BlurView>
           </View>
         </Modal>
       )}
@@ -1824,80 +1760,27 @@ function EventModal({
   return (
     <>
       {Platform.OS === "web" ? (
-        <View
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          style={{
-            position: "fixed" as any,
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 50,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            backdropFilter: "blur(8px)",
-          }}
-        >
-          <Pressable
-            className="absolute inset-0"
-            style={{ position: "absolute" as any }}
-            onPress={onClose}
-          />
-          <View
-            className="bg-background border-border w-full max-w-md rounded-lg border p-6 shadow-lg"
-            style={{
-              backgroundColor: colors.muted,
-              borderColor: colors.border,
-              borderRadius: 8,
-              padding: 24,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.1,
-              shadowRadius: 8,
-            }}
-          >
-            <Text
-              style={{
-                color: colors.foreground,
-                fontSize: 20,
-                fontWeight: "600",
-                marginBottom: 20,
-              }}
-            >
+        <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Pressable className="absolute inset-0" onPress={onClose} />
+          <View className="w-full max-w-md rounded-lg border border-border bg-muted p-6 shadow-lg">
+            <Text className="mb-5 text-xl font-semibold text-foreground">
               {event ? "Edit Event" : "Create Event"}
             </Text>
 
-            <View style={{ marginBottom: 16 }}>
-              <Text
-                style={{
-                  color: colors.foreground,
-                  fontSize: 14,
-                  fontWeight: "500",
-                  marginBottom: 8,
-                }}
-              >
+            <View className="mb-4">
+              <Text className="mb-2 text-sm font-medium text-foreground">
                 Title
               </Text>
               <Input
                 value={title}
                 onChangeText={setTitle}
                 placeholder="Event title"
-                style={{
-                  backgroundColor: colors.background,
-                  borderColor: colors.border,
-                  color: colors.foreground,
-                }}
+                className="border-border bg-background text-foreground"
               />
             </View>
 
-            <View style={{ marginBottom: 16 }}>
-              <Text
-                style={{
-                  color: colors.foreground,
-                  fontSize: 14,
-                  fontWeight: "500",
-                  marginBottom: 8,
-                }}
-              >
+            <View className="mb-4">
+              <Text className="mb-2 text-sm font-medium text-foreground">
                 Description
               </Text>
               <Input
@@ -1906,111 +1789,52 @@ function EventModal({
                 placeholder="Event description"
                 multiline
                 numberOfLines={4}
-                style={{
-                  backgroundColor: colors.background,
-                  borderColor: colors.border,
-                  color: colors.foreground,
-                  minHeight: 80,
-                  textAlignVertical: "top",
-                }}
+                className="min-h-[80px] border-border bg-background text-foreground"
               />
             </View>
 
-            <View style={{ marginBottom: 16 }}>
-              <Text
-                style={{
-                  color: colors.foreground,
-                  fontSize: 14,
-                  fontWeight: "500",
-                  marginBottom: 8,
-                }}
-              >
+            <View className="mb-4">
+              <Text className="mb-2 text-sm font-medium text-foreground">
                 Date
               </Text>
               <Input
                 value={eventDate}
                 onChangeText={handleDateChange}
                 placeholder="YYYY-MM-DD"
-                style={{
-                  backgroundColor: colors.background,
-                  borderColor: dateError ? "#ef4444" : colors.border,
-                  color: colors.foreground,
-                }}
+                className={`border bg-background text-foreground ${dateError ? "border-red-500" : "border-border"}`}
               />
               {dateError ? (
-                <Text
-                  style={{
-                    color: "#ef4444",
-                    fontSize: 12,
-                    marginTop: 4,
-                  }}
-                >
+                <Text className="mt-1 text-xs text-red-500">
                   {dateError}
                 </Text>
               ) : null}
             </View>
 
-            <View style={{ marginBottom: 24 }}>
-              <Text
-                style={{
-                  color: colors.foreground,
-                  fontSize: 14,
-                  fontWeight: "500",
-                  marginBottom: 8,
-                }}
-              >
+            <View className="mb-6">
+              <Text className="mb-2 text-sm font-medium text-foreground">
                 Time
               </Text>
               <Input
                 value={eventTime}
                 onChangeText={handleTimeChange}
                 placeholder="HH:mm (24-hour format)"
-                style={{
-                  backgroundColor: colors.background,
-                  borderColor: timeError ? "#ef4444" : colors.border,
-                  color: colors.foreground,
-                }}
+                className={`border bg-background text-foreground ${timeError ? "border-red-500" : "border-border"}`}
               />
               {timeError ? (
-                <Text
-                  style={{
-                    color: "#ef4444",
-                    fontSize: 12,
-                    marginTop: 4,
-                  }}
-                >
+                <Text className="mt-1 text-xs text-red-500">
                   {timeError}
                 </Text>
               ) : null}
             </View>
 
-            <View style={{ marginBottom: 24 }}>
-              <Text
-                style={{
-                  color: colors.foreground,
-                  fontSize: 14,
-                  fontWeight: "500",
-                  marginBottom: 8,
-                }}
-              >
+            <View className="mb-6">
+              <Text className="mb-2 text-sm font-medium text-foreground">
                 Repeat
               </Text>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Pressable
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      paddingHorizontal: 12,
-                      paddingVertical: 10,
-                      backgroundColor: colors.background,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      borderRadius: 6,
-                    }}
-                  >
-                    <Text style={{ color: colors.foreground, fontSize: 14 }}>
+                  <Pressable className="flex-row items-center justify-between rounded-md border border-border bg-background px-3 py-2.5">
+                    <Text className="text-sm text-foreground">
                       {repeatInterval.charAt(0).toUpperCase() + repeatInterval.slice(1)}
                     </Text>
                     <ChevronDown color={colors.mutedForeground} size={16} />
@@ -2022,7 +1846,7 @@ function EventModal({
                       key={interval}
                       onPress={() => setRepeatInterval(interval)}
                     >
-                      <Text style={{ color: colors.foreground }}>
+                      <Text className="text-foreground">
                         {interval.charAt(0).toUpperCase() + interval.slice(1)}
                       </Text>
                     </DropdownMenuItem>
@@ -2031,47 +1855,29 @@ function EventModal({
               </DropdownMenu>
             </View>
 
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
-            >
+            <View className="flex-row justify-between gap-3">
               {event && (
                 <Pressable
                   onPress={handleDelete}
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    borderRadius: 6,
-                    backgroundColor: "transparent",
-                  }}
+                  className="rounded-md bg-transparent px-4 py-2.5"
                 >
-                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>
+                  <Text className="font-semibold text-red-500">
                     Delete
                   </Text>
                 </Pressable>
               )}
-              <View style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end", gap: 12 }}>
+              <View className="flex-1 flex-row justify-end gap-3">
                 <Pressable
                   onPress={onClose}
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    borderRadius: 6,
-                  }}
+                  className="rounded-md px-4 py-2.5"
                 >
-                  <Text style={{ color: colors.foreground }}>Cancel</Text>
+                  <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
                   onPress={handleSave}
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                  }}
+                  className="rounded-md px-4 py-2.5"
                 >
-                  <Text style={{ color: "#3b82f6", fontWeight: "600" }}>Save</Text>
+                  <Text className="font-semibold text-blue-500">Save</Text>
                 </Pressable>
               </View>
             </View>
@@ -2085,35 +1891,14 @@ function EventModal({
           onRequestClose={onClose}
         >
           <KeyboardAvoidingView
-            style={{ flex: 1 }}
+            className="flex-1"
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             keyboardVerticalOffset={0}
             enabled={keyboardVisible}
           >
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
-              }}
-            >
-              <BlurView
-                intensity={20}
-                tint="dark"
-                style={{
-                  flex: 1,
-                  padding: 16,
-                }}
-              >
-                <Pressable
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                  }}
-                  onPress={onClose}
-                />
+            <View className="flex-1 bg-black/50">
+              <View className="flex-1 p-4">
+                <Pressable className="absolute inset-0" onPress={onClose} />
                 <ScrollView
                   contentContainerStyle={{
                     flexGrow: 1,
@@ -2124,65 +1909,25 @@ function EventModal({
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
                 >
-                  <View
-                    style={{
-                      backgroundColor: colors.muted,
-                      borderColor: colors.border,
-                      borderRadius: 8,
-                      borderWidth: 1,
-                      padding: 24,
-                      width: "100%",
-                      maxWidth: 400,
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.1,
-                      shadowRadius: 8,
-                      elevation: 5,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: colors.foreground,
-                        fontSize: 20,
-                        fontWeight: "600",
-                        marginBottom: 20,
-                      }}
-                    >
+                  <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+                    <Text className="mb-5 text-xl font-semibold text-foreground">
                       {event ? "Edit Event" : "Create Event"}
                     </Text>
 
-                    <View style={{ marginBottom: 16 }}>
-                      <Text
-                        style={{
-                          color: colors.foreground,
-                          fontSize: 14,
-                          fontWeight: "500",
-                          marginBottom: 8,
-                        }}
-                      >
+                    <View className="mb-4">
+                      <Text className="mb-2 text-sm font-medium text-foreground">
                         Title
                       </Text>
                       <Input
                         value={title}
                         onChangeText={setTitle}
                         placeholder="Event title"
-                        style={{
-                          backgroundColor: colors.background,
-                          borderColor: colors.border,
-                          color: colors.foreground,
-                        }}
+                        className="border-border bg-background text-foreground"
                       />
                     </View>
 
-                    <View style={{ marginBottom: 16 }}>
-                      <Text
-                        style={{
-                          color: colors.foreground,
-                          fontSize: 14,
-                          fontWeight: "500",
-                          marginBottom: 8,
-                        }}
-                      >
+                    <View className="mb-4">
+                      <Text className="mb-2 text-sm font-medium text-foreground">
                         Description
                       </Text>
                       <Input
@@ -2191,111 +1936,52 @@ function EventModal({
                         placeholder="Event description"
                         multiline
                         numberOfLines={4}
-                        style={{
-                          backgroundColor: colors.background,
-                          borderColor: colors.border,
-                          color: colors.foreground,
-                          minHeight: 80,
-                          textAlignVertical: "top",
-                        }}
+                        className="min-h-[80px] border-border bg-background text-foreground"
                       />
                     </View>
 
-                    <View style={{ marginBottom: 16, marginTop: 40 }}>
-                      <Text
-                        style={{
-                          color: colors.foreground,
-                          fontSize: 14,
-                          fontWeight: "500",
-                          marginBottom: 8,
-                        }}
-                      >
+                    <View className="mb-4 mt-10">
+                      <Text className="mb-2 text-sm font-medium text-foreground">
                         Date
                       </Text>
                       <Input
                         value={eventDate}
                         onChangeText={handleDateChange}
                         placeholder="YYYY-MM-DD"
-                        style={{
-                          backgroundColor: colors.background,
-                          borderColor: dateError ? "#ef4444" : colors.border,
-                          color: colors.foreground,
-                        }}
+                        className={`border bg-background text-foreground ${dateError ? "border-red-500" : "border-border"}`}
                       />
                       {dateError ? (
-                        <Text
-                          style={{
-                            color: "#ef4444",
-                            fontSize: 12,
-                            marginTop: 4,
-                          }}
-                        >
+                        <Text className="mt-1 text-xs text-red-500">
                           {dateError}
                         </Text>
                       ) : null}
                     </View>
 
-                    <View style={{ marginBottom: 24 }}>
-                      <Text
-                        style={{
-                          color: colors.foreground,
-                          fontSize: 14,
-                          fontWeight: "500",
-                          marginBottom: 8,
-                        }}
-                      >
+                    <View className="mb-6">
+                      <Text className="mb-2 text-sm font-medium text-foreground">
                         Time
                       </Text>
                       <Input
                         value={eventTime}
                         onChangeText={handleTimeChange}
                         placeholder="HH:mm AM/PM (e.g., 2:30 PM)"
-                        style={{
-                          backgroundColor: colors.background,
-                          borderColor: timeError ? "#ef4444" : colors.border,
-                          color: colors.foreground,
-                        }}
+                        className={`border bg-background text-foreground ${timeError ? "border-red-500" : "border-border"}`}
                       />
                       {timeError ? (
-                        <Text
-                          style={{
-                            color: "#ef4444",
-                            fontSize: 12,
-                            marginTop: 4,
-                          }}
-                        >
+                        <Text className="mt-1 text-xs text-red-500">
                           {timeError}
                         </Text>
                       ) : null}
                     </View>
 
-                    <View style={{ marginBottom: 24 }}>
-                      <Text
-                        style={{
-                          color: colors.foreground,
-                          fontSize: 14,
-                          fontWeight: "500",
-                          marginBottom: 8,
-                        }}
-                      >
+                    <View className="mb-6">
+                      <Text className="mb-2 text-sm font-medium text-foreground">
                         Repeat
                       </Text>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Pressable
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              paddingHorizontal: 12,
-                              paddingVertical: 10,
-                              backgroundColor: colors.background,
-                              borderWidth: 1,
-                              borderColor: colors.border,
-                              borderRadius: 6,
-                            }}
-                          >
-                            <Text style={{ color: colors.foreground, fontSize: 14 }}>
+                          <Pressable className="flex-row items-center justify-between rounded-md border border-border bg-background px-3 py-2.5">
+                            <Text className="text-sm text-foreground">
                               {repeatInterval.charAt(0).toUpperCase() + repeatInterval.slice(1)}
                             </Text>
                             <ChevronDown color={colors.mutedForeground} size={16} />
@@ -2307,7 +1993,7 @@ function EventModal({
                               key={interval}
                               onPress={() => setRepeatInterval(interval)}
                             >
-                              <Text style={{ color: colors.foreground }}>
+                              <Text className="text-foreground">
                                 {interval.charAt(0).toUpperCase() + interval.slice(1)}
                               </Text>
                             </DropdownMenuItem>
@@ -2316,54 +2002,35 @@ function EventModal({
                       </DropdownMenu>
                     </View>
 
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        gap: 12,
-                      }}
-                    >
+                    <View className="flex-row justify-between gap-3">
                       {event && (
                         <Pressable
                           onPress={handleDelete}
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 6,
-                            backgroundColor: "transparent",
-                          }}
+                          className="rounded-md bg-transparent px-4 py-2.5"
                         >
-                          <Text style={{ color: "#ef4444", fontWeight: "600" }}>
+                          <Text className="font-semibold text-red-500">
                             Delete
                           </Text>
                         </Pressable>
                       )}
-                      <View style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end", gap: 12 }}>
+                      <View className="flex-1 flex-row justify-end gap-3">
                         <Pressable
                           onPress={onClose}
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 6,
-                          }}
+                          className="rounded-md px-4 py-2.5"
                         >
-                          <Text style={{ color: colors.foreground }}>Cancel</Text>
+                          <Text className="text-foreground">Cancel</Text>
                         </Pressable>
                         <Pressable
                           onPress={handleSave}
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 6,
-                          }}
+                          className="rounded-md px-4 py-2.5"
                         >
-                          <Text style={{ color: "#3b82f6", fontWeight: "600" }}>Save</Text>
+                          <Text className="font-semibold text-blue-500">Save</Text>
                         </Pressable>
                       </View>
                     </View>
                   </View>
                 </ScrollView>
-              </BlurView>
+              </View>
             </View>
           </KeyboardAvoidingView>
         </Modal>
@@ -2372,87 +2039,31 @@ function EventModal({
       {/* Delete Confirmation Dialog - EventModal */}
       {Platform.OS === "web" ? (
         deleteDialogOpen && event && (
-          <View
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
-            style={{
-              position: "fixed" as any,
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 60,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(8px)",
-            }}
-          >
+          <View className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
             <Pressable
               className="absolute inset-0"
-              style={{ position: "absolute" as any }}
               onPress={() => setDeleteDialogOpen(false)}
             />
-            <View
-              className="bg-background border-border w-full max-w-md rounded-lg border p-6 shadow-lg"
-              style={{
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                borderRadius: 8,
-                padding: 24,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-              }}
-            >
-              <Text
-                className="text-lg font-semibold mb-2"
-                style={{
-                  color: colors.foreground,
-                  fontSize: 18,
-                  fontWeight: "600",
-                  marginBottom: 8,
-                }}
-              >
+            <View className="w-full max-w-md rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
                 Delete Event
               </Text>
-              <Text
-                className="text-sm mb-6"
-                style={{
-                  color: colors.mutedForeground,
-                  fontSize: 14,
-                  marginBottom: 24,
-                }}
-              >
+              <Text className="mb-6 text-sm text-muted-foreground">
                 Are you sure you want to delete "{event.title}"? This action
                 cannot be undone.
               </Text>
-              <View
-                className="flex-row justify-end gap-3"
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  gap: 12,
-                }}
-              >
+              <View className="flex-row justify-end gap-3">
                 <Pressable
                   className="px-4 py-2"
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                  }}
                   onPress={() => setDeleteDialogOpen(false)}
                 >
-                  <Text style={{ color: colors.foreground }}>Cancel</Text>
+                  <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
-                  className="px-4 py-2 rounded-md"
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 6,
-                  }}
+                  className="rounded-md px-4 py-2"
                   onPress={handleDeleteConfirm}
                 >
-                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>
+                  <Text className="font-semibold text-red-500">
                     Delete
                   </Text>
                 </Pressable>
@@ -2467,99 +2078,36 @@ function EventModal({
           animationType="fade"
           onRequestClose={() => setDeleteDialogOpen(false)}
         >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-            }}
-          >
-            <BlurView
-              intensity={20}
-              tint="dark"
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-                padding: 16,
-              }}
-            >
-              <Pressable
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                }}
-                onPress={() => setDeleteDialogOpen(false)}
-              />
-              <View
-                style={{
-                  backgroundColor: colors.muted,
-                  borderColor: colors.border,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  padding: 24,
-                  width: "100%",
-                  maxWidth: 400,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 5,
-                }}
-              >
-                <Text
-                  style={{
-                    color: colors.foreground,
-                    fontSize: 18,
-                    fontWeight: "600",
-                    marginBottom: 8,
-                  }}
-                >
+          <View className="flex-1 items-center justify-center bg-black/50 p-4">
+            <Pressable
+              className="absolute inset-0"
+              onPress={() => setDeleteDialogOpen(false)}
+            />
+            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+                <Text className="mb-2 text-lg font-semibold text-foreground">
                   Delete Event
                 </Text>
-                <Text
-                  style={{
-                    color: colors.mutedForeground,
-                    fontSize: 14,
-                    marginBottom: 24,
-                  }}
-                >
+                <Text className="mb-6 text-sm text-muted-foreground">
                   Are you sure you want to delete "{event?.title}"? This action
                   cannot be undone.
                 </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "flex-end",
-                    gap: 12,
-                  }}
-                >
+                <View className="flex-row justify-end gap-3">
                   <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                    }}
+                    className="px-4 py-2"
                     onPress={() => setDeleteDialogOpen(false)}
                   >
-                    <Text style={{ color: colors.foreground }}>Cancel</Text>
+                    <Text className="text-foreground">Cancel</Text>
                   </Pressable>
                   <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 6,
-                    }}
+                    className="rounded-md px-4 py-2"
                     onPress={handleDeleteConfirm}
                   >
-                    <Text style={{ color: "#ef4444", fontWeight: "600" }}>
+                    <Text className="font-semibold text-red-500">
                       Delete
                     </Text>
                   </Pressable>
                 </View>
               </View>
-            </BlurView>
           </View>
         </Modal>
       )}

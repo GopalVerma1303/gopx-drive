@@ -7,7 +7,6 @@ import { useTheme } from "@/contexts/theme-context";
 import { clearAppCache } from "@/lib/clear-cache";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQueryClient } from "@tanstack/react-query";
-import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import { Archive, Eraser, Heart, ImageIcon, LogOut, Settings2, WandSparkles } from "lucide-react-native";
@@ -447,81 +446,30 @@ export default function SettingsScreen() {
       {/* Clear cache confirmation dialog — same style as archive.tsx */}
       {Platform.OS === "web" ? (
         clearCacheDialogOpen && (
-          <View
-            style={{
-              position: "fixed" as any,
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 50,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(8px)",
-              justifyContent: "center",
-              alignItems: "center",
-              padding: 16,
-            }}
-          >
+          <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <Pressable
-              style={{ position: "absolute" as any, top: 0, left: 0, right: 0, bottom: 0 }}
+              className="absolute inset-0"
               onPress={() => setClearCacheDialogOpen(false)}
             />
-            <View
-              style={{
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                borderRadius: 8,
-                borderWidth: 1,
-                padding: 24,
-                width: "100%",
-                maxWidth: 400,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.foreground,
-                  fontSize: 18,
-                  fontWeight: "600",
-                  marginBottom: 8,
-                }}
-              >
+            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
                 Clear cache
               </Text>
-              <Text
-                style={{
-                  color: colors.mutedForeground,
-                  fontSize: 14,
-                  marginBottom: 24,
-                }}
-              >
+              <Text className="mb-6 text-sm text-muted-foreground">
                 This will clear cached files, notes, and calendar data. You will stay signed in. Data will load again when you open each screen.
               </Text>
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  gap: 12,
-                }}
-              >
+              <View className="flex-row justify-end gap-3">
                 <Pressable
-                  style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                  className="px-4 py-2"
                   onPress={() => setClearCacheDialogOpen(false)}
                 >
-                  <Text style={{ color: colors.foreground }}>Cancel</Text>
+                  <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 6,
-                  }}
+                  className="rounded-md px-4 py-2"
                   onPress={handleClearCacheConfirm}
                 >
-                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>Clear cache</Text>
+                  <Text className="font-semibold text-red-500">Clear cache</Text>
                 </Pressable>
               </View>
             </View>
@@ -534,88 +482,33 @@ export default function SettingsScreen() {
           animationType="fade"
           onRequestClose={() => setClearCacheDialogOpen(false)}
         >
-          <View style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)" }}>
-            <BlurView
-              intensity={20}
-              tint="dark"
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-                padding: 16,
-              }}
-            >
-              <Pressable
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                }}
-                onPress={() => setClearCacheDialogOpen(false)}
-              />
-              <View
-                style={{
-                  backgroundColor: colors.muted,
-                  borderColor: colors.border,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  padding: 24,
-                  width: "100%",
-                  maxWidth: 400,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 5,
-                }}
-              >
-                <Text
-                  style={{
-                    color: colors.foreground,
-                    fontSize: 18,
-                    fontWeight: "600",
-                    marginBottom: 8,
-                  }}
-                >
+          <View className="flex-1 items-center justify-center bg-black/50 p-4">
+            <Pressable
+              className="absolute inset-0"
+              onPress={() => setClearCacheDialogOpen(false)}
+            />
+            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+                <Text className="mb-2 text-lg font-semibold text-foreground">
                   Clear cache
                 </Text>
-                <Text
-                  style={{
-                    color: colors.mutedForeground,
-                    fontSize: 14,
-                    marginBottom: 24,
-                  }}
-                >
+                <Text className="mb-6 text-sm text-muted-foreground">
                   This will clear cached files, notes, and calendar data. You will stay signed in. Data will load again when you open each screen.
                 </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "flex-end",
-                    gap: 12,
-                  }}
-                >
+                <View className="flex-row justify-end gap-3">
                   <Pressable
-                    style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                    className="px-4 py-2"
                     onPress={() => setClearCacheDialogOpen(false)}
                   >
-                    <Text style={{ color: colors.foreground }}>Cancel</Text>
+                    <Text className="text-foreground">Cancel</Text>
                   </Pressable>
                   <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 6,
-                    }}
+                    className="rounded-md px-4 py-2"
                     onPress={handleClearCacheConfirm}
                   >
-                    <Text style={{ color: "#ef4444", fontWeight: "600" }}>Clear cache</Text>
+                    <Text className="font-semibold text-red-500">Clear cache</Text>
                   </Pressable>
                 </View>
               </View>
-            </BlurView>
           </View>
         </Modal>
       )}
@@ -623,81 +516,30 @@ export default function SettingsScreen() {
       {/* Sign Out confirmation dialog — same style as notes archive dialog for web + native */}
       {Platform.OS === "web" ? (
         logoutDialogOpen && (
-          <View
-            style={{
-              position: "fixed" as any,
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 50,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(8px)",
-              justifyContent: "center",
-              alignItems: "center",
-              padding: 16,
-            }}
-          >
+          <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <Pressable
-              style={{ position: "absolute" as any, top: 0, left: 0, right: 0, bottom: 0 }}
+              className="absolute inset-0"
               onPress={() => setLogoutDialogOpen(false)}
             />
-            <View
-              style={{
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                borderRadius: 8,
-                borderWidth: 1,
-                padding: 24,
-                width: "100%",
-                maxWidth: 400,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.foreground,
-                  fontSize: 18,
-                  fontWeight: "600",
-                  marginBottom: 8,
-                }}
-              >
+            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
                 Sign Out
               </Text>
-              <Text
-                style={{
-                  color: colors.mutedForeground,
-                  fontSize: 14,
-                  marginBottom: 24,
-                }}
-              >
+              <Text className="mb-6 text-sm text-muted-foreground">
                 Are you sure you want to sign out?
               </Text>
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  gap: 12,
-                }}
-              >
+              <View className="flex-row justify-end gap-3">
                 <Pressable
-                  style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                  className="px-4 py-2"
                   onPress={() => setLogoutDialogOpen(false)}
                 >
-                  <Text style={{ color: colors.foreground }}>Cancel</Text>
+                  <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 6,
-                  }}
+                  className="rounded-md px-4 py-2"
                   onPress={handleLogoutConfirm}
                 >
-                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>Sign Out</Text>
+                  <Text className="font-semibold text-red-500">Sign Out</Text>
                 </Pressable>
               </View>
             </View>
@@ -710,88 +552,33 @@ export default function SettingsScreen() {
           animationType="fade"
           onRequestClose={() => setLogoutDialogOpen(false)}
         >
-          <View style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)" }}>
-            <BlurView
-              intensity={20}
-              tint="dark"
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-                padding: 16,
-              }}
-            >
-              <Pressable
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                }}
-                onPress={() => setLogoutDialogOpen(false)}
-              />
-              <View
-                style={{
-                  backgroundColor: colors.muted,
-                  borderColor: colors.border,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  padding: 24,
-                  width: "100%",
-                  maxWidth: 400,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 5,
-                }}
-              >
-                <Text
-                  style={{
-                    color: colors.foreground,
-                    fontSize: 18,
-                    fontWeight: "600",
-                    marginBottom: 8,
-                  }}
-                >
+          <View className="flex-1 items-center justify-center bg-black/50 p-4">
+            <Pressable
+              className="absolute inset-0"
+              onPress={() => setLogoutDialogOpen(false)}
+            />
+            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+                <Text className="mb-2 text-lg font-semibold text-foreground">
                   Sign Out
                 </Text>
-                <Text
-                  style={{
-                    color: colors.mutedForeground,
-                    fontSize: 14,
-                    marginBottom: 24,
-                  }}
-                >
+                <Text className="mb-6 text-sm text-muted-foreground">
                   Are you sure you want to sign out?
                 </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "flex-end",
-                    gap: 12,
-                  }}
-                >
+                <View className="flex-row justify-end gap-3">
                   <Pressable
-                    style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                    className="px-4 py-2"
                     onPress={() => setLogoutDialogOpen(false)}
                   >
-                    <Text style={{ color: colors.foreground }}>Cancel</Text>
+                    <Text className="text-foreground">Cancel</Text>
                   </Pressable>
                   <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 6,
-                    }}
+                    className="rounded-md px-4 py-2"
                     onPress={handleLogoutConfirm}
                   >
-                    <Text style={{ color: "#ef4444", fontWeight: "600" }}>Sign Out</Text>
+                    <Text className="font-semibold text-red-500">Sign Out</Text>
                   </Pressable>
                 </View>
               </View>
-            </BlurView>
           </View>
         </Modal>
       )}

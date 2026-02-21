@@ -23,7 +23,6 @@ import type { File as FileRecord, Note } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import { Archive, ArrowLeft, Check, CheckCheck, FileText, Files, Search, Trash2, Undo2, X } from "lucide-react-native";
@@ -587,9 +586,6 @@ export default function ArchiveScreen() {
                                 onToggleSelect={() =>
                                   toggleNoteSelection(note.id)
                                 }
-                                onDelete={() =>
-                                  handleDeleteSingle(note.id)
-                                }
                               />
                             </View>
                           ))}
@@ -686,60 +682,20 @@ export default function ArchiveScreen() {
       {/* Delete Confirmation Dialog */}
       {Platform.OS === "web" ? (
         deleteDialogOpen && (
-          <View
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            style={{
-              position: "fixed" as any,
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 50,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(8px)",
-            }}
-          >
+          <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <Pressable
               className="absolute inset-0"
-              style={{ position: "absolute" as any }}
               onPress={() => setDeleteDialogOpen(false)}
             />
-            <View
-              className="bg-background border-border w-full max-w-md rounded-lg border p-6 shadow-lg"
-              style={{
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                borderRadius: 8,
-                padding: 24,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-              }}
-            >
-              <Text
-                className="text-lg font-semibold mb-2"
-                style={{
-                  color: colors.foreground,
-                  fontSize: 18,
-                  fontWeight: "600",
-                  marginBottom: 8,
-                }}
-              >
+            <View className="w-full max-w-md rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
                 {deleteAction?.type === "all"
                   ? `Delete All ${activeTab === "notes" ? "Notes" : "Files"}`
                   : deleteAction?.type === "selected"
                     ? `Delete Selected ${activeTab === "notes" ? "Notes" : "Files"}`
                     : `Delete ${activeTab === "notes" ? "Note" : "File"}`}
               </Text>
-              <Text
-                className="text-sm mb-6"
-                style={{
-                  color: colors.mutedForeground,
-                  fontSize: 14,
-                  marginBottom: 24,
-                }}
-              >
+              <Text className="mb-6 text-sm text-muted-foreground">
                 {deleteAction?.type === "all"
                   ? `Are you sure you want to permanently delete all ${activeTab === "notes"
                     ? filteredNotes.length
@@ -758,34 +714,18 @@ export default function ArchiveScreen() {
                     : `Are you sure you want to permanently delete this ${activeTab === "notes" ? "note" : "file"
                     }? This action cannot be undone.`}
               </Text>
-              <View
-                className="flex-row justify-end gap-3"
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  gap: 12,
-                }}
-              >
+              <View className="flex-row justify-end gap-3">
                 <Pressable
                   className="px-4 py-2"
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                  }}
                   onPress={() => setDeleteDialogOpen(false)}
                 >
-                  <Text style={{ color: colors.foreground }}>Cancel</Text>
+                  <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
-                  className="px-4 py-2 rounded-md"
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 6,
-                  }}
+                  className="rounded-md px-4 py-2"
                   onPress={confirmDelete}
                 >
-                  <Text style={{ color: "#ef4444", fontWeight: "600" }}>
+                  <Text className="font-semibold text-red-500">
                     Delete
                   </Text>
                 </Pressable>
@@ -800,69 +740,20 @@ export default function ArchiveScreen() {
           animationType="fade"
           onRequestClose={() => setDeleteDialogOpen(false)}
         >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-            }}
-          >
-            <BlurView
-              intensity={20}
-              tint="dark"
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-                padding: 16,
-              }}
-            >
-              <Pressable
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                }}
-                onPress={() => setDeleteDialogOpen(false)}
-              />
-              <View
-                style={{
-                  backgroundColor: colors.muted,
-                  borderColor: colors.border,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  padding: 24,
-                  width: "100%",
-                  maxWidth: 400,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 5,
-                }}
-              >
-                <Text
-                  style={{
-                    color: colors.foreground,
-                    fontSize: 18,
-                    fontWeight: "600",
-                    marginBottom: 8,
-                  }}
-                >
+          <View className="flex-1 items-center justify-center bg-black/50 p-4">
+            <Pressable
+              className="absolute inset-0"
+              onPress={() => setDeleteDialogOpen(false)}
+            />
+            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+                <Text className="mb-2 text-lg font-semibold text-foreground">
                   {deleteAction?.type === "all"
                     ? `Delete All ${activeTab === "notes" ? "Notes" : "Files"}`
                     : deleteAction?.type === "selected"
                       ? `Delete Selected ${activeTab === "notes" ? "Notes" : "Files"}`
                       : `Delete ${activeTab === "notes" ? "Note" : "File"}`}
                 </Text>
-                <Text
-                  style={{
-                    color: colors.mutedForeground,
-                    fontSize: 14,
-                    marginBottom: 24,
-                  }}
-                >
+                <Text className="mb-6 text-sm text-muted-foreground">
                   {deleteAction?.type === "all"
                     ? `Are you sure you want to permanently delete all ${activeTab === "notes"
                       ? filteredNotes.length
@@ -881,37 +772,23 @@ export default function ArchiveScreen() {
                       : `Are you sure you want to permanently delete this ${activeTab === "notes" ? "note" : "file"
                       }? This action cannot be undone.`}
                 </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "flex-end",
-                    gap: 12,
-                  }}
-                >
+                <View className="flex-row justify-end gap-3">
                   <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                    }}
+                    className="px-4 py-2"
                     onPress={() => setDeleteDialogOpen(false)}
                   >
-                    <Text style={{ color: colors.foreground }}>Cancel</Text>
+                    <Text className="text-foreground">Cancel</Text>
                   </Pressable>
                   <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 6,
-                    }}
+                    className="rounded-md px-4 py-2"
                     onPress={confirmDelete}
                   >
-                    <Text style={{ color: "#ef4444", fontWeight: "600" }}>
+                    <Text className="font-semibold text-red-500">
                       Delete
                     </Text>
                   </Pressable>
                 </View>
               </View>
-            </BlurView>
           </View>
         </Modal>
       )}
@@ -919,60 +796,20 @@ export default function ArchiveScreen() {
       {/* Restore Confirmation Dialog */}
       {Platform.OS === "web" ? (
         restoreDialogOpen && (
-          <View
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            style={{
-              position: "fixed" as any,
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 50,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(8px)",
-            }}
-          >
+          <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <Pressable
               className="absolute inset-0"
-              style={{ position: "absolute" as any }}
               onPress={() => setRestoreDialogOpen(false)}
             />
-            <View
-              className="bg-background border-border w-full max-w-md rounded-lg border p-6 shadow-lg"
-              style={{
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                borderRadius: 8,
-                padding: 24,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-              }}
-            >
-              <Text
-                className="text-lg font-semibold mb-2"
-                style={{
-                  color: colors.foreground,
-                  fontSize: 18,
-                  fontWeight: "600",
-                  marginBottom: 8,
-                }}
-              >
+            <View className="w-full max-w-md rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
                 {restoreAction?.type === "all"
                   ? `Restore All ${activeTab === "notes" ? "Notes" : "Files"}`
                   : restoreAction?.type === "selected"
                     ? `Restore Selected ${activeTab === "notes" ? "Notes" : "Files"}`
                     : `Restore ${activeTab === "notes" ? "Note" : "File"}`}
               </Text>
-              <Text
-                className="text-sm mb-6"
-                style={{
-                  color: colors.mutedForeground,
-                  fontSize: 14,
-                  marginBottom: 24,
-                }}
-              >
+              <Text className="mb-6 text-sm text-muted-foreground">
                 {restoreAction?.type === "all"
                   ? `Are you sure you want to restore all ${activeTab === "notes"
                     ? filteredNotes.length
@@ -991,34 +828,18 @@ export default function ArchiveScreen() {
                     : `Are you sure you want to restore this ${activeTab === "notes" ? "note" : "file"
                     }?`}
               </Text>
-              <View
-                className="flex-row justify-end gap-3"
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  gap: 12,
-                }}
-              >
+              <View className="flex-row justify-end gap-3">
                 <Pressable
                   className="px-4 py-2"
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                  }}
                   onPress={() => setRestoreDialogOpen(false)}
                 >
-                  <Text style={{ color: colors.foreground }}>Cancel</Text>
+                  <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
-                  className="px-4 py-2 rounded-md"
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 6,
-                  }}
+                  className="rounded-md px-4 py-2"
                   onPress={confirmRestore}
                 >
-                  <Text style={{ color: "#3b82f6", fontWeight: "600" }}>
+                  <Text className="font-semibold text-blue-500">
                     Restore
                   </Text>
                 </Pressable>
@@ -1033,69 +854,20 @@ export default function ArchiveScreen() {
           animationType="fade"
           onRequestClose={() => setRestoreDialogOpen(false)}
         >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-            }}
-          >
-            <BlurView
-              intensity={20}
-              tint="dark"
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-                padding: 16,
-              }}
-            >
-              <Pressable
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                }}
-                onPress={() => setRestoreDialogOpen(false)}
-              />
-              <View
-                style={{
-                  backgroundColor: colors.muted,
-                  borderColor: colors.border,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  padding: 24,
-                  width: "100%",
-                  maxWidth: 400,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 5,
-                }}
-              >
-                <Text
-                  style={{
-                    color: colors.foreground,
-                    fontSize: 18,
-                    fontWeight: "600",
-                    marginBottom: 8,
-                  }}
-                >
+          <View className="flex-1 items-center justify-center bg-black/50 p-4">
+            <Pressable
+              className="absolute inset-0"
+              onPress={() => setRestoreDialogOpen(false)}
+            />
+            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+                <Text className="mb-2 text-lg font-semibold text-foreground">
                   {restoreAction?.type === "all"
                     ? `Restore All ${activeTab === "notes" ? "Notes" : "Files"}`
                     : restoreAction?.type === "selected"
                       ? `Restore Selected ${activeTab === "notes" ? "Notes" : "Files"}`
                       : `Restore ${activeTab === "notes" ? "Note" : "File"}`}
                 </Text>
-                <Text
-                  style={{
-                    color: colors.mutedForeground,
-                    fontSize: 14,
-                    marginBottom: 24,
-                  }}
-                >
+                <Text className="mb-6 text-sm text-muted-foreground">
                   {restoreAction?.type === "all"
                     ? `Are you sure you want to restore all ${activeTab === "notes"
                       ? filteredNotes.length
@@ -1114,37 +886,23 @@ export default function ArchiveScreen() {
                       : `Are you sure you want to restore this ${activeTab === "notes" ? "note" : "file"
                       }?`}
                 </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "flex-end",
-                    gap: 12,
-                  }}
-                >
+                <View className="flex-row justify-end gap-3">
                   <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                    }}
+                    className="px-4 py-2"
                     onPress={() => setRestoreDialogOpen(false)}
                   >
-                    <Text style={{ color: colors.foreground }}>Cancel</Text>
+                    <Text className="text-foreground">Cancel</Text>
                   </Pressable>
                   <Pressable
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 6,
-                    }}
+                    className="rounded-md px-4 py-2"
                     onPress={confirmRestore}
                   >
-                    <Text style={{ color: "#3b82f6", fontWeight: "600" }}>
+                    <Text className="font-semibold text-blue-500">
                       Restore
                     </Text>
                   </Pressable>
                 </View>
               </View>
-            </BlurView>
           </View>
         </Modal>
       )}
@@ -1159,7 +917,6 @@ interface ArchivedNoteCardProps {
   isSynced: boolean;
   isSelected: boolean;
   onToggleSelect: () => void;
-  onDelete: () => void;
 }
 
 function ArchivedNoteCard({
@@ -1168,7 +925,6 @@ function ArchivedNoteCard({
   isSynced,
   isSelected,
   onToggleSelect,
-  onDelete,
 }: ArchivedNoteCardProps) {
   const { colors } = useThemeColors();
   const scale = useRef(new Animated.Value(1)).current;
@@ -1186,13 +942,6 @@ function ArchivedNoteCard({
       useNativeDriver: true,
       friction: 3,
     }).start();
-  };
-
-  const handleContextMenu = (e: any) => {
-    if (Platform.OS === "web" && onDelete) {
-      e.preventDefault();
-      onDelete();
-    }
   };
 
   const formatDate = (dateString: string) => {
@@ -1236,10 +985,6 @@ function ArchivedNoteCard({
       onPress={onToggleSelect}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      onLongPress={onDelete}
-      {...(Platform.OS === "web" && {
-        onContextMenu: handleContextMenu,
-      })}
     >
       <Animated.View style={{ transform: [{ scale }] }}>
         <Card
