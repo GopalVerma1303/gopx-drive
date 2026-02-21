@@ -118,8 +118,8 @@ export default function SharedNoteScreen() {
     );
   }
 
-  // Match note editor page layout: bg-background → inner max-w-2xl bg-muted → ScrollView with same padding as preview
-  const contentPaddingTop = 20 + insets.top;
+  // Status bar matches note detail header: same height, padding, background, and button style
+  const contentPaddingHorizontal = 32;
   const contentPaddingBottom = 80 + insets.bottom;
 
   return (
@@ -127,6 +127,80 @@ export default function SharedNoteScreen() {
       style={{ flex: 1, backgroundColor: colors.background }}
       className="flex-1 bg-background"
     >
+      {/* Status bar — full screen width, same as note detail header */}
+      <View
+        style={{
+          width: "100%",
+          paddingTop: insets.top,
+          backgroundColor: colors.background,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            height: 56,
+            paddingHorizontal: 16,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              flex: 1,
+            }}
+          >
+            <Pressable
+              onPress={openGopxDrive}
+              style={({ pressed }) => [
+                { flexDirection: "row", alignItems: "center", gap: 8, padding: 8 },
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Image
+                source={GopxDriveIcon}
+                style={{ width: 22, height: 22 }}
+                resizeMode="contain"
+                className="filter dark:invert rounded-[2px]"
+              />
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontSize: 18,
+                }}
+              >
+                Gopx Drive
+              </Text>
+            </Pressable>
+          </View>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              marginLeft: 18,
+            }}
+          >
+            <Pressable
+              onPress={handleCopyContent}
+              disabled={!note.content}
+              style={[!note.content && { opacity: 0.4 }, { padding: 8 }]}
+              accessibilityLabel={copied ? "Copied" : "Copy markdown"}
+              accessibilityRole="button"
+            >
+              {copied ? (
+                <Check size={22} color={colors.primary} strokeWidth={2.5} />
+              ) : (
+                <Copy size={22} color={colors.foreground} strokeWidth={2.5} />
+              )}
+            </Pressable>
+            <ThemeToggle size={22} />
+          </View>
+        </View>
+      </View>
+
       <View
         style={{
           flex: 1,
@@ -140,8 +214,8 @@ export default function SharedNoteScreen() {
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
-            paddingHorizontal: 32,
-            paddingTop: contentPaddingTop,
+            paddingHorizontal: contentPaddingHorizontal,
+            paddingTop: 28,
             paddingBottom: contentPaddingBottom,
             flexGrow: 1,
             ...(Platform.OS === "web" ? { minHeight: "100%" } : {}),
@@ -150,72 +224,33 @@ export default function SharedNoteScreen() {
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}
         >
-          <View
+          {/* Title as main heading — clear visual hierarchy */}
+          <Text
             style={{
-              paddingBottom: 30,
-              marginBottom: 30,
-              borderBottomWidth: 0,
-              borderBottomColor: colors.ring,
-              alignItems: "flex-start",
+              color: colors.foreground,
+              fontSize: 22,
+              fontWeight: "700",
+              letterSpacing: -0.3,
+              marginBottom: 8,
             }}
+            numberOfLines={2}
+            ellipsizeMode="tail"
           >
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-                width: "100%",
-                marginBottom: 12,
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.foreground,
-                  fontSize: 18,
-                  fontWeight: "600",
-                  flex: 1,
-                }}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {note.title || "Untitled"}
-              </Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Pressable
-                  onPress={handleCopyContent}
-                  disabled={!note.content}
-                  style={({ pressed }) => ({
-                    opacity: note.content ? (pressed ? 0.7 : 1) : 0.4,
-                    padding: 8,
-                    borderRadius: 8,
-                  })}
-                  accessibilityLabel={copied ? "Copied" : "Copy markdown"}
-                  accessibilityRole="button"
-                >
-                  {copied ? (
-                    <Check size={20} color={colors.primary} />
-                  ) : (
-                    <Copy size={20} color={colors.foreground} />
-                  )}
-                </Pressable>
-                <ThemeToggle size={20} />
-              </View>
-            </View>
-            <View
-              style={{
-                flexDirection: "column",
-                gap: 4,
-              }}
-            >
-              <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>
-                Last updated: {formatLastUpdated(note.updated_at)}
-              </Text>
-              {note.shared_by_email ? (
-                <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>
-                  Shared by: {note.shared_by_email}
+            {note.title || "Untitled"}
+          </Text>
+          {/* Single-line metadata — minimal, unobtrusive */}
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4, marginBottom: 24 }}>
+            <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
+              {formatLastUpdated(note.updated_at)}
+            </Text>
+            {note.shared_by_email ? (
+              <>
+                <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>·</Text>
+                <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
+                  {note.shared_by_email}
                 </Text>
-              ) : null}
-            </View>
+              </>
+            ) : null}
           </View>
           {note.content ? (
             <MarkdownEditor
