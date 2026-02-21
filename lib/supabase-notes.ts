@@ -1,4 +1,5 @@
 import { supabase, type Note } from "@/lib/supabase";
+import { withSupabaseTimeout } from "@/lib/network-timeout";
 
 export const listNotes = async (userId?: string): Promise<Note[]> => {
   if (!userId) {
@@ -6,20 +7,26 @@ export const listNotes = async (userId?: string): Promise<Note[]> => {
   }
 
   // Try querying with is_archived filter first
-  let { data, error } = await supabase
-    .from("notes")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("is_archived", false)
-    .order("updated_at", { ascending: false });
-
-  // If column doesn't exist (400 error), fallback to querying without filter
-  if (error && (error.code === "PGRST116" || error.message?.includes("column") || error.message?.includes("is_archived"))) {
-    const fallbackQuery = await supabase
+  let { data, error } = await withSupabaseTimeout((signal) =>
+    supabase
       .from("notes")
       .select("*")
       .eq("user_id", userId)
-      .order("updated_at", { ascending: false });
+      .eq("is_archived", false)
+      .order("updated_at", { ascending: false })
+      .abortSignal(signal)
+  );
+
+  // If column doesn't exist (400 error), fallback to querying without filter
+  if (error && (error.code === "PGRST116" || error.message?.includes("column") || error.message?.includes("is_archived"))) {
+    const fallbackQuery = await withSupabaseTimeout((signal) =>
+      supabase
+        .from("notes")
+        .select("*")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
+        .abortSignal(signal)
+    );
     
     if (fallbackQuery.error) {
       throw new Error(`Failed to fetch notes: ${fallbackQuery.error.message}`);
@@ -42,12 +49,15 @@ export const listArchivedNotes = async (userId?: string): Promise<Note[]> => {
   }
 
   // Try querying with is_archived filter first
-  let { data, error } = await supabase
-    .from("notes")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("is_archived", true)
-    .order("updated_at", { ascending: false });
+  let { data, error } = await withSupabaseTimeout((signal) =>
+    supabase
+      .from("notes")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("is_archived", true)
+      .order("updated_at", { ascending: false })
+      .abortSignal(signal)
+  );
 
   // If column doesn't exist (400 error), return empty array (no archived items yet)
   if (error && (error.code === "PGRST116" || error.message?.includes("column") || error.message?.includes("is_archived"))) {

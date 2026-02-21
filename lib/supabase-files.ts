@@ -1,4 +1,5 @@
 import { supabase, type File } from "@/lib/supabase";
+import { withSupabaseTimeout } from "@/lib/network-timeout";
 import { decode } from "base64-arraybuffer";
 import * as FileSystem from "expo-file-system/legacy";
 import { Platform } from "react-native";
@@ -9,20 +10,26 @@ export const listFiles = async (userId?: string): Promise<File[]> => {
   }
 
   // Try querying with is_archived filter first
-  let { data, error } = await supabase
-    .from("files")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("is_archived", false)
-    .order("updated_at", { ascending: false });
-
-  // If column doesn't exist (400 error), fallback to querying without filter
-  if (error && (error.code === "PGRST116" || error.message?.includes("column") || error.message?.includes("is_archived"))) {
-    const fallbackQuery = await supabase
+  let { data, error } = await withSupabaseTimeout((signal) =>
+    supabase
       .from("files")
       .select("*")
       .eq("user_id", userId)
-      .order("updated_at", { ascending: false });
+      .eq("is_archived", false)
+      .order("updated_at", { ascending: false })
+      .abortSignal(signal)
+  );
+
+  // If column doesn't exist (400 error), fallback to querying without filter
+  if (error && (error.code === "PGRST116" || error.message?.includes("column") || error.message?.includes("is_archived"))) {
+    const fallbackQuery = await withSupabaseTimeout((signal) =>
+      supabase
+        .from("files")
+        .select("*")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
+        .abortSignal(signal)
+    );
     
     if (fallbackQuery.error) {
       throw new Error(`Failed to fetch files: ${fallbackQuery.error.message}`);
@@ -45,12 +52,15 @@ export const listArchivedFiles = async (userId?: string): Promise<File[]> => {
   }
 
   // Try querying with is_archived filter first
-  let { data, error } = await supabase
-    .from("files")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("is_archived", true)
-    .order("updated_at", { ascending: false });
+  let { data, error } = await withSupabaseTimeout((signal) =>
+    supabase
+      .from("files")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("is_archived", true)
+      .order("updated_at", { ascending: false })
+      .abortSignal(signal)
+  );
 
   // If column doesn't exist (400 error), return empty array (no archived items yet)
   if (error && (error.code === "PGRST116" || error.message?.includes("column") || error.message?.includes("is_archived"))) {

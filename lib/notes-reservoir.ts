@@ -269,34 +269,14 @@ export async function listNotes(userId?: string): Promise<Note[]> {
   const db = await getDbAsync();
   if (!db) return supabaseNotes.listNotes(userId);
 
-  // Offline-first: Return cached data immediately, sync in background
+  // Supabase-first: attempt sync, then read local cache (fallback when offline/fetch fails).
+  await syncFromSupabase(userId).catch(() => {});
+
   const rows = await db.getAllAsync<Record<string, unknown>>(
     `SELECT * FROM ${TABLE} WHERE user_id = ? AND is_archived = 0 ORDER BY updated_at DESC`,
     userId
   );
-  
-  // If we have cached data, return it immediately and sync in background
-  if (rows.length > 0) {
-    // Sync in background (non-blocking)
-    syncFromSupabase(userId).catch(() => {
-      // Sync failed, but we already returned cached data
-    });
-    return rows.map(rowToNote);
-  }
-
-  // No cached data - try to sync, but don't block if network fails
-  try {
-    await syncFromSupabase(userId);
-    // After sync, get the data again
-    const syncedRows = await db.getAllAsync<Record<string, unknown>>(
-      `SELECT * FROM ${TABLE} WHERE user_id = ? AND is_archived = 0 ORDER BY updated_at DESC`,
-      userId
-    );
-    return syncedRows.map(rowToNote);
-  } catch {
-    // Network failed, return empty array (better than blocking)
-    return [];
-  }
+  return rows.map(rowToNote);
 }
 
 export async function listArchivedNotes(userId?: string): Promise<Note[]> {
@@ -307,6 +287,9 @@ export async function listArchivedNotes(userId?: string): Promise<Note[]> {
 
   const db = await getDbAsync();
   if (!db) return supabaseNotes.listArchivedNotes(userId);
+
+  // Supabase-first for archive notes too, with local SQLite fallback.
+  await syncFromSupabase(userId).catch(() => {});
 
   const rows = await db.getAllAsync<Record<string, unknown>>(
     `SELECT * FROM ${TABLE} WHERE user_id = ? AND is_archived = 1 ORDER BY updated_at DESC`,

@@ -1,15 +1,19 @@
 import { supabase, type Event } from "@/lib/supabase";
+import { withSupabaseTimeout } from "@/lib/network-timeout";
 
 export const listEvents = async (userId?: string): Promise<Event[]> => {
   if (!userId) {
     throw new Error("User ID is required");
   }
 
-  const { data, error } = await supabase
-    .from("events")
-    .select("*")
-    .eq("user_id", userId)
-    .order("event_date", { ascending: true });
+  const { data, error } = await withSupabaseTimeout((signal) =>
+    supabase
+      .from("events")
+      .select("*")
+      .eq("user_id", userId)
+      .order("event_date", { ascending: true })
+      .abortSignal(signal)
+  );
 
   if (error) {
     throw new Error(`Failed to fetch events: ${error.message}`);
