@@ -205,7 +205,7 @@ export function MarkdownToolbar({
 
   const handleHeading = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onInsertText("#", 2);
+    onInsertText("#", 1);
   };
 
   const handleInlineCode = () => {
