@@ -36,7 +36,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
           property="og:description"
           content="Your files &amp; folders, organized. Notes, calendars, and sync across devices."
         />
-        <meta property="og:image" content="/assets/images/icon.png" />
+        <meta property="og:image" content="/assets/images/favicon.png" />
         <meta property="og:site_name" content="Gopx Drive" />
         <meta property="og:locale" content="en_US" />
 
@@ -48,7 +48,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
           name="twitter:description"
           content="Your files &amp; folders, organized. Notes, calendars, and sync across devices."
         />
-        <meta name="twitter:image" content="/assets/images/icon.png" />
+        <meta name="twitter:image" content="/assets/images/favicon.png" />
 
         {/* 
           Disable body scrolling on web. This makes ScrollView components work closer to how they do on native. 
