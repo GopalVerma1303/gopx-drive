@@ -599,7 +599,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       beginProgrammaticSelection(nextSelection);
       previousValueRef.current = nextText;
       pendingInternalValueRef.current = nextText;
-      onChangeText(nextText);
+      onChangeText?.(nextText);
       inputRef.current?.focus();
 
       const setCursorPosition = () => {
