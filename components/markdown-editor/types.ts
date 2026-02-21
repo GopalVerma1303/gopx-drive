@@ -1,12 +1,16 @@
 export interface MarkdownEditorProps {
   value: string;
-  onChangeText: (text: string) => void;
+  onChangeText?: (text: string) => void;
   placeholder?: string;
   className?: string;
   isPreview?: boolean;
   onSave?: () => void;
   /** Called whenever selection changes so parent can preserve it (e.g. before opening a modal that steals focus). */
   onSelectionChange?: (selection: { start: number; end: number }) => void;
+  /** When true, only the preview is rendered (no editor). Use for shared note view. Requires isPreview. */
+  previewOnly?: boolean;
+  /** When true with previewOnly, render only the Markdown content without ScrollView (parent provides scroll). */
+  noScrollView?: boolean;
 }
 
 export interface MarkdownEditorRef {

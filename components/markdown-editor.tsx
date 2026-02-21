@@ -104,6 +104,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       isPreview = false,
       onSave,
       onSelectionChange,
+      previewOnly = false,
+      noScrollView = false,
     },
     ref
   ) {
@@ -144,6 +146,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
     // Handle text changes to detect and process list continuations
     const handleTextChange = (newText: string) => {
+      if (!onChangeText) return;
       // Skip processing if we're already processing a list change (avoid infinite loops)
       if (isProcessingListRef.current) {
         previousValueRef.current = newText;
@@ -1349,56 +1352,56 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       },
       heading1: {
         color: colors.foreground,
-        fontSize: 32,
+        fontSize: 28,
         fontWeight: "bold" as const,
         marginTop: 16,
         marginBottom: 8,
-        lineHeight: 40,
+        lineHeight: 36,
         // fontFamily: "monospace",
       },
       heading2: {
         color: colors.foreground,
-        fontSize: 28,
+        fontSize: 26,
         fontWeight: "bold" as const,
         marginTop: 14,
         marginBottom: 7,
-        lineHeight: 36,
+        lineHeight: 32,
         // fontFamily: "monospace",
       },
       heading3: {
         color: colors.foreground,
-        fontSize: 24,
+        fontSize: 22,
         fontWeight: "600" as const,
         marginTop: 12,
         marginBottom: 6,
-        lineHeight: 30,
+        lineHeight: 28,
         // fontFamily: "monospace",
       },
       heading4: {
         color: colors.foreground,
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: "600" as const,
         marginTop: 10,
         marginBottom: 5,
-        lineHeight: 26,
+        lineHeight: 24,
         // fontFamily: "monospace",
       },
       heading5: {
         color: colors.foreground,
-        fontSize: 18,
-        fontWeight: "600" as const,
-        marginTop: 8,
-        marginBottom: 4,
-        lineHeight: 24,
-        // fontFamily: "monospace",
-      },
-      heading6: {
-        color: colors.foreground,
-        fontSize: 16,
+        fontSize: 17,
         fontWeight: "600" as const,
         marginTop: 8,
         marginBottom: 4,
         lineHeight: 22,
+        // fontFamily: "monospace",
+      },
+      heading6: {
+        color: colors.foreground,
+        fontSize: 15,
+        fontWeight: "600" as const,
+        marginTop: 8,
+        marginBottom: 4,
+        lineHeight: 20,
         // fontFamily: "monospace",
       },
       paragraph: {
@@ -1548,8 +1551,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       },
     };
 
-    // Helper function to toggle checkbox using the helper from markdown-toolbar
+    // Helper function to toggle checkbox using the helper from markdown-toolbar (no-op when previewOnly)
     const toggleCheckbox = (lineIndex: number) => {
+      if (previewOnly || !onChangeText) return;
       const newValue = toggleCheckboxInMarkdown(value, lineIndex);
       if (newValue !== value) {
         onChangeText(newValue);
@@ -2763,37 +2767,44 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       handleTabKey(e);
     };
 
+    const showPreview = isPreview || previewOnly;
     const previewValue = useMemo(() => {
-      if (!isPreview) return value;
+      if (!showPreview) return value;
       return linkifyMarkdown(value);
-    }, [value, isPreview]);
+    }, [value, showPreview]);
+
+    const markdownContent = value ? (
+      <Markdown
+        key={markdownKey}
+        style={markdownStyles}
+        rules={markdownRules}
+        mergeStyle={false}
+      >
+        {previewValue}
+      </Markdown>
+    ) : (
+      <Text className="text-muted-foreground italic">{placeholder}</Text>
+    );
+
+    if (previewOnly && noScrollView) {
+      return <>{markdownContent}</>;
+    }
 
     return (
       <View className={cn("flex-1", className)}>
         {/* Editor or Preview */}
-        {isPreview ? (
+        {showPreview ? (
           <ScrollView
             className="flex-1"
             contentContainerStyle={{
               paddingHorizontal: 32,
-              paddingTop: 20,
-              paddingBottom: 80,
+              paddingTop: 12,
+              paddingBottom: 40,
             }}
             removeClippedSubviews={false}
             nestedScrollEnabled={true}
           >
-            {value ? (
-              <Markdown
-                key={markdownKey}
-                style={markdownStyles}
-                rules={markdownRules}
-                mergeStyle={false}
-              >
-                {previewValue}
-              </Markdown>
-            ) : (
-              <Text className="text-muted-foreground italic">{placeholder}</Text>
-            )}
+            {markdownContent}
           </ScrollView>
         ) : (
           <Input

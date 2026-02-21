@@ -24,6 +24,8 @@ export interface Note {
   is_archived: boolean;
   created_at: string;
   updated_at: string;
+  /** When set, the note is publicly viewable at /share/{share_token}. Null = not shared. */
+  share_token?: string | null;
 }
 
 export interface File {

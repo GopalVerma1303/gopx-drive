@@ -2,6 +2,7 @@
 
 import { AIPromptModal } from "@/components/ai-prompt-modal";
 import { NoteDetailHeader } from "@/components/headers/note-detail-header";
+import { ShareNoteModal } from "@/components/share-note-modal";
 import { ImageInsertModal } from "@/components/image-insert-modal";
 import { MarkdownEditor, MarkdownEditorRef } from "@/components/markdown-editor";
 import { MarkdownToolbar } from "@/components/markdown-toolbar";
@@ -45,6 +46,7 @@ export default function NoteEditorScreen() {
   const [aiLoading, setAiLoading] = useState(false);
   const [selectedText, setSelectedText] = useState("");
   const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   /** Last selection from editor (updated on every selection change). Preserved when AI button steals focus. */
   const lastSelectionRef = useRef({ start: 0, end: 0 });
   /** Range to replace with AI output when modal was opened with a selection (so we don't rely on getSelection() after focus is lost). */
@@ -388,6 +390,7 @@ export default function NoteEditorScreen() {
         onPreviewToggle={() => setIsPreview(!isPreview)}
         isFetching={isFetching}
         onRefresh={!isNewNote ? handleRefresh : undefined}
+        onOpenShareModal={!isNewNote ? () => setShareModalOpen(true) : undefined}
       />
       {Platform.OS === "web" ? (
         <View className="flex-1 bg-background" style={{ flex: 1, height: "100%" }}>
@@ -504,6 +507,19 @@ export default function NoteEditorScreen() {
         onClose={() => setImageModalOpen(false)}
         onInsert={handleImageInsert}
       />
+      {!isNewNote && note && (
+        <ShareNoteModal
+          visible={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          noteId={note.id}
+          shareToken={note.share_token}
+          onShareTokenChange={(token) => {
+            queryClient.setQueryData(["note", id], (prev: typeof note) =>
+              prev ? { ...prev, share_token: token } : prev
+            );
+          }}
+        />
+      )}
     </>
   );
 }

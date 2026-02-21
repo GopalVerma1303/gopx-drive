@@ -1,12 +1,19 @@
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { ArrowLeft, Check, Edit, Eye, RefreshCcw } from "lucide-react-native";
+import { ArrowLeft, Check, Edit, Eye, MoreVertical, RefreshCcw, Share2 } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Icon } from "@/components/ui/icon";
 
 interface NoteDetailHeaderProps {
   title: string;
@@ -19,6 +26,7 @@ interface NoteDetailHeaderProps {
   onPreviewToggle: () => void;
   isFetching?: boolean;
   onRefresh?: () => void;
+  onOpenShareModal?: () => void;
 }
 
 export function NoteDetailHeader({
@@ -32,6 +40,7 @@ export function NoteDetailHeader({
   onPreviewToggle,
   isFetching = false,
   onRefresh,
+  onOpenShareModal,
 }: NoteDetailHeaderProps) {
   const router = useRouter();
   const { colors } = useThemeColors();
@@ -148,19 +157,6 @@ export function NoteDetailHeader({
             gap: 8,
           }}
         >
-          {!isNewNote && onRefresh && (
-            <Pressable
-              onPress={onRefresh}
-              disabled={isFetching}
-              style={[{ padding: 8 }, isFetching && { opacity: 0.4 }]}
-            >
-              <RefreshCcw
-                color={isFetching ? colors.mutedForeground : colors.foreground}
-                size={22}
-                strokeWidth={2.5}
-              />
-            </Pressable>
-          )}
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -185,6 +181,48 @@ export function NoteDetailHeader({
               strokeWidth={2.5}
             />
           </Pressable>
+          {!isNewNote && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Pressable
+                  onPress={() =>
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  }
+                  style={{ padding: 8 }}
+                >
+                  <MoreVertical
+                    color={colors.foreground}
+                    size={22}
+                    strokeWidth={2.5}
+                  />
+                </Pressable>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="bottom" align="end">
+                {onRefresh && (
+                  <DropdownMenuItem
+                    onPress={onRefresh}
+                    disabled={isFetching}
+                    className="flex flex-row items-center gap-2"
+                  >
+                    <Icon as={RefreshCcw} className="size-4 text-foreground" />
+                    <Text style={{ color: colors.foreground }}>Sync</Text>
+                  </DropdownMenuItem>
+                )}
+                {onOpenShareModal && (
+                  <DropdownMenuItem
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      onOpenShareModal();
+                    }}
+                    className="flex flex-row items-center gap-2"
+                  >
+                    <Icon as={Share2} className="size-4 text-foreground" />
+                    <Text style={{ color: colors.foreground }}>Share</Text>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </View>
       </View>
     </View>

@@ -1,7 +1,10 @@
 import { UI_DEV } from "@/lib/config";
 import * as mockNotes from "@/lib/mock-notes";
 import * as notesReservoir from "@/lib/notes-reservoir";
+import * as supabaseNotes from "@/lib/supabase-notes";
 import type { Note } from "@/lib/supabase";
+
+export type SharedNoteResult = supabaseNotes.SharedNoteResult;
 
 export type NotesSyncStatus = import("@/lib/notes-reservoir").NotesSyncStatus;
 
@@ -40,7 +43,7 @@ export const createNote = async (input: {
 
 export const updateNote = async (
   id: string,
-  updates: Partial<Pick<Note, "title" | "content">>
+  updates: Partial<Pick<Note, "title" | "content" | "share_token">>
 ): Promise<Note | null> => {
   if (UI_DEV) {
     return mockNotes.updateNote(id, updates);
@@ -89,4 +92,12 @@ export const getUnsyncedNoteIds = async (
 ): Promise<string[]> => {
   if (UI_DEV) return [];
   return notesReservoir.getUnsyncedNoteIds(userId);
+};
+
+/** Public: fetch a note by share token (no auth). For shared note page. */
+export const getNoteByShareToken = async (
+  token: string
+): Promise<supabaseNotes.SharedNoteResult | null> => {
+  if (UI_DEV) return null;
+  return supabaseNotes.getNoteByShareToken(token);
 };

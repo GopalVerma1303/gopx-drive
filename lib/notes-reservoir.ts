@@ -36,6 +36,11 @@ function getDb(): Promise<SQLite.SQLiteDatabase> | null {
         );
         CREATE INDEX IF NOT EXISTS idx_notes_user_archived_updated ON ${TABLE}(user_id, is_archived, updated_at);
       `);
+      try {
+        await db.execAsync(`ALTER TABLE ${TABLE} ADD COLUMN share_token TEXT`);
+      } catch {
+        // Column already exists
+      }
       return db;
     })();
   }
@@ -51,6 +56,7 @@ function rowToNote(row: Record<string, unknown>): Note {
     is_archived: Boolean(row.is_archived),
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
+    share_token: row.share_token != null ? (row.share_token as string) : null,
   };
 }
 
@@ -193,10 +199,14 @@ export async function syncFromSupabase(userId: string): Promise<void> {
           }
         } else {
           // Note exists - update it
-          await supabaseNotes.updateNote(note.id, {
+          const updatePayload: Parameters<typeof supabaseNotes.updateNote>[1] = {
             title: note.title,
             content: note.content,
-          });
+          };
+          if (note.share_token !== undefined) {
+            updatePayload.share_token = note.share_token;
+          }
+          await supabaseNotes.updateNote(note.id, updatePayload);
           if (note.is_archived) {
             await supabaseNotes.archiveNote(note.id);
           } else {
@@ -215,8 +225,8 @@ export async function syncFromSupabase(userId: string): Promise<void> {
 
     for (const note of allRemote) {
       await db.runAsync(
-        `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+        `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty, share_token)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
          ON CONFLICT(id) DO UPDATE SET
            user_id = excluded.user_id,
            title = excluded.title,
@@ -224,14 +234,16 @@ export async function syncFromSupabase(userId: string): Promise<void> {
            is_archived = excluded.is_archived,
            created_at = excluded.created_at,
            updated_at = excluded.updated_at,
-           dirty = 0`,
+           dirty = 0,
+           share_token = excluded.share_token`,
         note.id,
         note.user_id,
         note.title,
         note.content,
         note.is_archived ? 1 : 0,
         note.created_at,
-        note.updated_at
+        note.updated_at,
+        note.share_token ?? null
       );
     }
 
@@ -425,7 +437,7 @@ export async function createNote(input: {
 
 export async function updateNote(
   id: string,
-  updates: Partial<Pick<Note, "title" | "content">>
+  updates: Partial<Pick<Note, "title" | "content" | "share_token">>
 ): Promise<Note | null> {
   if (Platform.OS === "web") {
     return supabaseNotes.updateNote(id, updates);
@@ -434,7 +446,6 @@ export async function updateNote(
   const db = await getDbAsync();
   if (!db) return supabaseNotes.updateNote(id, updates);
 
-  // Get current note state
   const currentRow = await db.getFirstAsync<Record<string, unknown>>(
     `SELECT * FROM ${TABLE} WHERE id = ?`,
     id
@@ -445,13 +456,15 @@ export async function updateNote(
   const updated_at = new Date().toISOString();
   const title = updates.title !== undefined ? updates.title : currentNote.title;
   const content = updates.content !== undefined ? updates.content : currentNote.content;
+  const share_token =
+    updates.share_token !== undefined ? updates.share_token : currentNote.share_token;
 
-  // Update local database
   await db.runAsync(
-    `UPDATE ${TABLE} SET title = ?, content = ?, updated_at = ?, dirty = 1 WHERE id = ?`,
+    `UPDATE ${TABLE} SET title = ?, content = ?, updated_at = ?, dirty = 1, share_token = ? WHERE id = ?`,
     title,
     content,
     updated_at,
+    share_token ?? null,
     id
   );
 
@@ -465,6 +478,7 @@ export async function updateNote(
     const updated = await supabaseNotes.updateNote(id, {
       title,
       content,
+      share_token: share_token ?? undefined,
     });
     if (updated) {
       await db.runAsync(
@@ -475,7 +489,6 @@ export async function updateNote(
       return updated;
     }
   } catch (error) {
-    // Leave dirty for later sync
     console.warn(`[notes-reservoir] Failed to sync update for note ${id}:`, error);
   }
   return rowToNote(row);

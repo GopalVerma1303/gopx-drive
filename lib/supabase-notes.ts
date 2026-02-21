@@ -134,21 +134,21 @@ export const createNote = async (input: {
 
 export const updateNote = async (
   id: string,
-  updates: Partial<Pick<Note, "title" | "content">>
+  updates: Partial<Pick<Note, "title" | "content" | "share_token">>
 ): Promise<Note | null> => {
+  const payload: Record<string, unknown> = {
+    ...updates,
+    updated_at: new Date().toISOString(),
+  };
   const { data, error } = await supabase
     .from("notes")
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
+    .update(payload)
     .eq("id", id)
     .select()
     .single();
 
   if (error) {
     if (error.code === "PGRST116") {
-      // No rows returned
       return null;
     }
     throw new Error(`Failed to update note: ${error.message}`);
@@ -215,4 +215,40 @@ export const deleteNote = async (id: string): Promise<void> => {
   if (error) {
     throw new Error(`Failed to delete note: ${error.message}`);
   }
+};
+
+/** Public API: fetch a note by share token (no auth). Returns null if not found or not shared. */
+export type SharedNoteResult = {
+  id: string;
+  title: string;
+  content: string;
+  updated_at: string;
+  shared_by_email: string | null;
+};
+
+export const getNoteByShareToken = async (
+  token: string
+): Promise<SharedNoteResult | null> => {
+  const { data, error } = await supabase.rpc("get_note_by_share_token", {
+    token,
+  });
+
+  if (error) {
+    if (error.code === "PGRST116" || error.message?.includes("0 rows")) {
+      return null;
+    }
+    throw new Error(`Failed to fetch shared note: ${error.message}`);
+  }
+
+  // RPC returns table result: array of rows (or single row depending on client)
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || row.id == null) return null;
+
+  return {
+    id: row.id,
+    title: row.title ?? "",
+    content: row.content ?? "",
+    updated_at: row.updated_at ?? new Date().toISOString(),
+    shared_by_email: row.shared_by_email ?? null,
+  };
 };
