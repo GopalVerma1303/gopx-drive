@@ -1,3 +1,4 @@
+import { DefaultAppHead } from "@/components/default-app-head";
 import { Navigation } from "@/components/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { NavigationProvider, useNavigation } from "@/contexts/navigation-context";
@@ -47,6 +48,7 @@ function AppLayoutContent() {
   if (isSm) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <DefaultAppHead />
         {/* Navigation component handles its own absolute positioning on sm */}
         {!isDetailPage && <Navigation isOpen={isOpen} onClose={close} />}
         <View style={{
@@ -71,6 +73,7 @@ function AppLayoutContent() {
   if (isDetailPage) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <DefaultAppHead />
         <Stack
           screenOptions={{
             headerShown: false,
@@ -85,6 +88,7 @@ function AppLayoutContent() {
 
   return (
     <View style={{ flex: 1, flexDirection: "row", backgroundColor: colors.background }}>
+      <DefaultAppHead />
       <Navigation isOpen={isOpen} onClose={close} />
       <View style={{ flex: 1 }}>
         <Stack
@@ -141,21 +145,29 @@ export default function AppLayout() {
 
   if (isLoading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: colors.background,
-        }}
-      >
-        <ActivityIndicator size="large" color={colors.foreground} />
-      </View>
+      <>
+        <DefaultAppHead />
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: colors.background,
+          }}
+        >
+          <ActivityIndicator size="large" color={colors.foreground} />
+        </View>
+      </>
     );
   }
 
   if (!user) {
-    return <Redirect href="/(auth)/login" />;
+    return (
+      <>
+        <DefaultAppHead />
+        <Redirect href="/(auth)/login" />
+      </>
+    );
   }
 
   return (

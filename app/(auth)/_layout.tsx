@@ -1,3 +1,4 @@
+import { DefaultAppHead } from "@/components/default-app-head";
 import { useAuth } from "@/contexts/auth-context";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { Redirect, Stack } from "expo-router";
@@ -9,22 +10,35 @@ export default function AuthLayout() {
 
   if (isLoading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: colors.background,
-        }}
-      >
-        <ActivityIndicator size="large" color={colors.foreground} />
-      </View>
+      <>
+        <DefaultAppHead />
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: colors.background,
+          }}
+        >
+          <ActivityIndicator size="large" color={colors.foreground} />
+        </View>
+      </>
     );
   }
 
   if (user) {
-    return <Redirect href="/(app)/notes" />;
+    return (
+      <>
+        <DefaultAppHead />
+        <Redirect href="/(app)/notes" />
+      </>
+    );
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <>
+      <DefaultAppHead />
+      <Stack screenOptions={{ headerShown: false }} />
+    </>
+  );
 }

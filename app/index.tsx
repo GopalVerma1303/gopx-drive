@@ -1,3 +1,4 @@
+import { DefaultAppHead } from "@/components/default-app-head";
 import { useAuth } from "@/contexts/auth-context";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { Redirect } from "expo-router";
@@ -12,24 +13,37 @@ export default function Index() {
   // brief flash of the login route when a valid session exists.
   if (isLoading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: colors.background,
-        }}
-      >
-        <ActivityIndicator size="large" color={colors.foreground} />
-      </View>
+      <>
+        <DefaultAppHead />
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: colors.background,
+          }}
+        >
+          <ActivityIndicator size="large" color={colors.foreground} />
+        </View>
+      </>
     );
   }
 
   if (user) {
     // Authenticated: go straight to the main app (notes)
-    return <Redirect href="/(app)/notes" />;
+    return (
+      <>
+        <DefaultAppHead />
+        <Redirect href="/(app)/notes" />
+      </>
+    );
   }
 
   // Not authenticated: send to login
-  return <Redirect href="/(auth)/login" />;
+  return (
+    <>
+      <DefaultAppHead />
+      <Redirect href="/(auth)/login" />
+    </>
+  );
 }
