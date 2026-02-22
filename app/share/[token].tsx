@@ -375,90 +375,178 @@ export default function SharedNoteScreen() {
           </View>
         </View>
 
-        <View
-          style={{
-            flex: 1,
-            width: "100%",
-            maxWidth: 672,
-            alignSelf: "center",
-            backgroundColor: colors.muted,
-          }}
-          className="flex-1 w-full max-w-2xl mx-auto bg-muted"
-        >
+        {Platform.OS === "web" ? (
           <ScrollView
-            style={{ flex: 1 }}
+            style={{ flex: 1, width: "100%" }}
             contentContainerStyle={{
-              paddingHorizontal: contentPaddingHorizontal,
-              paddingTop: 10,
-              paddingBottom: contentPaddingBottom,
               flexGrow: 1,
-              ...(Platform.OS === "web" ? { minHeight: "100%" } : {}),
+              minHeight: "100%",
             }}
             removeClippedSubviews={false}
             nestedScrollEnabled
             showsVerticalScrollIndicator={true}
           >
-            {note.content ? (
-              <MarkdownEditor
-                value={note.content}
-                isPreview
-                previewOnly
-                noScrollView
-                placeholder=""
-              />
-            ) : (
-              <Text style={{ color: colors.mutedForeground, fontStyle: "italic", fontSize: 16 }}>
-                No content
-              </Text>
-            )}
-
+            {/* Centered content column: same max-width as before. */}
             <View
               style={{
-                marginTop: 40,
-                paddingTop: 40,
-                borderTopWidth: 0,
-                borderTopColor: colors.ring,
-                alignItems: "center",
-                flexDirection: "column",
-                gap: 8,
+                flex: 1,
+                minHeight: "100%",
+                width: "100%",
+                maxWidth: 672,
+                alignSelf: "center",
+                backgroundColor: colors.muted,
+                paddingHorizontal: contentPaddingHorizontal,
+                paddingTop: 10,
+                paddingBottom: contentPaddingBottom,
               }}
+              className="w-full max-w-2xl mx-auto bg-muted"
             >
-              <Text
+              {note.content ? (
+                <MarkdownEditor
+                  value={note.content}
+                  isPreview
+                  previewOnly
+                  noScrollView
+                  placeholder=""
+                />
+              ) : (
+                <Text style={{ color: colors.mutedForeground, fontStyle: "italic", fontSize: 16 }}>
+                  No content
+                </Text>
+              )}
+
+              <View
                 style={{
-                  color: colors.mutedForeground,
-                  fontSize: 13,
+                  marginTop: 40,
+                  paddingTop: 40,
+                  borderTopWidth: 0,
+                  borderTopColor: colors.ring,
+                  alignItems: "center",
+                  flexDirection: "column",
+                  gap: 8,
                 }}
               >
-                Note taken on
-              </Text>
-              <Pressable
-                onPress={openGopxDrive}
-                style={({ pressed }) => ({
-                  opacity: pressed ? 0.7 : 1,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                })}
-              >
-                <Image
-                  source={GopxDriveIcon}
-                  style={{ width: 16, height: 16 }}
-                  resizeMode="contain"
-                  className="filter dark:invert rounded-[2px]"
-                />
                 <Text
                   style={{
-                    color: colors.primary,
+                    color: colors.mutedForeground,
                     fontSize: 13,
-                    fontWeight: "600",
                   }}
                 >
-                  Gopx Drive
+                  Note taken on
                 </Text>
-              </Pressable>
+                <Pressable
+                  onPress={openGopxDrive}
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.7 : 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                  })}
+                >
+                  <Image
+                    source={GopxDriveIcon}
+                    style={{ width: 16, height: 16 }}
+                    resizeMode="contain"
+                    className="filter dark:invert rounded-[2px]"
+                  />
+                  <Text
+                    style={{
+                      color: colors.primary,
+                      fontSize: 13,
+                      fontWeight: "600",
+                    }}
+                  >
+                    Gopx Drive
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </ScrollView>
-        </View>
+        ) : (
+          <View
+            style={{
+              flex: 1,
+              width: "100%",
+              maxWidth: 672,
+              alignSelf: "center",
+              backgroundColor: colors.muted,
+            }}
+            className="flex-1 w-full max-w-2xl mx-auto bg-muted"
+          >
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{
+                paddingHorizontal: contentPaddingHorizontal,
+                paddingTop: 10,
+                paddingBottom: contentPaddingBottom,
+                flexGrow: 1,
+              }}
+              removeClippedSubviews={false}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={true}
+            >
+              {note.content ? (
+                <MarkdownEditor
+                  value={note.content}
+                  isPreview
+                  previewOnly
+                  noScrollView
+                  placeholder=""
+                />
+              ) : (
+                <Text style={{ color: colors.mutedForeground, fontStyle: "italic", fontSize: 16 }}>
+                  No content
+                </Text>
+              )}
+
+              <View
+                style={{
+                  marginTop: 40,
+                  paddingTop: 40,
+                  borderTopWidth: 0,
+                  borderTopColor: colors.ring,
+                  alignItems: "center",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    color: colors.mutedForeground,
+                    fontSize: 13,
+                  }}
+                >
+                  Note taken on
+                </Text>
+                <Pressable
+                  onPress={openGopxDrive}
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.7 : 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                  })}
+                >
+                  <Image
+                    source={GopxDriveIcon}
+                    style={{ width: 16, height: 16 }}
+                    resizeMode="contain"
+                    className="filter dark:invert rounded-[2px]"
+                  />
+                  <Text
+                    style={{
+                      color: colors.primary,
+                      fontSize: 13,
+                      fontWeight: "600",
+                    }}
+                  >
+                    Gopx Drive
+                  </Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          </View>
+        )}
       </View>
     </>
   );
