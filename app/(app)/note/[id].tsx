@@ -101,8 +101,10 @@ export default function NoteEditorScreen() {
     ]);
 
     // Only proceed if query exists, has data, and is not currently fetching
-    // This prevents duplicate API calls
-    if (notesListQueryState?.data && !notesListQueryState.isFetching) {
+    // This prevents duplicate API calls (QueryState has fetchStatus, not isFetching)
+    const isIdleOrPaused =
+      notesListQueryState?.fetchStatus === "idle" || notesListQueryState?.fetchStatus === "paused";
+    if (notesListQueryState?.data && isIdleOrPaused) {
       const listNote = notesListQueryState.data.find((n) => n.id === id);
       if (listNote && listNote.updated_at !== note.updated_at) {
         // List shows a different updated_at, refetch the note to get latest content
