@@ -315,7 +315,7 @@ export default function SharedNoteScreen() {
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 16,
+                gap: 8,
                 marginLeft: 16,
                 paddingRight: 8,
               }}
