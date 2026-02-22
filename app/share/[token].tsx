@@ -336,7 +336,11 @@ export default function SharedNoteScreen() {
               <ThemeToggle className="p-0 py-2" size={22} />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Pressable style={{ paddingVertical: 8 }} accessibilityLabel="Note information">
+                  <Pressable
+                    style={({ pressed }) => [{ paddingVertical: 8 }, pressed && { opacity: 1 }]}
+                    className="active:bg-transparent focus:outline-none"
+                    accessibilityLabel="Note information"
+                  >
                     <Info size={22} color={colors.foreground} strokeWidth={2.5} />
                   </Pressable>
                 </DropdownMenuTrigger>
