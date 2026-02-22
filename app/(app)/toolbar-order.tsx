@@ -51,7 +51,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 interface ToolbarItem {
   id: ToolbarItemId;
   label: string;
-  icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+  icon: React.ComponentType<{ size?: number; color?: string }>;
 }
 
 const TOOLBAR_ITEMS: Record<ToolbarItemId, ToolbarItem> = {
@@ -287,26 +287,26 @@ export default function ToolbarOrderScreen() {
               Toolbar Order
             </Text>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingRight: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingRight: 8 }}>
             <Pressable
               onPress={handleReset}
               disabled={isDefaultStructure}
-              style={{ padding: 8, opacity: isDefaultStructure ? 0.4 : 1 }}
+              style={{ paddingVertical: 8, opacity: isDefaultStructure ? 0.4 : 1 }}
             >
               <RotateCcw
                 color={colors.foreground}
-                size={24}
+                size={22}
                 strokeWidth={2.5}
               />
             </Pressable>
             <Pressable
               onPress={handleSave}
               disabled={!hasUnsavedChanges}
-              style={{ padding: 8, opacity: !hasUnsavedChanges ? 0.4 : 1 }}
+              style={{ paddingVertical: 8, opacity: !hasUnsavedChanges ? 0.4 : 1 }}
             >
               <Check
                 color={colors.foreground}
-                size={24}
+                size={22}
                 strokeWidth={2.5}
               />
             </Pressable>
@@ -405,7 +405,7 @@ export default function ToolbarOrderScreen() {
                     className={`flex flex-row items-center gap-12 p-4 ${index > 0 ? "border-t border-border" : ""}`}
                   >
                     <View className="flex flex-row items-center gap-2 flex-1">
-                      <Icon color={colors.foreground} size={20} strokeWidth={2} />
+                      <Icon color={colors.foreground} size={20} />
                       <Text
                         style={{
                           fontSize: 16,
@@ -459,7 +459,7 @@ function ToolbarOrderItem({
       className={`flex flex-row items-center gap-12 p-4 ${index > 0 ? "border-t border-border" : ""}`}
     >
       <View className="flex flex-row items-center gap-2 flex-1">
-        <Icon color={colors.foreground} size={20} strokeWidth={2} />
+        <Icon color={colors.foreground} size={20} />
         <Text
           style={{
             fontSize: 16,
@@ -481,7 +481,6 @@ function ToolbarOrderItem({
           <ChevronUp
             color={colors.foreground}
             size={20}
-            strokeWidth={2}
           />
         </Pressable>
         <Pressable
@@ -494,7 +493,6 @@ function ToolbarOrderItem({
           <ChevronDown
             color={colors.foreground}
             size={20}
-            strokeWidth={2}
           />
         </Pressable>
         <Pressable
@@ -504,7 +502,7 @@ function ToolbarOrderItem({
           }}
           style={{ padding: 4 }}
         >
-          <X color="#ef4444" size={20} strokeWidth={2} />
+          <X color="#ef4444" size={20} />
         </Pressable>
       </View>
     </Pressable>

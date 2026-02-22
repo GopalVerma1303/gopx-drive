@@ -601,31 +601,67 @@ export default function FilesScreen() {
           onRequestClose={closePreview}
         >
           <View className="flex-1 bg-background">
+            {/* Header — same paddings and layout as share/[token].tsx */}
             <View
-              className="flex-row items-center justify-between border-b border-border bg-background pb-3"
-              style={{ paddingTop: insets.top, paddingHorizontal: 8 }}
+              style={{
+                width: "100%",
+                paddingTop: insets.top,
+                backgroundColor: colors.background,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.border,
+              }}
             >
-              <View style={{ flex: 1, paddingLeft: 8 }}>
-                <Text
-                  numberOfLines={1}
-                  className="text-base font-semibold text-foreground"
-                >
-                  {previewFileName ?? "Preview"}
-                </Text>
-              </View>
-              <View className="flex-row items-center gap-1" style={{ paddingRight: 8 }}>
-                <Pressable
-                  onPress={() => {
-                    const url = previewRawUrl ?? previewUrl;
-                    if (url) Linking.openURL(url);
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  height: 56,
+                  paddingHorizontal: 6,
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    flex: 1,
+                    minWidth: 0,
+                    paddingLeft: 8,
                   }}
-                  className="p-2"
                 >
-                  <ExternalLink color={colors.foreground} size={22} strokeWidth={2} />
-                </Pressable>
-                <Pressable onPress={closePreview} className="p-2">
-                  <X color={colors.foreground} size={24} strokeWidth={2} />
-                </Pressable>
+                  <Text
+                    style={{
+                      fontSize: 18,
+                      color: colors.foreground,
+                      flex: 1,
+                    }}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {previewFileName ?? "Preview"}
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 16,
+                    marginLeft: 16,
+                    paddingRight: 8,
+                  }}
+                >
+                  <Pressable
+                    onPress={() => {
+                      const url = previewRawUrl ?? previewUrl;
+                      if (url) Linking.openURL(url);
+                    }}
+                    style={{ paddingVertical: 8 }}
+                  >
+                    <ExternalLink color={colors.foreground} size={22} strokeWidth={2.5} />
+                  </Pressable>
+                  <Pressable onPress={closePreview} style={{ paddingVertical: 8 }}>
+                    <X color={colors.foreground} size={24} strokeWidth={2} />
+                  </Pressable>
+                </View>
               </View>
             </View>
             {WebView ? (
