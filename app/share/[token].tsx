@@ -21,7 +21,6 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Image,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -293,33 +292,16 @@ export default function SharedNoteScreen() {
           >
             <View
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
                 flex: 1,
                 minWidth: 0,
                 paddingLeft: 8,
-                gap: 8,
+                justifyContent: "center",
               }}
             >
-              <Pressable
-                onPress={() => Linking.openURL("https://drive.gopx.dev")}
-                style={({ pressed }) => [pressed && { opacity: 0.7 }]}
-                accessibilityLabel="Open Gopx Drive"
-                accessibilityRole="link"
-              >
-                <Image
-                  source={GopxDriveIcon}
-                  style={{ width: 22, height: 22 }}
-                  resizeMode="contain"
-                  className="filter dark:invert rounded-[2px]"
-                />
-              </Pressable>
               <Text
                 style={{
                   fontSize: 18,
                   color: colors.foreground,
-                  flex: 1,
                 }}
                 numberOfLines={1}
                 ellipsizeMode="tail"
@@ -344,9 +326,9 @@ export default function SharedNoteScreen() {
                 accessibilityRole="button"
               >
                 {copied ? (
-                  <Check size={22} color={colors.primary} strokeWidth={2.5} />
+                  <Check size={22} color={colors.primary} />
                 ) : (
-                  <Copy size={22} color={colors.foreground} strokeWidth={2.5} />
+                  <Copy size={22} color={colors.foreground} />
                 )}
               </Pressable>
               <ThemeToggle className="p-0 py-2" size={22} />
@@ -357,7 +339,7 @@ export default function SharedNoteScreen() {
                     className="active:bg-transparent focus:outline-none"
                     accessibilityLabel="Note information"
                   >
-                    <Info size={22} color={colors.foreground} strokeWidth={2.5} />
+                    <Info size={22} color={colors.foreground} />
                   </Pressable>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="bottom" align="end" className="min-w-[240px]">
