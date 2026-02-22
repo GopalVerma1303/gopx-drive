@@ -342,7 +342,7 @@ export default function SharedNoteScreen() {
                     <Info size={22} color={colors.foreground} />
                   </Pressable>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent side="bottom" align="end" className="min-w-[240px]">
+                <DropdownMenuContent side="bottom" align="end" sideOffset={10} className="min-w-[240px]">
                   <DropdownMenuLabel>Note information</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem disabled className="flex flex-col items-start gap-0.5">
