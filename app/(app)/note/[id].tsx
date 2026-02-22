@@ -2,10 +2,10 @@
 
 import { AIPromptModal } from "@/components/ai-prompt-modal";
 import { NoteDetailHeader } from "@/components/headers/note-detail-header";
-import { ShareNoteModal } from "@/components/share-note-modal";
 import { ImageInsertModal } from "@/components/image-insert-modal";
 import { MarkdownEditor, MarkdownEditorRef } from "@/components/markdown-editor";
 import { MarkdownToolbar } from "@/components/markdown-toolbar";
+import { ShareNoteModal } from "@/components/share-note-modal";
 import { useAuth } from "@/contexts/auth-context";
 import { generateAIContent } from "@/lib/ai-providers";
 import { createNote, getNoteById, updateNote } from "@/lib/notes";
@@ -99,7 +99,7 @@ export default function NoteEditorScreen() {
       "notes",
       user.id,
     ]);
-    
+
     // Only proceed if query exists, has data, and is not currently fetching
     // This prevents duplicate API calls
     if (notesListQueryState?.data && !notesListQueryState.isFetching) {
@@ -424,7 +424,7 @@ export default function NoteEditorScreen() {
               className="flex-1"
               contentContainerStyle={{ flexGrow: 1, minHeight: "100%" }}
               keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={true}
+              showsVerticalScrollIndicator={false}
             >
               <MarkdownEditor
                 ref={editorRef}
@@ -473,7 +473,7 @@ export default function NoteEditorScreen() {
                 className="flex-1"
                 contentContainerStyle={{ flexGrow: 1 }}
                 keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={true}
+                showsVerticalScrollIndicator={false}
                 keyboardDismissMode="interactive"
               >
                 <MarkdownEditor

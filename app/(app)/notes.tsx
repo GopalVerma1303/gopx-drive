@@ -242,10 +242,10 @@ export default function NotesScreen() {
             alignItems: "center",
             justifyContent: "space-between",
             height: 56,
-            paddingHorizontal: 16,
+            paddingHorizontal: 8,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1, paddingLeft: 8 }}>
             <Text
               style={{
                 fontSize: 18,
@@ -261,7 +261,8 @@ export default function NotesScreen() {
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
+              gap: 16,
+              paddingRight: 8,
             }}
           >
             <Pressable
@@ -272,7 +273,7 @@ export default function NotesScreen() {
                 const newViewMode = viewMode === "grid" ? "list" : "grid";
                 setViewMode(newViewMode);
               }}
-              style={{ padding: 8 }}
+              style={{ paddingVertical: 8 }}
             >
               {viewMode === "grid" ? (
                 <Rows2 color={colors.foreground} size={22} strokeWidth={2.5} />
@@ -285,7 +286,7 @@ export default function NotesScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 router.push("/(app)/note/new");
               }}
-              style={{ padding: 8 }}
+              style={{ paddingVertical: 8 }}
             >
               <Plus color={colors.foreground} size={22} strokeWidth={2.5} />
             </Pressable>
@@ -526,29 +527,29 @@ export default function NotesScreen() {
               onPress={() => setArchiveDialogOpen(false)}
             />
             <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
-                <Text className="mb-2 text-lg font-semibold text-foreground">
-                  Archive Note
-                </Text>
-                <Text className="mb-6 text-sm text-muted-foreground">
-                  Are you sure you want to archive "{noteToArchive?.title}"? You can restore it from the archive later.
-                </Text>
-                <View className="flex-row justify-end gap-3">
-                  <Pressable
-                    className="px-4 py-2"
-                    onPress={() => setArchiveDialogOpen(false)}
-                  >
-                    <Text className="text-foreground">Cancel</Text>
-                  </Pressable>
-                  <Pressable
-                    className="rounded-md px-4 py-2"
-                    onPress={handleArchiveConfirm}
-                  >
-                    <Text className="font-semibold text-red-500">
-                      Archive
-                    </Text>
-                  </Pressable>
-                </View>
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                Archive Note
+              </Text>
+              <Text className="mb-6 text-sm text-muted-foreground">
+                Are you sure you want to archive "{noteToArchive?.title}"? You can restore it from the archive later.
+              </Text>
+              <View className="flex-row justify-end gap-3">
+                <Pressable
+                  className="px-4 py-2"
+                  onPress={() => setArchiveDialogOpen(false)}
+                >
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleArchiveConfirm}
+                >
+                  <Text className="font-semibold text-red-500">
+                    Archive
+                  </Text>
+                </Pressable>
               </View>
+            </View>
           </View>
         </Modal>
       )}

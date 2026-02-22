@@ -77,7 +77,7 @@ export function NoteDetailHeader({
           flexDirection: "row",
           alignItems: "center",
           height: 56,
-          paddingHorizontal: 16,
+          paddingHorizontal: 6,
         }}
       >
         {/* Left: Back button and title */}
@@ -85,7 +85,7 @@ export function NoteDetailHeader({
           style={{
             flexDirection: "row",
             alignItems: "center",
-            flex: 1,
+            flex: 1
           }}
         >
           <Pressable
@@ -106,7 +106,6 @@ export function NoteDetailHeader({
               flexDirection: "row",
               alignItems: "center",
               flex: 1,
-              marginLeft: 8,
             }}
           >
             {isEditingTitle ? (
@@ -149,19 +148,20 @@ export function NoteDetailHeader({
           </View>
         </View>
 
-        {/* Right: Action buttons — marginLeft matches gap between icons for symmetry */}
+        {/* Right: Action buttons — paddingRight matches left back button padding (8) for equal edge spacing */}
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 8,
-            marginLeft: 18,
+            gap: 16,
+            marginLeft: 16,
+            paddingRight: 8,
           }}
         >
           <Pressable
             onPress={onSave}
             disabled={!canSave}
-            style={[{ padding: 8 }, !canSave && { opacity: 0.4 }]}
+            style={[{ paddingVertical: 8 }, !canSave && { opacity: 0.4 }]}
           >
             <Check
               color={canSave ? colors.foreground : colors.mutedForeground}
@@ -174,7 +174,7 @@ export function NoteDetailHeader({
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               onPreviewToggle();
             }}
-            style={{ padding: 8 }}
+            style={{ paddingVertical: 8 }}
           >
             {isPreview ? (
               <Edit color={colors.foreground} size={22} strokeWidth={2.5} />
@@ -189,7 +189,7 @@ export function NoteDetailHeader({
                   onPress={() =>
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
                   }
-                  style={{ padding: 8 }}
+                  style={{ paddingVertical: 8 }}
                 >
                   <MoreVertical
                     color={colors.foreground}

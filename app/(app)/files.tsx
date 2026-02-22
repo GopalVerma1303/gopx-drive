@@ -4,12 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
 import { archiveFile, getFileDownloadUrl, listFiles, uploadFile } from "@/lib/files";
+import { invalidateFilesQueries } from "@/lib/query-utils";
 import type { File as FileRecord } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { invalidateFilesQueries } from "@/lib/query-utils";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
 import { Stack } from "expo-router";
@@ -299,10 +299,10 @@ export default function FilesScreen() {
             alignItems: "center",
             justifyContent: "space-between",
             height: 56,
-            paddingHorizontal: 16,
+            paddingHorizontal: 8,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1, paddingLeft: 8 }}>
             <Text
               style={{
                 fontSize: 18,
@@ -318,7 +318,8 @@ export default function FilesScreen() {
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
+              gap: 16,
+              paddingRight: 8,
             }}
           >
             <Pressable
@@ -329,7 +330,7 @@ export default function FilesScreen() {
                 const newViewMode = viewMode === "grid" ? "list" : "grid";
                 setViewMode(newViewMode);
               }}
-              style={{ padding: 8 }}
+              style={{ paddingVertical: 8 }}
             >
               {viewMode === "grid" ? (
                 <Rows2 color={colors.foreground} size={22} strokeWidth={2.5} />
@@ -340,7 +341,7 @@ export default function FilesScreen() {
             <Pressable
               onPress={handleUploadFile}
               disabled={uploading}
-              style={{ padding: 8 }}
+              style={{ paddingVertical: 8 }}
             >
               {uploading ? (
                 <ActivityIndicator size="small" color={colors.foreground} />
@@ -561,32 +562,32 @@ export default function FilesScreen() {
               onPress={() => setActionDialogOpen(false)}
             />
             <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
-                <Text className="mb-2 text-lg font-semibold text-foreground">
-                  Archive File
-                </Text>
-                <Text className="mb-6 text-sm text-muted-foreground">
-                  Are you sure you want to archive "{fileToAction?.name}"? You can restore it from the archive later.
-                </Text>
-                <View className="flex-row justify-end gap-3">
-                  <Pressable
-                    className="px-4 py-2"
-                    onPress={() => {
-                      setActionDialogOpen(false);
-                      setFileToAction(null);
-                    }}
-                  >
-                    <Text className="text-foreground">Cancel</Text>
-                  </Pressable>
-                  <Pressable
-                    className="rounded-md px-4 py-2"
-                    onPress={handleArchiveConfirm}
-                  >
-                    <Text className="font-semibold text-red-500">
-                      Archive
-                    </Text>
-                  </Pressable>
-                </View>
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                Archive File
+              </Text>
+              <Text className="mb-6 text-sm text-muted-foreground">
+                Are you sure you want to archive "{fileToAction?.name}"? You can restore it from the archive later.
+              </Text>
+              <View className="flex-row justify-end gap-3">
+                <Pressable
+                  className="px-4 py-2"
+                  onPress={() => {
+                    setActionDialogOpen(false);
+                    setFileToAction(null);
+                  }}
+                >
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleArchiveConfirm}
+                >
+                  <Text className="font-semibold text-red-500">
+                    Archive
+                  </Text>
+                </Pressable>
               </View>
+            </View>
           </View>
         </Modal>
       )}
@@ -601,16 +602,18 @@ export default function FilesScreen() {
         >
           <View className="flex-1 bg-background">
             <View
-              className="flex-row items-center justify-between border-b border-border bg-background px-4 pb-3"
-              style={{ paddingTop: insets.top }}
+              className="flex-row items-center justify-between border-b border-border bg-background pb-3"
+              style={{ paddingTop: insets.top, paddingHorizontal: 8 }}
             >
-              <Text
-                numberOfLines={1}
-                className="mr-2 flex-1 text-base font-semibold text-foreground"
-              >
-                {previewFileName ?? "Preview"}
-              </Text>
-              <View className="flex-row items-center gap-1">
+              <View style={{ flex: 1, paddingLeft: 8 }}>
+                <Text
+                  numberOfLines={1}
+                  className="text-base font-semibold text-foreground"
+                >
+                  {previewFileName ?? "Preview"}
+                </Text>
+              </View>
+              <View className="flex-row items-center gap-1" style={{ paddingRight: 8 }}>
                 <Pressable
                   onPress={() => {
                     const url = previewRawUrl ?? previewUrl;

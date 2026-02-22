@@ -356,10 +356,10 @@ export default function CalendarScreen() {
             alignItems: "center",
             justifyContent: "space-between",
             height: 56,
-            paddingHorizontal: 16,
+            paddingHorizontal: 8,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1, paddingLeft: 8 }}>
             <Text
               style={{
                 fontSize: 18,
@@ -375,12 +375,13 @@ export default function CalendarScreen() {
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
+              gap: 16,
+              paddingRight: 8,
             }}
           >
             <Pressable
               onPress={handleOpenCreateModal}
-              style={{ padding: 8 }}
+              style={{ paddingVertical: 8 }}
             >
               <Plus color={colors.foreground} size={22} strokeWidth={2.5} />
             </Pressable>

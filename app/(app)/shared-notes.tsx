@@ -132,8 +132,16 @@ export default function SharedNotesScreen() {
           borderBottomColor: colors.border,
         }}
       >
-        <View className="flex-row items-center justify-between h-14 px-4">
-          <View className="flex-row items-center flex-1">
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            height: 56,
+            paddingHorizontal: 6,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
             <Pressable
               onPress={() => {
                 if (Platform.OS !== "web") {
@@ -141,11 +149,17 @@ export default function SharedNotesScreen() {
                 }
                 router.replace("/(app)/settings");
               }}
-              className="p-2 -ml-2 mr-2"
+              style={{ padding: 8 }}
             >
               <ArrowLeft color={colors.foreground} size={24} />
             </Pressable>
-            <Text className="text-lg font-semibold text-foreground">
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "600",
+                color: colors.foreground,
+              }}
+            >
               Manage Shared Notes
             </Text>
           </View>

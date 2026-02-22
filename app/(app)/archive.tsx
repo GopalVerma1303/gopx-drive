@@ -381,7 +381,7 @@ export default function ArchiveScreen() {
             alignItems: "center",
             justifyContent: "space-between",
             height: 56,
-            paddingHorizontal: 16,
+            paddingHorizontal: 6,
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
@@ -392,7 +392,7 @@ export default function ArchiveScreen() {
                 }
                 router.replace("/(app)/settings");
               }}
-              style={{ padding: 8, marginRight: 8 }}
+              style={{ padding: 8 }}
             >
               <ArrowLeft color={colors.foreground} size={24} />
             </Pressable>
@@ -411,7 +411,8 @@ export default function ArchiveScreen() {
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
+              gap: 16,
+              paddingRight: 8,
             }}
           >
             {itemCount > 0 && (
@@ -425,7 +426,7 @@ export default function ArchiveScreen() {
                     }
                     hasSelection ? handleRestoreSelected() : handleRestoreAll();
                   }}
-                  style={{ padding: 8 }}
+                  style={{ paddingVertical: 8 }}
                 >
                   <Undo2 color={colors.foreground} size={22} strokeWidth={2.5} />
                 </Pressable>
@@ -437,7 +438,7 @@ export default function ArchiveScreen() {
                       }
                       handleDeleteSelected();
                     }}
-                    style={{ padding: 8 }}
+                    style={{ paddingVertical: 8 }}
                   >
                     <Trash2 color="#ef4444" size={22} strokeWidth={2.5} />
                   </Pressable>
@@ -451,7 +452,7 @@ export default function ArchiveScreen() {
                       }
                       handleDeleteAll();
                     }}
-                    style={{ padding: 8 }}
+                    style={{ paddingVertical: 8 }}
                   >
                     <Trash2 color="#ef4444" size={22} strokeWidth={2.5} />
                   </Pressable>
@@ -746,49 +747,49 @@ export default function ArchiveScreen() {
               onPress={() => setDeleteDialogOpen(false)}
             />
             <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
-                <Text className="mb-2 text-lg font-semibold text-foreground">
-                  {deleteAction?.type === "all"
-                    ? `Delete All ${activeTab === "notes" ? "Notes" : "Files"}`
-                    : deleteAction?.type === "selected"
-                      ? `Delete Selected ${activeTab === "notes" ? "Notes" : "Files"}`
-                      : `Delete ${activeTab === "notes" ? "Note" : "File"}`}
-                </Text>
-                <Text className="mb-6 text-sm text-muted-foreground">
-                  {deleteAction?.type === "all"
-                    ? `Are you sure you want to permanently delete all ${activeTab === "notes"
-                      ? filteredNotes.length
-                      : filteredFiles.length
-                    } archived ${activeTab}? This action cannot be undone.`
-                    : deleteAction?.type === "selected"
-                      ? `Are you sure you want to permanently delete ${activeTab === "notes"
-                        ? selectedNotes.size
-                        : selectedFiles.size
-                      } selected ${activeTab === "notes" ? "note" : "file"}${(activeTab === "notes"
-                        ? selectedNotes.size
-                        : selectedFiles.size) > 1
-                        ? "s"
-                        : ""
-                      }? This action cannot be undone.`
-                      : `Are you sure you want to permanently delete this ${activeTab === "notes" ? "note" : "file"
-                      }? This action cannot be undone.`}
-                </Text>
-                <View className="flex-row justify-end gap-3">
-                  <Pressable
-                    className="px-4 py-2"
-                    onPress={() => setDeleteDialogOpen(false)}
-                  >
-                    <Text className="text-foreground">Cancel</Text>
-                  </Pressable>
-                  <Pressable
-                    className="rounded-md px-4 py-2"
-                    onPress={confirmDelete}
-                  >
-                    <Text className="font-semibold text-red-500">
-                      Delete
-                    </Text>
-                  </Pressable>
-                </View>
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                {deleteAction?.type === "all"
+                  ? `Delete All ${activeTab === "notes" ? "Notes" : "Files"}`
+                  : deleteAction?.type === "selected"
+                    ? `Delete Selected ${activeTab === "notes" ? "Notes" : "Files"}`
+                    : `Delete ${activeTab === "notes" ? "Note" : "File"}`}
+              </Text>
+              <Text className="mb-6 text-sm text-muted-foreground">
+                {deleteAction?.type === "all"
+                  ? `Are you sure you want to permanently delete all ${activeTab === "notes"
+                    ? filteredNotes.length
+                    : filteredFiles.length
+                  } archived ${activeTab}? This action cannot be undone.`
+                  : deleteAction?.type === "selected"
+                    ? `Are you sure you want to permanently delete ${activeTab === "notes"
+                      ? selectedNotes.size
+                      : selectedFiles.size
+                    } selected ${activeTab === "notes" ? "note" : "file"}${(activeTab === "notes"
+                      ? selectedNotes.size
+                      : selectedFiles.size) > 1
+                      ? "s"
+                      : ""
+                    }? This action cannot be undone.`
+                    : `Are you sure you want to permanently delete this ${activeTab === "notes" ? "note" : "file"
+                    }? This action cannot be undone.`}
+              </Text>
+              <View className="flex-row justify-end gap-3">
+                <Pressable
+                  className="px-4 py-2"
+                  onPress={() => setDeleteDialogOpen(false)}
+                >
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={confirmDelete}
+                >
+                  <Text className="font-semibold text-red-500">
+                    Delete
+                  </Text>
+                </Pressable>
               </View>
+            </View>
           </View>
         </Modal>
       )}
@@ -860,49 +861,49 @@ export default function ArchiveScreen() {
               onPress={() => setRestoreDialogOpen(false)}
             />
             <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
-                <Text className="mb-2 text-lg font-semibold text-foreground">
-                  {restoreAction?.type === "all"
-                    ? `Restore All ${activeTab === "notes" ? "Notes" : "Files"}`
-                    : restoreAction?.type === "selected"
-                      ? `Restore Selected ${activeTab === "notes" ? "Notes" : "Files"}`
-                      : `Restore ${activeTab === "notes" ? "Note" : "File"}`}
-                </Text>
-                <Text className="mb-6 text-sm text-muted-foreground">
-                  {restoreAction?.type === "all"
-                    ? `Are you sure you want to restore all ${activeTab === "notes"
-                      ? filteredNotes.length
-                      : filteredFiles.length
-                    } archived ${activeTab}?`
-                    : restoreAction?.type === "selected"
-                      ? `Are you sure you want to restore ${activeTab === "notes"
-                        ? selectedNotes.size
-                        : selectedFiles.size
-                      } selected ${activeTab === "notes" ? "note" : "file"}${(activeTab === "notes"
-                        ? selectedNotes.size
-                        : selectedFiles.size) > 1
-                        ? "s"
-                        : ""
-                      }?`
-                      : `Are you sure you want to restore this ${activeTab === "notes" ? "note" : "file"
-                      }?`}
-                </Text>
-                <View className="flex-row justify-end gap-3">
-                  <Pressable
-                    className="px-4 py-2"
-                    onPress={() => setRestoreDialogOpen(false)}
-                  >
-                    <Text className="text-foreground">Cancel</Text>
-                  </Pressable>
-                  <Pressable
-                    className="rounded-md px-4 py-2"
-                    onPress={confirmRestore}
-                  >
-                    <Text className="font-semibold text-blue-500">
-                      Restore
-                    </Text>
-                  </Pressable>
-                </View>
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                {restoreAction?.type === "all"
+                  ? `Restore All ${activeTab === "notes" ? "Notes" : "Files"}`
+                  : restoreAction?.type === "selected"
+                    ? `Restore Selected ${activeTab === "notes" ? "Notes" : "Files"}`
+                    : `Restore ${activeTab === "notes" ? "Note" : "File"}`}
+              </Text>
+              <Text className="mb-6 text-sm text-muted-foreground">
+                {restoreAction?.type === "all"
+                  ? `Are you sure you want to restore all ${activeTab === "notes"
+                    ? filteredNotes.length
+                    : filteredFiles.length
+                  } archived ${activeTab}?`
+                  : restoreAction?.type === "selected"
+                    ? `Are you sure you want to restore ${activeTab === "notes"
+                      ? selectedNotes.size
+                      : selectedFiles.size
+                    } selected ${activeTab === "notes" ? "note" : "file"}${(activeTab === "notes"
+                      ? selectedNotes.size
+                      : selectedFiles.size) > 1
+                      ? "s"
+                      : ""
+                    }?`
+                    : `Are you sure you want to restore this ${activeTab === "notes" ? "note" : "file"
+                    }?`}
+              </Text>
+              <View className="flex-row justify-end gap-3">
+                <Pressable
+                  className="px-4 py-2"
+                  onPress={() => setRestoreDialogOpen(false)}
+                >
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={confirmRestore}
+                >
+                  <Text className="font-semibold text-blue-500">
+                    Restore
+                  </Text>
+                </Pressable>
               </View>
+            </View>
           </View>
         </Modal>
       )}

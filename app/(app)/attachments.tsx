@@ -203,7 +203,7 @@ export default function AttachmentsScreen() {
             alignItems: "center",
             justifyContent: "space-between",
             height: 56,
-            paddingHorizontal: 16,
+            paddingHorizontal: 6,
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
@@ -214,7 +214,7 @@ export default function AttachmentsScreen() {
                 }
                 router.replace("/(app)/settings");
               }}
-              style={{ padding: 8, marginRight: 8 }}
+              style={{ padding: 8 }}
             >
               <ArrowLeft color={colors.foreground} size={24} />
             </Pressable>
@@ -228,7 +228,7 @@ export default function AttachmentsScreen() {
               Attachments
             </Text>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingRight: 8 }}>
             <Pressable
               onPress={() => {
                 if (Platform.OS !== "web") {
@@ -236,7 +236,7 @@ export default function AttachmentsScreen() {
                 }
                 setViewMode((m) => (m === "grid" ? "list" : "grid"));
               }}
-              style={{ padding: 8 }}
+              style={{ paddingVertical: 8 }}
             >
               {viewMode === "grid" ? (
                 <Rows2 color={colors.foreground} size={22} strokeWidth={2.5} />
@@ -465,54 +465,54 @@ export default function AttachmentsScreen() {
               onPress={() => setDeleteDialogOpen(false)}
             />
             <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
-                {selectedAttachment && (
-                  <>
-                    <Text
-                      numberOfLines={2}
-                      className="mb-2 text-lg font-semibold text-foreground"
+              {selectedAttachment && (
+                <>
+                  <Text
+                    numberOfLines={2}
+                    className="mb-2 text-lg font-semibold text-foreground"
+                  >
+                    {selectedAttachment?.name ?? "Attachment"}
+                  </Text>
+                  <Text className="mb-5 text-sm leading-5 text-muted-foreground">
+                    Click "Copy URL" to copy the URL to the clipboard. Delete is
+                    permanent and cannot be recovered.
+                  </Text>
+                  <View className="flex-row items-center justify-between">
+                    <Pressable
+                      className="pr-4 py-2"
+                      onPress={() => {
+                        confirmDelete();
+                      }}
+                      disabled={deleteMutation.isPending}
                     >
-                      {selectedAttachment?.name ?? "Attachment"}
-                    </Text>
-                    <Text className="mb-5 text-sm leading-5 text-muted-foreground">
-                      Click "Copy URL" to copy the URL to the clipboard. Delete is
-                      permanent and cannot be recovered.
-                    </Text>
-                    <View className="flex-row items-center justify-between">
+                      <Text className="font-semibold text-red-500">
+                        Delete
+                      </Text>
+                    </Pressable>
+                    <View className="flex-row items-center gap-3">
                       <Pressable
-                        className="pr-4 py-2"
-                        onPress={() => {
-                          confirmDelete();
-                        }}
-                        disabled={deleteMutation.isPending}
+                        className="px-4 py-2"
+                        onPress={() => setDeleteDialogOpen(false)}
                       >
-                        <Text className="font-semibold text-red-500">
-                          Delete
+                        <Text className="text-foreground">Cancel</Text>
+                      </Pressable>
+                      <Pressable
+                        className="px-4 py-2"
+                        onPress={async () => {
+                          await handleCopyLink(selectedAttachment);
+                          setDeleteDialogOpen(false);
+                          setSelectedAttachment(null);
+                        }}
+                      >
+                        <Text className="font-semibold text-blue-500">
+                          Copy URL
                         </Text>
                       </Pressable>
-                      <View className="flex-row items-center gap-3">
-                        <Pressable
-                          className="px-4 py-2"
-                          onPress={() => setDeleteDialogOpen(false)}
-                        >
-                          <Text className="text-foreground">Cancel</Text>
-                        </Pressable>
-                        <Pressable
-                          className="px-4 py-2"
-                          onPress={async () => {
-                            await handleCopyLink(selectedAttachment);
-                            setDeleteDialogOpen(false);
-                            setSelectedAttachment(null);
-                          }}
-                        >
-                          <Text className="font-semibold text-blue-500">
-                            Copy URL
-                          </Text>
-                        </Pressable>
-                      </View>
                     </View>
-                  </>
-                )}
-              </View>
+                  </View>
+                </>
+              )}
+            </View>
           </View>
         </Modal>
       )}

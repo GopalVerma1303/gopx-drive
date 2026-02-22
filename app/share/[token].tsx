@@ -218,8 +218,7 @@ export default function SharedNoteScreen() {
             flexDirection: "row",
             alignItems: "center",
             height: 56,
-            paddingLeft: 24,
-            paddingRight: 16,
+            paddingHorizontal: 6,
           }}
         >
           <View
@@ -228,6 +227,7 @@ export default function SharedNoteScreen() {
               alignItems: "center",
               flex: 1,
               minWidth: 0,
+              paddingLeft: 8,
             }}
           >
             <Text
@@ -246,14 +246,15 @@ export default function SharedNoteScreen() {
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
-              marginLeft: 18,
+              gap: 16,
+              marginLeft: 16,
+              paddingRight: 8,
             }}
           >
             <Pressable
               onPress={handleCopyContent}
               disabled={!note.content}
-              style={[!note.content && { opacity: 0.4 }, { padding: 8 }]}
+              style={[{ paddingVertical: 8 }, !note.content && { opacity: 0.4 }]}
               accessibilityLabel={copied ? "Copied" : "Copy markdown"}
               accessibilityRole="button"
             >
@@ -263,10 +264,10 @@ export default function SharedNoteScreen() {
                 <Copy size={22} color={colors.foreground} strokeWidth={2.5} />
               )}
             </Pressable>
-            <ThemeToggle size={22} />
+            <ThemeToggle className="p-0 py-2" size={22} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Pressable style={{ padding: 8 }} accessibilityLabel="Note information">
+                <Pressable style={{ paddingVertical: 8 }} accessibilityLabel="Note information">
                   <Info size={22} color={colors.foreground} strokeWidth={2.5} />
                 </Pressable>
               </DropdownMenuTrigger>

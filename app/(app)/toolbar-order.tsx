@@ -2,11 +2,11 @@
 
 import { Text } from "@/components/ui/text";
 import {
+  DEFAULT_PREFERENCES,
   getToolbarPreferences,
   saveToolbarPreferences,
   type ToolbarItemId,
   type ToolbarPreferences,
-  DEFAULT_PREFERENCES,
 } from "@/lib/toolbar-preferences";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import * as Haptics from "expo-haptics";
@@ -213,10 +213,10 @@ export default function ToolbarOrderScreen() {
       index === 0
         ? [...visible.slice(1), visible[0]]
         : (() => {
-            const next = [...visible];
-            [next[index - 1], next[index]] = [next[index], next[index - 1]];
-            return next;
-          })();
+          const next = [...visible];
+          [next[index - 1], next[index]] = [next[index], next[index - 1]];
+          return next;
+        })();
     setPreferences({ ...preferences, visible: newVisible });
   };
 
@@ -230,10 +230,10 @@ export default function ToolbarOrderScreen() {
       index === last
         ? [visible[last], ...visible.slice(0, last)]
         : (() => {
-            const next = [...visible];
-            [next[index], next[index + 1]] = [next[index + 1], next[index]];
-            return next;
-          })();
+          const next = [...visible];
+          [next[index], next[index + 1]] = [next[index + 1], next[index]];
+          return next;
+        })();
     setPreferences({ ...preferences, visible: newVisible });
   };
 
@@ -262,7 +262,7 @@ export default function ToolbarOrderScreen() {
             alignItems: "center",
             justifyContent: "space-between",
             height: 56,
-            paddingHorizontal: 16,
+            paddingHorizontal: 6,
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
@@ -273,7 +273,7 @@ export default function ToolbarOrderScreen() {
                 }
                 router.replace("/(app)/settings");
               }}
-              style={{ padding: 8, marginRight: 8 }}
+              style={{ padding: 8 }}
             >
               <ArrowLeft color={colors.foreground} size={24} />
             </Pressable>
@@ -287,7 +287,7 @@ export default function ToolbarOrderScreen() {
               Toolbar Order
             </Text>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingRight: 8 }}>
             <Pressable
               onPress={handleReset}
               disabled={isDefaultStructure}

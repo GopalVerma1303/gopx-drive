@@ -105,10 +105,10 @@ export default function SettingsScreen() {
             alignItems: "center",
             justifyContent: "space-between",
             height: 56,
-            paddingHorizontal: 16,
+            paddingHorizontal: 8,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1, paddingLeft: 8 }}>
             <Text
               style={{
                 fontSize: 18,
