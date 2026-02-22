@@ -51,7 +51,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 interface ToolbarItem {
   id: ToolbarItemId;
   label: string;
-  icon: React.ComponentType<{ size?: number; color?: string }>;
+  icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 }
 
 const TOOLBAR_ITEMS: Record<ToolbarItemId, ToolbarItem> = {

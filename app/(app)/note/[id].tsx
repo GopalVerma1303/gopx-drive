@@ -424,7 +424,7 @@ export default function NoteEditorScreen() {
               className="flex-1"
               contentContainerStyle={{ flexGrow: 1, minHeight: "100%" }}
               keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator={true}
             >
               <MarkdownEditor
                 ref={editorRef}
@@ -473,7 +473,7 @@ export default function NoteEditorScreen() {
                 className="flex-1"
                 contentContainerStyle={{ flexGrow: 1 }}
                 keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
+                showsVerticalScrollIndicator={true}
                 keyboardDismissMode="interactive"
               >
                 <MarkdownEditor
