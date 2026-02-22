@@ -21,6 +21,7 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -294,11 +295,26 @@ export default function SharedNoteScreen() {
               style={{
                 flexDirection: "row",
                 alignItems: "center",
+                justifyContent: "center",
                 flex: 1,
                 minWidth: 0,
                 paddingLeft: 8,
+                gap: 8,
               }}
             >
+              <Pressable
+                onPress={() => Linking.openURL("https://drive.gopx.dev")}
+                style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+                accessibilityLabel="Open Gopx Drive"
+                accessibilityRole="link"
+              >
+                <Image
+                  source={GopxDriveIcon}
+                  style={{ width: 22, height: 22 }}
+                  resizeMode="contain"
+                  className="filter dark:invert rounded-[2px]"
+                />
+              </Pressable>
               <Text
                 style={{
                   fontSize: 18,
