@@ -6,9 +6,9 @@ import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "../ui/text";
 
-interface NotesHeaderProps {}
+interface NotesHeaderProps { }
 
-export function NotesHeader({}: NotesHeaderProps) {
+export function NotesHeader({ }: NotesHeaderProps) {
   const router = useRouter();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -55,7 +55,7 @@ export function NotesHeader({}: NotesHeaderProps) {
             }}
             style={{ padding: 8 }}
           >
-            <Plus color={colors.foreground} size={22} strokeWidth={2.5} />
+            <Plus color={colors.foreground} size={22} />
           </Pressable>
         </View>
       </View>
