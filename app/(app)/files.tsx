@@ -333,9 +333,9 @@ export default function FilesScreen() {
               style={{ paddingVertical: 8 }}
             >
               {viewMode === "grid" ? (
-                <Rows2 color={colors.foreground} size={22} strokeWidth={2.5} />
+                <Rows2 color={colors.foreground} size={22} />
               ) : (
-                <LayoutGrid color={colors.foreground} size={22} strokeWidth={2.5} />
+                <LayoutGrid color={colors.foreground} size={22} />
               )}
             </Pressable>
             <Pressable
@@ -346,7 +346,7 @@ export default function FilesScreen() {
               {uploading ? (
                 <ActivityIndicator size="small" color={colors.foreground} />
               ) : (
-                <Plus color={colors.foreground} size={22} strokeWidth={2.5} />
+                <Plus color={colors.foreground} size={22} />
               )}
             </Pressable>
           </View>
@@ -656,10 +656,10 @@ export default function FilesScreen() {
                     }}
                     style={{ paddingVertical: 8 }}
                   >
-                    <ExternalLink color={colors.foreground} size={22} strokeWidth={2.5} />
+                    <ExternalLink color={colors.foreground} size={22} />
                   </Pressable>
                   <Pressable onPress={closePreview} style={{ paddingVertical: 8 }}>
-                    <X color={colors.foreground} size={24} strokeWidth={2} />
+                    <X color={colors.foreground} size={24} />
                   </Pressable>
                 </View>
               </View>

@@ -239,9 +239,9 @@ export default function AttachmentsScreen() {
               style={{ paddingVertical: 8 }}
             >
               {viewMode === "grid" ? (
-                <Rows2 color={colors.foreground} size={22} strokeWidth={2.5} />
+                <Rows2 color={colors.foreground} size={22} />
               ) : (
-                <LayoutGrid color={colors.foreground} size={22} strokeWidth={2.5} />
+                <LayoutGrid color={colors.foreground} size={22} />
               )}
             </Pressable>
           </View>
@@ -300,7 +300,6 @@ export default function AttachmentsScreen() {
               <ImageIcon
                 color={colors.mutedForeground}
                 size={48}
-                strokeWidth={1.5}
                 style={{ marginBottom: 16 }}
               />
               <Text className="text-xl font-semibold text-muted-foreground mb-2">

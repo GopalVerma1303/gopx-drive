@@ -383,7 +383,7 @@ export default function CalendarScreen() {
               onPress={handleOpenCreateModal}
               style={{ paddingVertical: 8 }}
             >
-              <Plus color={colors.foreground} size={22} strokeWidth={2.5} />
+              <Plus color={colors.foreground} size={22} />
             </Pressable>
           </View>
         </View>

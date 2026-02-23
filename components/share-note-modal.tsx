@@ -106,7 +106,7 @@ export function ShareNoteModal({
       <Pressable className="absolute inset-0" onPress={onClose} />
       <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg shadow-black/5">
         <View className="mb-4 flex-row items-center gap-3">
-          <Share2 color={colors.foreground} size={22} strokeWidth={2} />
+          <Share2 color={colors.foreground} size={22} />
           <Text className="text-lg font-semibold text-foreground">
             Share note
           </Text>
@@ -138,13 +138,11 @@ export function ShareNoteModal({
                 <Check
                   color={colors.foreground}
                   size={18}
-                  strokeWidth={2}
                 />
               ) : (
                 <Link
                   color={colors.foreground}
                   size={18}
-                  strokeWidth={2}
                 />
               )}
               <Text className="text-sm font-medium text-foreground">

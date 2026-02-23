@@ -428,7 +428,7 @@ export default function ArchiveScreen() {
                   }}
                   style={{ paddingVertical: 8 }}
                 >
-                  <Undo2 color={colors.foreground} size={22} strokeWidth={2.5} />
+                  <Undo2 color={colors.foreground} size={22} />
                 </Pressable>
                 {hasSelection ? (
                   <Pressable
@@ -440,7 +440,7 @@ export default function ArchiveScreen() {
                     }}
                     style={{ paddingVertical: 8 }}
                   >
-                    <Trash2 color="#ef4444" size={22} strokeWidth={2.5} />
+                    <Trash2 color="#ef4444" size={22} />
                   </Pressable>
                 ) : (
                   <Pressable
@@ -454,7 +454,7 @@ export default function ArchiveScreen() {
                     }}
                     style={{ paddingVertical: 8 }}
                   >
-                    <Trash2 color="#ef4444" size={22} strokeWidth={2.5} />
+                    <Trash2 color="#ef4444" size={22} />
                   </Pressable>
                 )}
               </>
@@ -509,14 +509,13 @@ export default function ArchiveScreen() {
                   <Files
                     color={colors.mutedForeground}
                     size={20}
-                    strokeWidth={2}
+
                   />
                 ) : (
 
                   <FileText
                     color={colors.mutedForeground}
                     size={20}
-                    strokeWidth={2}
                   />
                 )}
               </Pressable>
@@ -549,7 +548,7 @@ export default function ArchiveScreen() {
                     <Archive
                       color={colors.mutedForeground}
                       size={48}
-                      strokeWidth={1.5}
+
                       style={{ marginBottom: 16 }}
                     />
                     <Text className="text-xl font-semibold text-muted-foreground mb-2">
@@ -625,7 +624,7 @@ export default function ArchiveScreen() {
                     <Archive
                       color={colors.mutedForeground}
                       size={48}
-                      strokeWidth={1.5}
+
                       style={{ marginBottom: 16 }}
                     />
                     <Text className="text-xl font-semibold text-muted-foreground mb-2">
@@ -1019,13 +1018,13 @@ function ArchivedNoteCard({
               <CheckCheck
                 size={14}
                 color={colors.mutedForeground + "90"}
-                strokeWidth={2.5}
+
               />
             ) : (
               <Check
                 size={14}
                 color={colors.mutedForeground + "90"}
-                strokeWidth={2.5}
+
               />
             )}
           </View>

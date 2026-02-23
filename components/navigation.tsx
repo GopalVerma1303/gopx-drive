@@ -156,7 +156,6 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
             <Icon
               color={isActive ? colors.primary : colors.mutedForeground}
               size={horizontal ? 24 : (iconOnly ? 24 : 20)}
-              strokeWidth={isActive ? 3 : 2.5}
             />
             {!iconOnly && (
               <Text
@@ -307,7 +306,7 @@ export function NavigationToggle({ onPress }: { onPress: () => void }) {
         zIndex: 10000,
       })}
     >
-      <Menu color={colors.foreground} size={24} strokeWidth={2.5} />
+      <Menu color={colors.foreground} size={24} />
     </Pressable>
   );
 }

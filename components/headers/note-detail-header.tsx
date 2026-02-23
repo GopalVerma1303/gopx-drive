@@ -166,7 +166,6 @@ export function NoteDetailHeader({
             <Check
               color={canSave ? colors.foreground : colors.mutedForeground}
               size={22}
-              strokeWidth={2.5}
             />
           </Pressable>
           <Pressable
@@ -177,9 +176,9 @@ export function NoteDetailHeader({
             style={{ paddingVertical: 8 }}
           >
             {isPreview ? (
-              <Edit color={colors.foreground} size={22} strokeWidth={2.5} />
+              <Edit color={colors.foreground} size={22} />
             ) : (
-              <Eye color={colors.foreground} size={22} strokeWidth={2.5} />
+              <Eye color={colors.foreground} size={22} />
             )}
           </Pressable>
           {!isNewNote && (
@@ -194,7 +193,6 @@ export function NoteDetailHeader({
                   <MoreVertical
                     color={colors.foreground}
                     size={22}
-                    strokeWidth={2.5}
                   />
                 </Pressable>
               </DropdownMenuTrigger>

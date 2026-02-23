@@ -296,7 +296,6 @@ export default function ToolbarOrderScreen() {
               <RotateCcw
                 color={colors.foreground}
                 size={22}
-                strokeWidth={2.5}
               />
             </Pressable>
             <Pressable
@@ -307,7 +306,6 @@ export default function ToolbarOrderScreen() {
               <Check
                 color={colors.foreground}
                 size={22}
-                strokeWidth={2.5}
               />
             </Pressable>
           </View>
@@ -423,7 +421,7 @@ export default function ToolbarOrderScreen() {
                       }}
                       style={{ padding: 4 }}
                     >
-                      <Plus color="#3b82f6" size={20} strokeWidth={2} />
+                      <Plus color="#3b82f6" size={20} />
                     </Pressable>
                   </Pressable>
                 );

@@ -189,7 +189,6 @@ export default function SharedNotesScreen() {
               <FileText
                 color={colors.mutedForeground}
                 size={48}
-                strokeWidth={1.5}
               />
               <Text className="mt-4 text-center text-muted-foreground text-base max-w-[280px]">
                 You haven&apos;t shared any notes yet. Share a note from its
@@ -214,7 +213,6 @@ export default function SharedNotesScreen() {
                     <FileText
                       color={colors.mutedForeground}
                       size={20}
-                      strokeWidth={2}
                     />
                     <Text
                       className="flex-1 text-foreground text-base font-medium min-w-0"
@@ -228,9 +226,9 @@ export default function SharedNotesScreen() {
                       accessibilityLabel="Copy share link"
                     >
                       {copiedLinkNoteId === note.id ? (
-                        <Check color="#3b82f6" size={20} strokeWidth={2} />
+                        <Check color="#3b82f6" size={20} />
                       ) : (
-                        <Link color="#3b82f6" size={20} strokeWidth={2} />
+                        <Link color="#3b82f6" size={20} />
                       )}
                     </Pressable>
                     <Pressable
@@ -241,7 +239,6 @@ export default function SharedNotesScreen() {
                       <Unlink
                         color="#ef4444"
                         size={20}
-                        strokeWidth={2}
                       />
                     </Pressable>
                   </View>

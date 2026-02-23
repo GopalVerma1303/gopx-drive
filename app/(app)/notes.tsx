@@ -276,9 +276,9 @@ export default function NotesScreen() {
               style={{ paddingVertical: 8 }}
             >
               {viewMode === "grid" ? (
-                <Rows2 color={colors.foreground} size={22} strokeWidth={2.5} />
+                <Rows2 color={colors.foreground} size={22} />
               ) : (
-                <LayoutGrid color={colors.foreground} size={22} strokeWidth={2.5} />
+                <LayoutGrid color={colors.foreground} size={22} />
               )}
             </Pressable>
             <Pressable
@@ -288,7 +288,7 @@ export default function NotesScreen() {
               }}
               style={{ paddingVertical: 8 }}
             >
-              <Plus color={colors.foreground} size={22} strokeWidth={2.5} />
+              <Plus color={colors.foreground} size={22} />
             </Pressable>
           </View>
         </View>
@@ -686,13 +686,11 @@ function NoteCard({
               <CheckCheck
                 size={14}
                 color={colors.mutedForeground + "90"}
-                strokeWidth={2.5}
               />
             ) : (
               <Check
                 size={14}
                 color={colors.mutedForeground + "90"}
-                strokeWidth={2.5}
               />
             )}
           </View>

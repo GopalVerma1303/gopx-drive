@@ -242,7 +242,6 @@ export default function SettingsScreen() {
                 <Settings2
                   color={colors.foreground}
                   size={20}
-                  strokeWidth={2}
                 />
                 <Text
                   style={{
@@ -284,7 +283,6 @@ export default function SettingsScreen() {
                 <FileText
                   color={colors.foreground}
                   size={20}
-                  strokeWidth={2}
                 />
                 <Text
                   style={{
@@ -326,7 +324,6 @@ export default function SettingsScreen() {
                 <Archive
                   color={colors.foreground}
                   size={20}
-                  strokeWidth={2}
                 />
                 <Text
                   style={{
@@ -350,7 +347,6 @@ export default function SettingsScreen() {
                 <ImageIcon
                   color={colors.foreground}
                   size={20}
-                  strokeWidth={2}
                 />
                 <Text
                   style={{
@@ -372,7 +368,6 @@ export default function SettingsScreen() {
                 <Eraser
                   color={colors.foreground}
                   size={20}
-                  strokeWidth={2}
                 />
                 <Text
                   style={{
@@ -411,7 +406,6 @@ export default function SettingsScreen() {
                 <LogOut
                   color={"#ef4444"}
                   size={20}
-                  strokeWidth={2}
                 />
                 <Text
                   style={{
@@ -448,7 +442,6 @@ export default function SettingsScreen() {
                 color="#ef4444"
                 size={14}
                 fill="#ef4444"
-                strokeWidth={2}
               />
               <Text
                 style={{
@@ -476,7 +469,6 @@ export default function SettingsScreen() {
                   <WandSparkles
                     color="#3b82f6"
                     size={14}
-                    strokeWidth={2}
                   />
                 </View>
               </Pressable>
