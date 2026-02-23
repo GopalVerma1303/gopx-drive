@@ -2761,7 +2761,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         {previewValue}
       </Markdown>
     ) : (
-      <Text className="text-muted-foreground italic">{placeholder}</Text>
+      <Text className="text-muted-foreground italic pt-2">{placeholder}</Text>
     );
 
     if (previewOnly && noScrollView) {
@@ -2776,7 +2776,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             className="flex-1"
             contentContainerStyle={{
               paddingHorizontal: 32,
-              paddingTop: 12,
+              paddingTop: 20,
               paddingBottom: 40,
             }}
             removeClippedSubviews={false}
@@ -2814,8 +2814,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             textAlignVertical="top"
             style={{
               paddingHorizontal: 32,
-              paddingTop: 30,
+              paddingTop: 28,
               paddingBottom: 65,
+              fontSize: 16,
+              lineHeight: 24,
               fontFamily: Platform.select({
                 web: "Iosevka, monospace",
                 default: "Iosevka",
