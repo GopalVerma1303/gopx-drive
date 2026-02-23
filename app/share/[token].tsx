@@ -398,7 +398,7 @@ export default function SharedNoteScreen() {
                 alignSelf: "center",
                 backgroundColor: colors.muted,
                 paddingHorizontal: contentPaddingHorizontal,
-                paddingTop: 10,
+                paddingTop: 16,
                 paddingBottom: contentPaddingBottom,
               }}
               className="w-full max-w-2xl mx-auto bg-muted"

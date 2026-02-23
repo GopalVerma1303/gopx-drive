@@ -2776,7 +2776,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             className="flex-1"
             contentContainerStyle={{
               paddingHorizontal: 32,
-              paddingTop: 20,
+              paddingTop: 16,
               paddingBottom: 40,
             }}
             removeClippedSubviews={false}
@@ -2814,7 +2814,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             textAlignVertical="top"
             style={{
               paddingHorizontal: 32,
-              paddingTop: 28,
+              paddingTop: 24,
               paddingBottom: 65,
               fontSize: 16,
               lineHeight: 24,
