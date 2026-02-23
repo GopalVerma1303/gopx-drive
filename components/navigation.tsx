@@ -7,6 +7,7 @@ import { Calendar, FileText, Files, Menu, Settings } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   Dimensions,
+  Image,
   Platform,
   Pressable,
   View,
@@ -68,6 +69,8 @@ interface NavItem {
   icon: typeof FileText;
   href: string;
 }
+
+const transicon = require("@/assets/images/transicon.png");
 
 const navItems: NavItem[] = [
   { label: "Notes", icon: FileText, href: "/(app)/notes" },
@@ -199,7 +202,7 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
     );
   }
 
-  // Medium screens: Icon-only sidebar (left side, always visible)
+  // Medium screens: Icon-only sidebar (left side, always visible) — logo only at top
   if (isMd) {
     return (
       <View
@@ -212,7 +215,10 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
           paddingTop: insets.top,
         }}
       >
-        <View style={{ paddingVertical: 16, paddingHorizontal: 8 }}>
+        <View style={{ paddingVertical: 16, paddingHorizontal: 12, alignItems: "center" }}>
+          <Image source={transicon} style={{ width: 32, height: 32 }} resizeMode="contain" className="filter dark:invert" />
+        </View>
+        <View style={{ paddingHorizontal: 8 }}>
           {renderNavItems(true, false)}
         </View>
       </View>
@@ -232,17 +238,18 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
       }}
     >
       <View style={{ paddingVertical: 16, paddingHorizontal: 16 }}>
-        <Text
-          style={{
-            fontSize: 20,
-            fontWeight: "700",
-            color: colors.foreground,
-            marginBottom: 24,
-            paddingHorizontal: 12,
-          }}
-        >
-          Gopx Drive
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 24, paddingHorizontal: 12, gap: 10 }}>
+          <Image source={transicon} style={{ width: 28, height: 28 }} resizeMode="contain" className="filter dark:invert" />
+          <Text
+            style={{
+              fontSize: 20,
+              fontWeight: "700",
+              color: colors.foreground,
+            }}
+          >
+            Gopx Drive
+          </Text>
+        </View>
         {renderNavItems(false, false)}
       </View>
     </View>
