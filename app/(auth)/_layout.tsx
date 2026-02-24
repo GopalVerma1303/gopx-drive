@@ -30,7 +30,7 @@ export default function AuthLayout() {
     return (
       <>
         <DefaultAppHead />
-        <Redirect href="/(app)/notes" />
+        <Redirect href="/(app)/home" />
       </>
     );
   }

@@ -57,8 +57,8 @@ export default function LoginScreen() {
       } else {
         await signIn(email, password);
       }
-      // Only route to notes if we have a verified session
-      router.replace("/(app)/notes");
+      // Only route to home if we have a verified session
+      router.replace("/(app)/home");
     } catch (error: any) {
       Alert.alert(
         "Error",

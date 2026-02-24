@@ -30,11 +30,11 @@ export default function Index() {
   }
 
   if (user) {
-    // Authenticated: go straight to the main app (notes)
+    // Authenticated: go straight to home
     return (
       <>
         <DefaultAppHead />
-        <Redirect href="/(app)/notes" />
+        <Redirect href="/(app)/home" />
       </>
     );
   }
