@@ -1,5 +1,6 @@
 "use client";
 
+import { FolderCard } from "@/components/folder-card";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -897,13 +898,14 @@ export default function ArchiveScreen() {
                                   index < filteredFolders.length - 1 ? gap : 0,
                               }}
                             >
-                              <ArchivedFolderCard
+                              <FolderCard
                                 folder={folder}
                                 cardWidth={cardWidth}
+                                variant="list"
+                                isArchived
                                 isSelected={selectedFolders.has(folder.id)}
                                 onToggleSelect={() => toggleFolderSelection(folder.id)}
-                                onRestore={() => handleRestoreSingle(folder.id, "folders")}
-                                onDelete={() => handleDeleteSingle(folder.id, "folders")}
+                                onPress={() => {}}
                               />
                             </View>
                           ))}
@@ -1488,88 +1490,3 @@ function ArchivedFileListCard({
   );
 }
 
-interface ArchivedFolderCardProps {
-  folder: Folder;
-  cardWidth: number;
-  isSelected: boolean;
-  onToggleSelect: () => void;
-  onRestore: () => void;
-  onDelete: () => void;
-}
-
-function ArchivedFolderCard({
-  folder,
-  cardWidth,
-  isSelected,
-  onToggleSelect,
-}: ArchivedFolderCardProps) {
-  const { colors } = useThemeColors();
-  const scale = useRef(new Animated.Value(1)).current;
-
-  const handlePressIn = () => {
-    Animated.spring(scale, {
-      toValue: 0.98,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: true,
-      friction: 3,
-    }).start();
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
-  };
-
-  const cardHeight = 80;
-  const iconSize = 56;
-
-  return (
-    <Pressable
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      onPress={onToggleSelect}
-    >
-      <Animated.View style={{ transform: [{ scale }] }}>
-        <View
-          className="flex-row items-center p-3 gap-3 bg-muted border border-border rounded-xl"
-          style={{ width: cardWidth, minHeight: cardHeight }}
-        >
-          <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} />
-          <View
-            className="bg-background border border-muted rounded-xl items-center justify-center"
-            style={{ width: iconSize, height: iconSize }}
-          >
-            <FolderIcon color={colors.mutedForeground} size={28} />
-          </View>
-          <View className="flex-1 justify-center gap-1">
-            <Text
-              className="text-sm font-semibold text-foreground"
-              numberOfLines={1}
-            >
-              {folder.name || "Unnamed folder"}
-            </Text>
-            <Text className="text-[11px] text-muted-foreground">
-              {formatDate(folder.updated_at)}
-            </Text>
-          </View>
-        </View>
-      </Animated.View>
-    </Pressable>
-  );
-}

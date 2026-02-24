@@ -1,6 +1,6 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
+import { FolderCard } from "@/components/folder-card";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
@@ -19,11 +19,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Folder as FolderIcon, LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
+import { LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
   Dimensions,
   Modal,
   Platform,
@@ -51,6 +50,7 @@ export default function FoldersScreen() {
   const [folderNameInput, setFolderNameInput] = useState("");
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   const [editFolderNameInput, setEditFolderNameInput] = useState("");
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [screenWidth, setScreenWidth] = useState(() => {
     if (Platform.OS === "web") {
       if (typeof window !== "undefined") {
@@ -146,13 +146,18 @@ export default function FoldersScreen() {
     onSuccess: () => {
       invalidateFoldersQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setArchiveDialogOpen(false);
       closeEditFolderModal();
     },
   });
 
-  const filteredFolders = folders.filter((folder) =>
-    folder.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredFolders = folders
+    .filter((folder) =>
+      folder.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) =>
+      (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" })
+    );
 
   const openEditFolderModal = (folder: Folder) => {
     if (Platform.OS !== "web") {
@@ -174,9 +179,19 @@ export default function FoldersScreen() {
     updateFolderMutation.mutate({ id: editingFolder.id, name });
   };
 
-  const handleArchiveFolder = () => {
-    if (!editingFolder) return;
-    archiveFolderMutation.mutate(editingFolder.id);
+  const openArchiveConfirm = () => {
+    if (editingFolder) {
+      setArchiveDialogOpen(true);
+    }
+  };
+
+  const handleArchiveConfirm = () => {
+    if (editingFolder) {
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      archiveFolderMutation.mutate(editingFolder.id);
+    }
   };
 
   const onRefreshFolders = async () => {
@@ -397,7 +412,7 @@ export default function FoldersScreen() {
                 />
               </View>
               <View className="flex-row items-center justify-between gap-3">
-                <Pressable onPress={handleArchiveFolder} className="rounded-md px-4 py-2.5">
+                <Pressable onPress={openArchiveConfirm} className="rounded-md px-4 py-2.5">
                   <Text className="font-semibold text-red-500">Archive</Text>
                 </Pressable>
                 <View className="flex-row gap-3">
@@ -455,7 +470,7 @@ export default function FoldersScreen() {
                         />
                       </View>
                       <View className="flex-row items-center justify-between gap-3">
-                        <Pressable onPress={handleArchiveFolder} className="rounded-md px-4 py-2.5">
+                        <Pressable onPress={openArchiveConfirm} className="rounded-md px-4 py-2.5">
                           <Text className="font-semibold text-red-500">Archive</Text>
                         </Pressable>
                         <View className="flex-row gap-3">
@@ -475,6 +490,80 @@ export default function FoldersScreen() {
           </Modal>
         )
       ) : null}
+
+      {/* Archive confirmation dialog */}
+      {Platform.OS === "web" ? (
+        archiveDialogOpen && (
+          <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <Pressable
+              className="absolute inset-0"
+              onPress={() => setArchiveDialogOpen(false)}
+            />
+            <View className="w-full max-w-md rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                Archive Folder
+              </Text>
+              <Text className="mb-6 text-sm text-muted-foreground">
+                Are you sure you want to archive "{editingFolder?.name}"? You can restore it from the archive later.
+              </Text>
+              <View className="flex-row justify-end gap-3">
+                <Pressable
+                  className="px-4 py-2"
+                  onPress={() => setArchiveDialogOpen(false)}
+                >
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleArchiveConfirm}
+                >
+                  <Text className="font-semibold text-red-500">
+                    Archive
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )
+      ) : (
+        <Modal
+          visible={archiveDialogOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setArchiveDialogOpen(false)}
+        >
+          <View className="flex-1 items-center justify-center bg-black/50 p-4">
+            <Pressable
+              className="absolute inset-0"
+              onPress={() => setArchiveDialogOpen(false)}
+            />
+            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                Archive Folder
+              </Text>
+              <Text className="mb-6 text-sm text-muted-foreground">
+                Are you sure you want to archive "{editingFolder?.name}"? You can restore it from the archive later.
+              </Text>
+              <View className="flex-row justify-end gap-3">
+                <Pressable
+                  className="px-4 py-2"
+                  onPress={() => setArchiveDialogOpen(false)}
+                >
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleArchiveConfirm}
+                >
+                  <Text className="font-semibold text-red-500">
+                    Archive
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
 
       <View className="w-full h-full">
         {/* Search bar */}
@@ -649,164 +738,5 @@ export default function FoldersScreen() {
         </ScrollView>
       </View>
     </View>
-  );
-}
-
-interface FolderCardProps {
-  folder: Folder;
-  cardWidth: number;
-  onPress: () => void;
-  onLongPress?: () => void;
-  variant?: "grid" | "list";
-}
-
-function FolderCard({ folder, cardWidth, onPress, onLongPress, variant = "list" }: FolderCardProps) {
-  const { colors } = useThemeColors();
-  const scale = new Animated.Value(1);
-
-  const handlePressIn = () => {
-    Animated.spring(scale, {
-      toValue: 0.96,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: true,
-      friction: 3,
-    }).start();
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
-  };
-
-  const padding = 14;
-  const iconSize = 40;
-
-  const gridIconHeight = (cardWidth / 130) * 150;
-  const gridIconSize = Math.min(cardWidth, gridIconHeight);
-  // RCA: SVG icon has viewBox padding so the visible shape doesn't fill its layout box;
-  // pull info up by ~12% of icon size to sit close to the visible folder.
-  const gridInfoMarginTop = 4 - Math.round(gridIconSize * 0.12);
-
-  const content =
-    variant === "grid" ? (
-      <View className="items-center">
-        <FolderIcon
-          color={colors.muted}
-          fill={colors.muted}
-          size={gridIconSize}
-          strokeWidth={1}
-        />
-        <View className="items-center" style={{ width: cardWidth, marginTop: gridInfoMarginTop }}>
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: "600",
-              color: colors.foreground,
-            }}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {folder.name || "Unnamed folder"}
-          </Text>
-          <Text
-            style={{
-              fontSize: 11,
-              color: colors.mutedForeground,
-              marginTop: 2,
-            }}
-            numberOfLines={1}
-          >
-            Updated {formatDate(folder.updated_at)}
-          </Text>
-        </View>
-      </View>
-    ) : (
-      <Card
-        className="rounded-2xl border border-border overflow-hidden"
-        style={{
-          width: cardWidth,
-          minHeight: 72,
-          padding,
-          backgroundColor: colors.muted,
-        }}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            flex: 1,
-            gap: 12,
-            minHeight: 44,
-          }}
-        >
-          <FolderIcon
-            color={colors.foreground}
-            fill={colors.foreground}
-            size={iconSize}
-            strokeWidth={0}
-          />
-          <View
-            style={{
-              flex: 1,
-              minWidth: 0,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 8,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "600",
-                color: colors.foreground,
-                flex: 1,
-              }}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {folder.name || "Unnamed folder"}
-            </Text>
-            <Text
-              style={{
-                fontSize: 12,
-                color: colors.mutedForeground,
-              }}
-              numberOfLines={1}
-            >
-              Updated {formatDate(folder.updated_at)}
-            </Text>
-          </View>
-        </View>
-      </Card>
-    );
-
-  return (
-    <Pressable
-      onPress={onPress}
-      onLongPress={onLongPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-    >
-      <Animated.View style={{ transform: [{ scale }] }}>
-        {content}
-      </Animated.View>
-    </Pressable>
   );
 }
