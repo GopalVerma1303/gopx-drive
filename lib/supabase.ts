@@ -16,6 +16,15 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+export interface Folder {
+  id: string;
+  user_id: string;
+  name: string;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Note {
   id: string;
   user_id: string;
@@ -26,6 +35,8 @@ export interface Note {
   updated_at: string;
   /** When set, the note is publicly viewable at /share/{share_token}. Null = not shared. */
   share_token?: string | null;
+  /** Optional folder; null = uncategorized. */
+  folder_id?: string | null;
 }
 
 export interface File {
@@ -39,6 +50,8 @@ export interface File {
   is_archived: boolean;
   created_at: string;
   updated_at: string;
+  /** Optional folder; null = uncategorized. */
+  folder_id?: string | null;
 }
 
 export interface Event {

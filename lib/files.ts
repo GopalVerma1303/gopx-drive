@@ -46,10 +46,33 @@ export const getFileById = async (id: string): Promise<File | null> => {
   return supabaseFiles.getFileById(id);
 };
 
+/** List files that belong to a folder. Uses Supabase when not UI_DEV; in UI_DEV returns []. */
+export const listFilesByFolder = async (
+  userId: string | undefined,
+  folderId: string
+): Promise<File[]> => {
+  if (UI_DEV || !userId) return [];
+  try {
+    return await supabaseFiles.listFilesByFolder(userId, folderId);
+  } catch {
+    return [];
+  }
+};
+
+export const updateFile = async (
+  id: string,
+  updates: Partial<Pick<File, "name" | "folder_id">>
+): Promise<File | null> => {
+  if (UI_DEV) {
+    return null;
+  }
+  return supabaseFiles.updateFile(id, updates);
+};
+
 export const uploadFile = async (input: {
   user_id: string;
   file: {
-    uri: string;
+    uri: string | globalThis.File;
     name: string;
     type: string;
     size: number;

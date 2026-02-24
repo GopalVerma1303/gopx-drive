@@ -6,33 +6,46 @@ import { ImageInsertModal } from "@/components/image-insert-modal";
 import { MarkdownEditor, MarkdownEditorRef } from "@/components/markdown-editor";
 import { MarkdownToolbar } from "@/components/markdown-toolbar";
 import { ShareNoteModal } from "@/components/share-note-modal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
 import { generateAIContent } from "@/lib/ai-providers";
+import { listFolders } from "@/lib/folders";
 import { createNote, getNoteById, updateNote, syncNotesFromSupabase } from "@/lib/notes";
-import { invalidateNotesListQueries } from "@/lib/query-utils";
+import { invalidateFoldersQueries, invalidateNotesListQueries } from "@/lib/query-utils";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { ChevronDown } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   BackHandler,
+  Modal,
   Platform,
+  Pressable,
   Alert as RNAlert,
   ScrollView,
+  StyleSheet,
   View,
 } from "react-native";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import Animated, { useAnimatedStyle } from "react-native-reanimated";
 
 export default function NoteEditorScreen() {
-  const { id, edit: editParam } = useLocalSearchParams<{ id: string; edit?: string }>();
+  const { id, edit: editParam, folderId } = useLocalSearchParams<{ id: string; edit?: string; folderId?: string }>();
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { colors } = useThemeColors();
   const isNewNote = id === "new";
+  const initialFolderId = typeof folderId === "string" && folderId.length > 0 ? folderId : null;
   /** Open in edit mode for new notes, or when we just created and replaced (edit=1) */
   const openInEditMode = isNewNote || editParam === "1";
   const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
@@ -47,6 +60,9 @@ export default function NoteEditorScreen() {
   const [selectedText, setSelectedText] = useState("");
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [moveModalOpen, setMoveModalOpen] = useState(false);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [dropdownTriggerWidth, setDropdownTriggerWidth] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   /** Last selection from editor (updated on every selection change). Preserved when AI button steals focus. */
   const lastSelectionRef = useRef({ start: 0, end: 0 });
@@ -87,6 +103,13 @@ export default function NoteEditorScreen() {
     placeholderData: (previousData) => previousData,
     retry: false,
     retryOnMount: false,
+  });
+
+  const { data: folders = [] } = useQuery({
+    queryKey: ["folders", user?.id],
+    queryFn: () => listFolders(user?.id),
+    enabled: !!user?.id,
+    staleTime: 2 * 60 * 1000,
   });
 
   // Check if notes list shows a newer version of this note and refetch if needed
@@ -178,6 +201,7 @@ export default function NoteEditorScreen() {
           user_id: userId,
           title: title || "Untitled",
           content,
+          folder_id: initialFolderId,
         });
         return created;
       } else {
@@ -254,6 +278,38 @@ export default function NoteEditorScreen() {
       saveInProgressRef.current = false;
     },
   });
+
+  const moveNoteMutation = useMutation({
+    mutationFn: ({ noteId, folderId }: { noteId: string; folderId: string | null }) =>
+      updateNote(noteId, { folder_id: folderId }),
+    onSuccess: (_data, { noteId, folderId }) => {
+      invalidateNotesListQueries(queryClient, user?.id);
+      invalidateFoldersQueries(queryClient, user?.id);
+      queryClient.invalidateQueries({ queryKey: ["note", noteId] });
+      queryClient.setQueryData(["note", noteId], (prev: typeof note) =>
+        prev ? { ...prev, folder_id: folderId } : prev
+      );
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setMoveModalOpen(false);
+      setSelectedFolderId(null);
+    },
+  });
+
+  const openMoveModal = () => {
+    setSelectedFolderId(note?.folder_id ?? null);
+    setMoveModalOpen(true);
+  };
+
+  const closeMoveModal = () => {
+    setMoveModalOpen(false);
+    setSelectedFolderId(null);
+    setDropdownTriggerWidth(0);
+  };
+
+  const handleMoveConfirm = () => {
+    if (!id || isNewNote) return;
+    moveNoteMutation.mutate({ noteId: id, folderId: selectedFolderId });
+  };
 
   const handleSave = () => {
     if (!title.trim() && !content.trim()) {
@@ -402,6 +458,14 @@ export default function NoteEditorScreen() {
         isFetching={isFetching || isRefreshing}
         onRefresh={!isNewNote ? handleRefresh : undefined}
         onOpenShareModal={!isNewNote ? () => setShareModalOpen(true) : undefined}
+        folderName={
+          !isNewNote && note
+            ? note.folder_id != null
+              ? folders.find((f) => f.id === note.folder_id)?.name ?? "Folder"
+              : "No folder"
+            : undefined
+        }
+        onOpenMoveModal={!isNewNote && note ? openMoveModal : undefined}
       />
       {Platform.OS === "web" ? (
         <View className="flex-1 bg-background" style={{ flex: 1, height: "100%" }}>
@@ -531,6 +595,147 @@ export default function NoteEditorScreen() {
           }}
         />
       )}
+
+      {/* Move to folder modal */}
+      {!isNewNote && note && (Platform.OS === "web" ? (
+        moveModalOpen && (
+          <View className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+            <Pressable className="absolute inset-0" onPress={closeMoveModal} />
+            <View className="w-full max-w-md rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                Move to
+              </Text>
+              <Text className="mb-4 text-sm text-muted-foreground">
+                Choose a folder for "{note.title || "Untitled"}"
+              </Text>
+              <View
+                className="mb-6 w-full"
+                onLayout={(e) => setDropdownTriggerWidth(e.nativeEvent.layout.width)}
+              >
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Pressable className="w-full flex-row items-center justify-between rounded-md border border-border bg-background px-3 py-2.5">
+                      <Text className="text-sm text-foreground">
+                        {selectedFolderId == null
+                          ? "No folder"
+                          : folders.find((f) => f.id === selectedFolderId)?.name ?? "Select folder"}
+                      </Text>
+                      <ChevronDown color={colors.mutedForeground} size={16} />
+                    </Pressable>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    style={dropdownTriggerWidth > 0 ? { width: dropdownTriggerWidth } : undefined}
+                  >
+                    <DropdownMenuItem onPress={() => setSelectedFolderId(null)}>
+                      <Text className="text-foreground">No folder</Text>
+                    </DropdownMenuItem>
+                    {folders.map((folder) => (
+                      <DropdownMenuItem
+                        key={folder.id}
+                        onPress={() => setSelectedFolderId(folder.id)}
+                      >
+                        <Text className="text-foreground">{folder.name}</Text>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </View>
+              <View className="flex-row justify-end gap-3">
+                <Pressable className="px-4 py-2" onPress={closeMoveModal}>
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleMoveConfirm}
+                  disabled={moveNoteMutation.isPending}
+                >
+                  <Text className="font-semibold text-blue-500">
+                    {moveNoteMutation.isPending ? "Moving…" : "Move"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )
+      ) : (
+        <Modal
+          visible={moveModalOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={closeMoveModal}
+        >
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.4)", padding: 24 }}>
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={closeMoveModal} />
+            <View style={{ width: "100%", maxWidth: 400, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.muted, padding: 24 }}>
+              <Text style={{ marginBottom: 8, fontSize: 18, fontWeight: "600", color: colors.foreground }}>
+                Move to
+              </Text>
+              <Text style={{ marginBottom: 16, fontSize: 14, color: colors.mutedForeground }}>
+                Choose a folder for "{note.title || "Untitled"}"
+              </Text>
+              <View
+                style={{ marginBottom: 24, width: "100%" }}
+                onLayout={(e) => setDropdownTriggerWidth(e.nativeEvent.layout.width)}
+              >
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Pressable
+                      style={{
+                        width: "100%",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        borderRadius: 6,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        backgroundColor: colors.background,
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                      }}
+                    >
+                      <Text style={{ fontSize: 14, color: colors.foreground }}>
+                        {selectedFolderId == null
+                          ? "No folder"
+                          : folders.find((f) => f.id === selectedFolderId)?.name ?? "Select folder"}
+                      </Text>
+                      <ChevronDown color={colors.mutedForeground} size={16} />
+                    </Pressable>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    style={dropdownTriggerWidth > 0 ? { width: dropdownTriggerWidth } : undefined}
+                  >
+                    <DropdownMenuItem onPress={() => setSelectedFolderId(null)}>
+                      <Text style={{ color: colors.foreground }}>No folder</Text>
+                    </DropdownMenuItem>
+                    {folders.map((folder) => (
+                      <DropdownMenuItem
+                        key={folder.id}
+                        onPress={() => setSelectedFolderId(folder.id)}
+                      >
+                        <Text style={{ color: colors.foreground }}>{folder.name}</Text>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </View>
+              <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 12 }}>
+                <Pressable style={{ paddingHorizontal: 16, paddingVertical: 8 }} onPress={closeMoveModal}>
+                  <Text style={{ color: colors.foreground }}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={{ borderRadius: 6, paddingHorizontal: 16, paddingVertical: 8 }}
+                  onPress={handleMoveConfirm}
+                  disabled={moveNoteMutation.isPending}
+                >
+                  <Text style={{ fontWeight: "600", color: "#3b82f6" }}>
+                    {moveNoteMutation.isPending ? "Moving…" : "Move"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      ))}
     </>
   );
 }

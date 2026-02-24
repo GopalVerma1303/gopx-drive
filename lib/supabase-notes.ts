@@ -71,6 +71,35 @@ export const listArchivedNotes = async (userId?: string): Promise<Note[]> => {
   return data || [];
 };
 
+export const listNotesByFolder = async (
+  userId: string | undefined,
+  folderId: string
+): Promise<Note[]> => {
+  if (!userId) {
+    throw new Error("User ID is required");
+  }
+
+  let { data, error } = await withSupabaseTimeout((signal) =>
+    supabase
+      .from("notes")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("folder_id", folderId)
+      .eq("is_archived", false)
+      .order("updated_at", { ascending: false })
+      .abortSignal(signal)
+  );
+
+  if (error && (error.code === "PGRST116" || error.message?.includes("folder_id"))) {
+    return [];
+  }
+  if (error) {
+    throw new Error(`Failed to fetch notes: ${error.message}`);
+  }
+
+  return data || [];
+};
+
 export const getNoteById = async (id: string): Promise<Note | null> => {
   const { data, error } = await supabase
     .from("notes")
@@ -93,16 +122,21 @@ export const createNote = async (input: {
   user_id: string;
   title: string;
   content: string;
+  folder_id?: string | null;
 }): Promise<Note> => {
+  const insertPayload: Record<string, unknown> = {
+    user_id: input.user_id,
+    title: input.title || "Untitled",
+    content: input.content,
+    is_archived: false,
+  };
+  if (input.folder_id !== undefined) {
+    insertPayload.folder_id = input.folder_id;
+  }
   // Try with is_archived first
   let { data, error } = await supabase
     .from("notes")
-    .insert({
-      user_id: input.user_id,
-      title: input.title || "Untitled",
-      content: input.content,
-      is_archived: false,
-    })
+    .insert(insertPayload)
     .select()
     .single();
 
@@ -134,7 +168,7 @@ export const createNote = async (input: {
 
 export const updateNote = async (
   id: string,
-  updates: Partial<Pick<Note, "title" | "content" | "share_token">>
+  updates: Partial<Pick<Note, "title" | "content" | "share_token" | "folder_id">>
 ): Promise<Note | null> => {
   const payload: Record<string, unknown> = {
     ...updates,

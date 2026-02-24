@@ -1,16 +1,25 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
+import { NoteCard } from "@/components/note-card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
+import { listFolders } from "@/lib/folders";
+import { CARD_LIST_MAX_WIDTH } from "@/lib/layout";
 import {
   archiveNote,
   getNotesSyncStatus,
   getUnsyncedNoteIds,
   listNotes,
+  updateNote,
 } from "@/lib/notes";
-import { invalidateNotesListQueries } from "@/lib/query-utils";
+import { invalidateFoldersQueries, invalidateNotesListQueries } from "@/lib/query-utils";
 import type { Note } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -18,19 +27,19 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Check, CheckCheck, LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
+import { ChevronDown, LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   Dimensions,
   Modal,
   Platform,
   Pressable,
   RefreshControl,
   ScrollView,
-  View,
+  StyleSheet,
+  View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -157,24 +166,45 @@ export default function NotesScreen() {
     enabled: !!user?.id,
   });
 
+  const { data: folders = [] } = useQuery({
+    queryKey: ["folders", user?.id],
+    queryFn: () => listFolders(user?.id),
+    enabled: !!user?.id,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const [optionsModalOpen, setOptionsModalOpen] = useState(false);
+  const [selectedNote, setSelectedNote] = useState<{ id: string; title: string } | null>(null);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
-  const [noteToArchive, setNoteToArchive] = useState<{
-    id: string;
-    title: string;
-  } | null>(null);
+  const [moveModalOpen, setMoveModalOpen] = useState(false);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [dropdownTriggerWidth, setDropdownTriggerWidth] = useState(0);
 
   const archiveMutation = useMutation({
     mutationFn: (id: string) => archiveNote(id),
     onSuccess: (_data, archivedNoteId) => {
       invalidateNotesListQueries(queryClient, user?.id);
-      // Invalidate only the archived note's detail so it refetches (e.g. is_archived)
       queryClient.invalidateQueries({ queryKey: ["note", archivedNoteId] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setArchiveDialogOpen(false);
-      setNoteToArchive(null);
+      setOptionsModalOpen(false);
+      setSelectedNote(null);
     },
   });
 
+  const moveNoteMutation = useMutation({
+    mutationFn: ({ noteId, folderId }: { noteId: string; folderId: string | null }) =>
+      updateNote(noteId, { folder_id: folderId }),
+    onSuccess: (_data, { noteId }) => {
+      invalidateNotesListQueries(queryClient, user?.id);
+      invalidateFoldersQueries(queryClient, user?.id);
+      queryClient.invalidateQueries({ queryKey: ["note", noteId] });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setMoveModalOpen(false);
+      setSelectedNote(null);
+      setSelectedFolderId(null);
+    },
+  });
 
   const handleArchiveNote = (id: string, title: string) => {
     Alert.alert("Archive Note", `Are you sure you want to archive "${title}"?`, [
@@ -187,21 +217,50 @@ export default function NotesScreen() {
     ]);
   };
 
-  const handleRightClickArchive = (id: string, title: string) => {
+  const handleLongPressNote = (id: string, title: string) => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    setNoteToArchive({ id, title });
-    setArchiveDialogOpen(true);
+    setSelectedNote({ id, title });
+    setOptionsModalOpen(true);
+  };
+
+  const openArchiveConfirm = () => {
+    setOptionsModalOpen(false);
+    if (selectedNote) {
+      setArchiveDialogOpen(true);
+    }
+  };
+
+  const openMoveModal = () => {
+    setOptionsModalOpen(false);
+    const note = selectedNote ? notes.find((n) => n.id === selectedNote.id) : null;
+    setSelectedFolderId(note?.folder_id ?? null);
+    setMoveModalOpen(true);
   };
 
   const handleArchiveConfirm = () => {
-    if (noteToArchive) {
+    if (selectedNote) {
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
-      archiveMutation.mutate(noteToArchive.id);
+      archiveMutation.mutate(selectedNote.id);
     }
+  };
+
+  const handleMoveConfirm = () => {
+    if (!selectedNote) return;
+    moveNoteMutation.mutate({
+      noteId: selectedNote.id,
+      folderId: selectedFolderId,
+    });
+  };
+
+  const closeMoveModal = () => {
+    setMoveModalOpen(false);
+    setSelectedNote(null);
+    setSelectedFolderId(null);
+    setDropdownTriggerWidth(0);
   };
 
   const filteredNotes = notes.filter((note) =>
@@ -343,7 +402,10 @@ export default function NotesScreen() {
             }
           >
             {filteredNotes.length === 0 ? (
-              <View className="w-full max-w-2xl mx-auto flex-1 justify-center items-center pt-24">
+              <View
+                className="flex-1 justify-center items-center pt-24 mx-auto"
+                style={{ width: "100%", maxWidth: CARD_LIST_MAX_WIDTH }}
+              >
                 <Text className="text-xl font-semibold text-muted-foreground mb-2">
                   {searchQuery ? "No notes found" : "No notes yet"}
                 </Text>
@@ -354,14 +416,13 @@ export default function NotesScreen() {
                 </Text>
               </View>
             ) : viewMode === "grid" ? (
-              <View className="w-full max-w-2xl mx-auto">
+              <View className="mx-auto" style={{ width: "100%", maxWidth: CARD_LIST_MAX_WIDTH }}>
                 {(() => {
                   // Calculate card width
-                  const maxWidth = 672; // max-w-2xl
                   const containerPadding = 16; // p-4 = 16px
                   const columnGap = 12; // horizontal gap between columns
                   const rowGap = 12; // vertical gap between cards
-                  const availableWidth = Math.min(screenWidth, maxWidth) - containerPadding * 2;
+                  const availableWidth = Math.min(screenWidth, CARD_LIST_MAX_WIDTH) - containerPadding * 2;
                   // Calculate card width accounting for gap between columns
                   const cardWidth = (availableWidth - columnGap * (columns - 1)) / columns;
 
@@ -424,10 +485,10 @@ export default function NotesScreen() {
                                 cardWidth={cardWidth}
                                 isSynced={!unsyncedNoteIds.includes(note.id)}
                                 onPress={() => router.push(`/(app)/note/${note.id}`)}
-                                onDelete={() => handleRightClickArchive(note.id, note.title)}
+                                onDelete={() => handleLongPressNote(note.id, note.title)}
                                 onRightClickDelete={
                                   Platform.OS === "web"
-                                    ? () => handleRightClickArchive(note.id, note.title)
+                                    ? () => handleLongPressNote(note.id, note.title)
                                     : undefined
                                 }
                               />
@@ -440,13 +501,12 @@ export default function NotesScreen() {
                 })()}
               </View>
             ) : (
-              <View className="w-full max-w-2xl mx-auto">
+              <View className="mx-auto" style={{ width: "100%", maxWidth: CARD_LIST_MAX_WIDTH }}>
                 {(() => {
                   // List view: full width cards
-                  const maxWidth = 672; // max-w-2xl
                   const containerPadding = 16; // p-4 = 16px
                   const gap = 12; // gap between cards
-                  const availableWidth = Math.min(screenWidth, maxWidth) - containerPadding * 2;
+                  const availableWidth = Math.min(screenWidth, CARD_LIST_MAX_WIDTH) - containerPadding * 2;
                   const cardWidth = availableWidth;
 
                   return (
@@ -463,10 +523,10 @@ export default function NotesScreen() {
                             cardWidth={cardWidth}
                             isSynced={!unsyncedNoteIds.includes(note.id)}
                             onPress={() => router.push(`/(app)/note/${note.id}`)}
-                            onDelete={() => handleRightClickArchive(note.id, note.title)}
+                            onDelete={() => handleLongPressNote(note.id, note.title)}
                             onRightClickDelete={
                               Platform.OS === "web"
-                                ? () => handleRightClickArchive(note.id, note.title)
+                                ? () => handleLongPressNote(note.id, note.title)
                                 : undefined
                             }
                           />
@@ -481,7 +541,289 @@ export default function NotesScreen() {
         )}
       </View>
 
-      {/* Simple Archive Confirmation Dialog */}
+      {/* Long-press options modal: iOS-style action sheet */}
+      {Platform.OS === "web" ? (
+        optionsModalOpen && (
+          <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <Pressable
+              className="absolute inset-0"
+              onPress={() => { setOptionsModalOpen(false); setSelectedNote(null); }}
+            />
+            <View className="w-full max-w-[280px] items-center">
+              {/* Title - centered */}
+              <View className="mb-3 w-full rounded-xl border border-border bg-muted px-4 py-3 shadow-sm">
+                <Text className="text-center text-sm font-medium text-muted-foreground" numberOfLines={1}>
+                  {selectedNote?.title || "Untitled"}
+                </Text>
+              </View>
+              {/* Options group */}
+              <View className="w-full overflow-hidden rounded-xl border border-border bg-muted shadow-sm">
+                <Pressable
+                  className="items-center justify-center border-b border-border py-3.5 active:bg-accent"
+                  onPress={openMoveModal}
+                >
+                  <Text className="text-base font-medium text-blue-500">Move to</Text>
+                </Pressable>
+                <Pressable
+                  className="items-center justify-center py-3.5 active:bg-accent"
+                  onPress={openArchiveConfirm}
+                >
+                  <Text className="text-base font-semibold text-red-500">Archive</Text>
+                </Pressable>
+              </View>
+              {/* Cancel - separate block */}
+              <Pressable
+                className="mt-2 w-full items-center justify-center rounded-xl border border-border bg-muted py-3.5 shadow-sm active:bg-accent"
+                onPress={() => { setOptionsModalOpen(false); setSelectedNote(null); }}
+              >
+                <Text className="text-base font-semibold text-foreground">Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        )
+      ) : (
+        <Modal
+          visible={optionsModalOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => { setOptionsModalOpen(false); setSelectedNote(null); }}
+        >
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.4)", padding: 24 }}>
+            <Pressable
+              style={StyleSheet.absoluteFillObject}
+              onPress={() => { setOptionsModalOpen(false); setSelectedNote(null); }}
+            />
+            <View style={{ width: "100%", maxWidth: 280, alignItems: "center" }}>
+              {/* Title - centered */}
+              <View
+                style={{
+                  width: "100%",
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: colors.muted,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  marginBottom: 12,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              >
+                <Text
+                  style={{ textAlign: "center", fontSize: 14, fontWeight: "500", color: colors.mutedForeground }}
+                  numberOfLines={1}
+                >
+                  {selectedNote?.title || "Untitled"}
+                </Text>
+              </View>
+              {/* Options group */}
+              <View
+                style={{
+                  width: "100%",
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: colors.muted,
+                  overflow: "hidden",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              >
+                <Pressable
+                  style={{
+                    width: "100%",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingVertical: 14,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.border,
+                  }}
+                  onPress={openMoveModal}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: "500", color: "#3b82f6" }}>Move to</Text>
+                </Pressable>
+                <Pressable
+                  style={{ width: "100%", alignItems: "center", justifyContent: "center", paddingVertical: 14 }}
+                  onPress={openArchiveConfirm}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: "600", color: colors.destructive }}>Archive</Text>
+                </Pressable>
+              </View>
+              {/* Cancel - separate block */}
+              <Pressable
+                style={{
+                  width: "100%",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginTop: 8,
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: colors.muted,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+                onPress={() => { setOptionsModalOpen(false); setSelectedNote(null); }}
+              >
+                <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground }}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Move to folder modal */}
+      {Platform.OS === "web" ? (
+        moveModalOpen && (
+          <View className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+            <Pressable className="absolute inset-0" onPress={closeMoveModal} />
+            <View className="w-full max-w-md rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                Move to
+              </Text>
+              <Text className="mb-4 text-sm text-muted-foreground">
+                Choose a folder for "{selectedNote?.title}"
+              </Text>
+              <View
+                className="mb-6 w-full"
+                onLayout={(e) => setDropdownTriggerWidth(e.nativeEvent.layout.width)}
+              >
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Pressable className="w-full flex-row items-center justify-between rounded-md border border-border bg-background px-3 py-2.5">
+                      <Text className="text-sm text-foreground">
+                        {selectedFolderId == null
+                          ? "No folder"
+                          : folders.find((f) => f.id === selectedFolderId)?.name ?? "Select folder"}
+                      </Text>
+                      <ChevronDown color={colors.mutedForeground} size={16} />
+                    </Pressable>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    style={dropdownTriggerWidth > 0 ? { width: dropdownTriggerWidth } : undefined}
+                  >
+                    <DropdownMenuItem onPress={() => setSelectedFolderId(null)}>
+                      <Text className="text-foreground">No folder</Text>
+                    </DropdownMenuItem>
+                    {folders.map((folder) => (
+                      <DropdownMenuItem
+                        key={folder.id}
+                        onPress={() => setSelectedFolderId(folder.id)}
+                      >
+                        <Text className="text-foreground">{folder.name}</Text>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </View>
+              <View className="flex-row justify-end gap-3">
+                <Pressable className="px-4 py-2" onPress={closeMoveModal}>
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleMoveConfirm}
+                  disabled={moveNoteMutation.isPending}
+                >
+                  <Text className="font-semibold text-blue-500">
+                    {moveNoteMutation.isPending ? "Moving…" : "Move"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )
+      ) : (
+        <Modal
+          visible={moveModalOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={closeMoveModal}
+        >
+          <View className="flex-1 items-center justify-center bg-black/50 p-4">
+            <Pressable className="absolute inset-0" onPress={closeMoveModal} />
+            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                Move to
+              </Text>
+              <Text className="mb-4 text-sm text-muted-foreground">
+                Choose a folder for "{selectedNote?.title}"
+              </Text>
+              <View
+                style={{ marginBottom: 24, width: "100%" }}
+                onLayout={(e) => setDropdownTriggerWidth(e.nativeEvent.layout.width)}
+              >
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Pressable
+                      style={{
+                        width: "100%",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        borderRadius: 6,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        backgroundColor: colors.background,
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                      }}
+                    >
+                      <Text style={{ fontSize: 14, color: colors.foreground }}>
+                        {selectedFolderId == null
+                          ? "No folder"
+                          : folders.find((f) => f.id === selectedFolderId)?.name ?? "Select folder"}
+                      </Text>
+                      <ChevronDown color={colors.mutedForeground} size={16} />
+                    </Pressable>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    style={dropdownTriggerWidth > 0 ? { width: dropdownTriggerWidth } : undefined}
+                  >
+                    <DropdownMenuItem onPress={() => setSelectedFolderId(null)}>
+                      <Text style={{ color: colors.foreground }}>No folder</Text>
+                    </DropdownMenuItem>
+                    {folders.map((folder) => (
+                      <DropdownMenuItem
+                        key={folder.id}
+                        onPress={() => setSelectedFolderId(folder.id)}
+                      >
+                        <Text style={{ color: colors.foreground }}>{folder.name}</Text>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </View>
+              <View className="flex-row justify-end gap-3">
+                <Pressable className="px-4 py-2" onPress={closeMoveModal}>
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleMoveConfirm}
+                  disabled={moveNoteMutation.isPending}
+                >
+                  <Text style={{ fontWeight: "600", color: "#3b82f6" }}>
+                    {moveNoteMutation.isPending ? "Moving…" : "Move"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Archive confirmation dialog */}
       {Platform.OS === "web" ? (
         archiveDialogOpen && (
           <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -494,7 +836,7 @@ export default function NotesScreen() {
                 Archive Note
               </Text>
               <Text className="mb-6 text-sm text-muted-foreground">
-                Are you sure you want to archive "{noteToArchive?.title}"? You can restore it from the archive later.
+                Are you sure you want to archive "{selectedNote?.title}"? You can restore it from the archive later.
               </Text>
               <View className="flex-row justify-end gap-3">
                 <Pressable
@@ -532,7 +874,7 @@ export default function NotesScreen() {
                 Archive Note
               </Text>
               <Text className="mb-6 text-sm text-muted-foreground">
-                Are you sure you want to archive "{noteToArchive?.title}"? You can restore it from the archive later.
+                Are you sure you want to archive "{selectedNote?.title}"? You can restore it from the archive later.
               </Text>
               <View className="flex-row justify-end gap-3">
                 <Pressable
@@ -555,148 +897,5 @@ export default function NotesScreen() {
         </Modal>
       )}
     </View>
-  );
-}
-
-interface NoteCardProps {
-  note: Note;
-  cardWidth: number;
-  /** True when note is synced with Supabase (show double check); false = single check. */
-  isSynced: boolean;
-  onPress: () => void;
-  onDelete: () => void;
-  onRightClickDelete?: () => void;
-}
-
-function NoteCard({
-  note,
-  cardWidth,
-  isSynced,
-  onPress,
-  onDelete,
-  onRightClickDelete,
-}: NoteCardProps) {
-  const { colors } = useThemeColors();
-  const scale = new Animated.Value(1);
-
-  const handlePressIn = () => {
-    Animated.spring(scale, {
-      toValue: 0.96,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: true,
-      friction: 3,
-    }).start();
-  };
-
-  const handleContextMenu = (e: any) => {
-    if (Platform.OS === "web" && onRightClickDelete) {
-      e.preventDefault();
-      onRightClickDelete();
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
-  };
-
-  // Calculate variable card height based on content length for masonry effect
-  const padding = 16; // p-4 = 16px
-  const contentLength = note.content?.length || 0;
-  const titleHeight = 24; // Approximate title height
-  const dateHeight = 14; // Approximate date height
-  const minContentHeight = 40;
-  const maxContentHeight = 120;
-
-  // Calculate content height based on text length (rough estimate)
-  // Each character is roughly 6px wide, with line breaks every ~50 chars
-  const lines = Math.ceil((contentLength || 0) / 50);
-  const contentHeight = Math.min(
-    Math.max(minContentHeight, lines * 18),
-    maxContentHeight
-  );
-
-  // A4 paper aspect ratio: height/width = 297/210 ≈ 1.414
-  const a4MaxHeight = cardWidth * 1.414;
-  const calculatedHeight = titleHeight + contentHeight + dateHeight + padding * 2 + 8; // +8 for spacing
-  const cardHeight = Math.min(calculatedHeight, a4MaxHeight);
-
-  return (
-    <Pressable
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      onLongPress={onDelete}
-      {...(Platform.OS === "web" && {
-        onContextMenu: handleContextMenu,
-      })}
-    >
-      <Animated.View style={{ transform: [{ scale }] }}>
-        <Card
-          className="rounded-2xl bg-muted border border-border"
-          style={{
-            width: cardWidth,
-            minHeight: cardHeight,
-            maxHeight: a4MaxHeight,
-            padding: padding,
-          }}
-        >
-          <Text
-            className="text-lg font-semibold text-foreground"
-            numberOfLines={1}
-          >
-            {note.title || "Untitled"}
-          </Text>
-          <Text
-            className="text-sm text-muted-foreground leading-4"
-            numberOfLines={contentLength > 200 ? 8 : 6}
-          >
-            {note.content ? note.content : "No content"}
-          </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "flex-end",
-              marginTop: 8,
-              gap: 4,
-            }}
-          >
-            <Text
-              className="text-xs text-muted-foreground/70"
-            >
-              {formatDate(note.updated_at)}
-            </Text>
-            {isSynced ? (
-              <CheckCheck
-                size={14}
-                color={colors.mutedForeground + "90"}
-              />
-            ) : (
-              <Check
-                size={14}
-                color={colors.mutedForeground + "90"}
-              />
-            )}
-          </View>
-        </Card>
-      </Animated.View>
-    </Pressable>
   );
 }

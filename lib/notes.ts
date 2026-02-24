@@ -34,6 +34,7 @@ export const createNote = async (input: {
   user_id: string;
   title: string;
   content: string;
+  folder_id?: string | null;
 }): Promise<Note> => {
   if (UI_DEV) {
     return mockNotes.createNote(input);
@@ -43,7 +44,7 @@ export const createNote = async (input: {
 
 export const updateNote = async (
   id: string,
-  updates: Partial<Pick<Note, "title" | "content" | "share_token">>
+  updates: Partial<Pick<Note, "title" | "content" | "share_token" | "folder_id">>
 ): Promise<Note | null> => {
   if (UI_DEV) {
     return mockNotes.updateNote(id, updates);
@@ -92,6 +93,19 @@ export const getUnsyncedNoteIds = async (
 ): Promise<string[]> => {
   if (UI_DEV) return [];
   return notesReservoir.getUnsyncedNoteIds(userId);
+};
+
+/** List notes that belong to a folder. Uses Supabase when not UI_DEV; in UI_DEV returns []. */
+export const listNotesByFolder = async (
+  userId: string | undefined,
+  folderId: string
+): Promise<Note[]> => {
+  if (UI_DEV || !userId) return [];
+  try {
+    return await supabaseNotes.listNotesByFolder(userId, folderId);
+  } catch {
+    return [];
+  }
 };
 
 /** Public: fetch a note by share token (no auth). For shared note page. */

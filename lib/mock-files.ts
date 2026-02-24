@@ -66,7 +66,7 @@ export const getFileById = async (id: string) => {
 export const uploadFile = async (input: {
   user_id: string;
   file: {
-    uri: string;
+    uri: string | globalThis.File;
     name: string;
     type: string;
     size: number;

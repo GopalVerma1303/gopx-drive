@@ -2,6 +2,12 @@
 
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
@@ -12,20 +18,42 @@ import {
   restoreFile,
 } from "@/lib/files";
 import {
+  deleteFolder,
+  listArchivedFolders,
+  restoreFolder,
+} from "@/lib/folders";
+import {
   deleteNote,
   getUnsyncedNoteIds,
   listArchivedNotes,
   restoreNote,
   syncNotesFromSupabase,
 } from "@/lib/notes";
-import { invalidateFilesQueries, invalidateNotesQueries } from "@/lib/query-utils";
-import type { File as FileRecord, Note } from "@/lib/supabase";
+import {
+  invalidateFilesQueries,
+  invalidateFoldersQueries,
+  invalidateNotesQueries,
+} from "@/lib/query-utils";
+import type { File as FileRecord, Folder, Note } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Archive, ArrowLeft, Check, CheckCheck, FileText, Files, Search, Trash2, Undo2, X } from "lucide-react-native";
+import {
+  Archive,
+  ArrowLeft,
+  Check,
+  CheckCheck,
+  FileText,
+  Files,
+  Filter,
+  Folder as FolderIcon,
+  Search,
+  Trash2,
+  Undo2,
+  X,
+} from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -46,9 +74,10 @@ export default function ArchiveScreen() {
   const queryClient = useQueryClient();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState<"notes" | "files">("notes");
+  const [activeTab, setActiveTab] = useState<"notes" | "files" | "folders">("notes");
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [screenWidth, setScreenWidth] = useState(() => {
     if (Platform.OS === "web") {
@@ -85,10 +114,12 @@ export default function ArchiveScreen() {
   const [deleteAction, setDeleteAction] = useState<{
     type: "all" | "selected" | "single";
     id?: string;
+    tab?: "notes" | "files" | "folders";
   } | null>(null);
   const [restoreAction, setRestoreAction] = useState<{
     type: "all" | "selected" | "single";
     id?: string;
+    tab?: "notes" | "files" | "folders";
   } | null>(null);
 
   // Sync notes from Supabase in background (non-blocking) when archive screen mounts
@@ -148,6 +179,23 @@ export default function ArchiveScreen() {
     retryOnMount: false,
   });
 
+  const {
+    data: archivedFolders = [],
+    isLoading: foldersLoading,
+    refetch: refetchFolders,
+    isFetching: foldersFetching,
+  } = useQuery({
+    queryKey: ["archivedFolders", user?.id],
+    queryFn: () => listArchivedFolders(user?.id),
+    enabled: !!user?.id,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
+    retryOnMount: false,
+  });
+
   const restoreNoteMutation = useMutation({
     mutationFn: (id: string) => restoreNote(id),
     onSuccess: () => {
@@ -181,46 +229,67 @@ export default function ArchiveScreen() {
     },
   });
 
+  const restoreFolderMutation = useMutation({
+    mutationFn: (id: string) => restoreFolder(id),
+    onSuccess: () => {
+      invalidateFoldersQueries(queryClient, user?.id);
+      invalidateNotesQueries(queryClient, user?.id);
+      invalidateFilesQueries(queryClient, user?.id);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+  });
+
+  const deleteFolderMutation = useMutation({
+    mutationFn: (id: string) => deleteFolder(id),
+    onSuccess: () => {
+      invalidateFoldersQueries(queryClient, user?.id);
+      invalidateNotesQueries(queryClient, user?.id);
+      invalidateFilesQueries(queryClient, user?.id);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+  });
+
   const handleRestoreAll = () => {
-    setRestoreAction({ type: "all" });
+    setRestoreAction({ type: "all", tab: activeTab });
     setRestoreDialogOpen(true);
   };
 
   const handleRestoreSelected = () => {
-    setRestoreAction({ type: "selected" });
+    setRestoreAction({ type: "selected", tab: activeTab });
     setRestoreDialogOpen(true);
   };
 
   const handleDeleteAll = () => {
-    setDeleteAction({ type: "all" });
+    setDeleteAction({ type: "all", tab: activeTab });
     setDeleteDialogOpen(true);
   };
 
   const handleDeleteSelected = () => {
-    setDeleteAction({ type: "selected" });
+    setDeleteAction({ type: "selected", tab: activeTab });
     setDeleteDialogOpen(true);
   };
 
-  const handleDeleteSingle = (id: string) => {
-    setDeleteAction({ type: "single", id });
+  const handleDeleteSingle = (id: string, tab: "notes" | "files" | "folders" = activeTab) => {
+    setDeleteAction({ type: "single", id, tab });
     setDeleteDialogOpen(true);
   };
 
-  const handleRestoreSingle = (id: string) => {
-    setRestoreAction({ type: "single", id });
+  const handleRestoreSingle = (id: string, tab: "notes" | "files" | "folders" = activeTab) => {
+    setRestoreAction({ type: "single", id, tab });
     setRestoreDialogOpen(true);
   };
 
   const confirmDelete = async () => {
     if (!deleteAction) return;
+    const tab = deleteAction.tab ?? activeTab;
 
     if (deleteAction.type === "all") {
-      if (activeTab === "notes") {
+      if (tab === "notes") {
         for (const note of filteredNotes) {
           await deleteNoteMutation.mutateAsync(note.id);
         }
         setSelectedNotes(new Set());
-      } else {
+      } else if (tab === "files") {
         for (const file of filteredFiles) {
           await deleteFileMutation.mutateAsync({
             id: file.id,
@@ -228,14 +297,19 @@ export default function ArchiveScreen() {
           });
         }
         setSelectedFiles(new Set());
+      } else {
+        for (const folder of filteredFolders) {
+          await deleteFolderMutation.mutateAsync(folder.id);
+        }
+        setSelectedFolders(new Set());
       }
     } else if (deleteAction.type === "selected") {
-      if (activeTab === "notes") {
+      if (tab === "notes") {
         for (const id of selectedNotes) {
           await deleteNoteMutation.mutateAsync(id);
         }
         setSelectedNotes(new Set());
-      } else {
+      } else if (tab === "files") {
         for (const id of selectedFiles) {
           const file = filteredFiles.find((f) => f.id === id);
           await deleteFileMutation.mutateAsync({
@@ -244,16 +318,23 @@ export default function ArchiveScreen() {
           });
         }
         setSelectedFiles(new Set());
+      } else {
+        for (const id of selectedFolders) {
+          await deleteFolderMutation.mutateAsync(id);
+        }
+        setSelectedFolders(new Set());
       }
     } else if (deleteAction.type === "single" && deleteAction.id) {
-      if (activeTab === "notes") {
+      if (tab === "notes") {
         await deleteNoteMutation.mutateAsync(deleteAction.id);
-      } else {
+      } else if (tab === "files") {
         const file = filteredFiles.find((f) => f.id === deleteAction.id);
         await deleteFileMutation.mutateAsync({
           id: deleteAction.id,
           filePath: file?.file_path,
         });
+      } else {
+        await deleteFolderMutation.mutateAsync(deleteAction.id);
       }
     }
 
@@ -263,36 +344,49 @@ export default function ArchiveScreen() {
 
   const confirmRestore = async () => {
     if (!restoreAction) return;
+    const tab = restoreAction.tab ?? activeTab;
 
     if (restoreAction.type === "all") {
-      if (activeTab === "notes") {
+      if (tab === "notes") {
         for (const note of filteredNotes) {
           await restoreNoteMutation.mutateAsync(note.id);
         }
         setSelectedNotes(new Set());
-      } else {
+      } else if (tab === "files") {
         for (const file of filteredFiles) {
           await restoreFileMutation.mutateAsync(file.id);
         }
         setSelectedFiles(new Set());
+      } else {
+        for (const folder of filteredFolders) {
+          await restoreFolderMutation.mutateAsync(folder.id);
+        }
+        setSelectedFolders(new Set());
       }
     } else if (restoreAction.type === "selected") {
-      if (activeTab === "notes") {
+      if (tab === "notes") {
         for (const id of selectedNotes) {
           await restoreNoteMutation.mutateAsync(id);
         }
         setSelectedNotes(new Set());
-      } else {
+      } else if (tab === "files") {
         for (const id of selectedFiles) {
           await restoreFileMutation.mutateAsync(id);
         }
         setSelectedFiles(new Set());
+      } else {
+        for (const id of selectedFolders) {
+          await restoreFolderMutation.mutateAsync(id);
+        }
+        setSelectedFolders(new Set());
       }
     } else if (restoreAction.type === "single" && restoreAction.id) {
-      if (activeTab === "notes") {
+      if (tab === "notes") {
         await restoreNoteMutation.mutateAsync(restoreAction.id);
-      } else {
+      } else if (tab === "files") {
         await restoreFileMutation.mutateAsync(restoreAction.id);
+      } else {
+        await restoreFolderMutation.mutateAsync(restoreAction.id);
       }
     }
 
@@ -320,12 +414,21 @@ export default function ArchiveScreen() {
     setSelectedFiles(newSelected);
   };
 
+  const toggleFolderSelection = (id: string) => {
+    const newSelected = new Set(selectedFolders);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedFolders(newSelected);
+  };
+
   const onRefresh = async () => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    // Refresh both queries when user pulls down
-    await Promise.all([refetchNotes(), refetchFiles()]);
+    await Promise.all([refetchNotes(), refetchFiles(), refetchFolders()]);
     if (Platform.OS !== "web") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
@@ -340,9 +443,17 @@ export default function ArchiveScreen() {
   };
 
   const hasSelection =
-    activeTab === "notes" ? selectedNotes.size > 0 : selectedFiles.size > 0;
+    activeTab === "notes"
+      ? selectedNotes.size > 0
+      : activeTab === "files"
+        ? selectedFiles.size > 0
+        : selectedFolders.size > 0;
   const itemCount =
-    activeTab === "notes" ? archivedNotes.length : archivedFiles.length;
+    activeTab === "notes"
+      ? archivedNotes.length
+      : activeTab === "files"
+        ? archivedFiles.length
+        : archivedFolders.length;
 
   // Filter notes and files based on search query (notes by title only)
   const filteredNotes = archivedNotes.filter((note) => {
@@ -356,6 +467,43 @@ export default function ArchiveScreen() {
     const query = searchQuery.toLowerCase();
     return file.name.toLowerCase().includes(query);
   });
+
+  const filteredFolders = archivedFolders.filter((folder) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return folder.name.toLowerCase().includes(query);
+  });
+
+  const deleteTab = deleteAction?.tab ?? activeTab;
+  const restoreTab = restoreAction?.tab ?? activeTab;
+  const deleteLabel = deleteTab === "notes" ? "Note" : deleteTab === "files" ? "File" : "Folder";
+  const deleteLabelPlural = deleteTab === "notes" ? "Notes" : deleteTab === "files" ? "Files" : "Folders";
+  const restoreLabel = restoreTab === "notes" ? "Note" : restoreTab === "files" ? "File" : "Folder";
+  const restoreLabelPlural = restoreTab === "notes" ? "Notes" : restoreTab === "files" ? "Files" : "Folders";
+  const deleteCount =
+    deleteTab === "notes"
+      ? filteredNotes.length
+      : deleteTab === "files"
+        ? filteredFiles.length
+        : filteredFolders.length;
+  const restoreCount =
+    restoreTab === "notes"
+      ? filteredNotes.length
+      : restoreTab === "files"
+        ? filteredFiles.length
+        : filteredFolders.length;
+  const selectedDeleteCount =
+    deleteTab === "notes"
+      ? selectedNotes.size
+      : deleteTab === "files"
+        ? selectedFiles.size
+        : selectedFolders.size;
+  const selectedRestoreCount =
+    restoreTab === "notes"
+      ? selectedNotes.size
+      : restoreTab === "files"
+        ? selectedFiles.size
+        : selectedFolders.size;
 
   return (
     <View
@@ -463,7 +611,7 @@ export default function ArchiveScreen() {
         </View>
       </View>
       <View className="w-full h-full">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "notes" | "files")} className="flex-1">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "notes" | "files" | "folders")} className="flex-1">
           {/* Search and Tabs Container */}
           <View className="w-full max-w-3xl mx-auto">
             <View className="flex-row items-center mx-4 my-3 gap-2">
@@ -476,7 +624,7 @@ export default function ArchiveScreen() {
                 />
                 <Input
                   className="flex-1 h-full border-0 bg-transparent px-2 shadow-none"
-                  placeholder={`Search ${activeTab}...`}
+                  placeholder={`Search ${activeTab === "folders" ? "folders" : activeTab}...`}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   placeholderTextColor="muted-foreground"
@@ -495,30 +643,47 @@ export default function ArchiveScreen() {
                 ) : null}
               </View>
 
-              {/* Toggle Button */}
-              <Pressable
-                onPress={() => {
-                  if (Platform.OS !== "web") {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }
-                  setActiveTab(activeTab === "notes" ? "files" : "notes");
-                }}
-                className="p-2 rounded-2xl bg-muted items-center justify-center border border-border h-14 w-14"
-              >
-                {activeTab === "notes" ? (
-                  <Files
-                    color={colors.mutedForeground}
-                    size={20}
-
-                  />
-                ) : (
-
-                  <FileText
-                    color={colors.mutedForeground}
-                    size={20}
-                  />
-                )}
-              </Pressable>
+              {/* Filter: Notes / Files / Folders */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Pressable
+                    onPress={() => {
+                      if (Platform.OS !== "web") {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }
+                    }}
+                    className="p-2 rounded-2xl bg-muted items-center justify-center border border-border h-14 w-14"
+                  >
+                    <Filter color={colors.mutedForeground} size={20} />
+                  </Pressable>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="bottom" align="end" sideOffset={8}>
+                  <DropdownMenuItem
+                    onPress={() => {
+                      setActiveTab("notes");
+                    }}
+                  >
+                    <FileText color={colors.foreground} size={18} />
+                    <Text className="text-foreground ml-2">Notes</Text>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onPress={() => {
+                      setActiveTab("files");
+                    }}
+                  >
+                    <Files color={colors.foreground} size={18} />
+                    <Text className="text-foreground ml-2">Files</Text>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onPress={() => {
+                      setActiveTab("folders");
+                    }}
+                  >
+                    <FolderIcon color={colors.foreground} size={18} />
+                    <Text className="text-foreground ml-2">Folders</Text>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </View>
           </View>
 
@@ -676,6 +841,80 @@ export default function ArchiveScreen() {
               </ScrollView>
             )}
           </TabsContent>
+
+          <TabsContent value="folders" className="flex-1 -mt-2" style={{ flex: 1 }}>
+            {foldersLoading ? (
+              <View className="flex-1 justify-center items-center" style={{ flex: 1 }}>
+                <ActivityIndicator size="large" color={colors.foreground} />
+              </View>
+            ) : (
+              <ScrollView
+                className="flex-1"
+                style={{ flex: 1 }}
+                contentContainerClassName="p-4 pb-32"
+                contentContainerStyle={{ flexGrow: 0 }}
+                refreshControl={
+                  <RefreshControl
+                    progressBackgroundColor={colors.background}
+                    refreshing={notesFetching || filesFetching || foldersFetching}
+                    onRefresh={onRefresh}
+                    tintColor={colors.foreground}
+                    colors={[colors.foreground]}
+                  />
+                }
+              >
+                {filteredFolders.length === 0 ? (
+                  <View className="w-full max-w-2xl mx-auto flex-1 justify-center items-center pt-24">
+                    <Archive
+                      color={colors.mutedForeground}
+                      size={48}
+                      style={{ marginBottom: 16 }}
+                    />
+                    <Text className="text-xl font-semibold text-muted-foreground mb-2">
+                      {searchQuery.trim() ? "No matching folders" : "No archived folders"}
+                    </Text>
+                    <Text className="text-sm text-muted-foreground text-center">
+                      {searchQuery.trim() ? "Try a different search term" : "Folders you archive will appear here"}
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="w-full max-w-2xl mx-auto">
+                    {(() => {
+                      const maxWidth = 672;
+                      const containerPadding = 16;
+                      const gap = 12;
+                      const availableWidth =
+                        Math.min(screenWidth, maxWidth) - containerPadding * 2;
+                      const cardWidth = availableWidth;
+
+                      return (
+                        <View style={{ width: cardWidth, alignSelf: "center" }}>
+                          {filteredFolders.map((folder: Folder, index: number) => (
+                            <View
+                              key={folder.id}
+                              style={{
+                                marginBottom:
+                                  index < filteredFolders.length - 1 ? gap : 0,
+                              }}
+                            >
+                              <ArchivedFolderCard
+                                folder={folder}
+                                cardWidth={cardWidth}
+                                isSelected={selectedFolders.has(folder.id)}
+                                onToggleSelect={() => toggleFolderSelection(folder.id)}
+                                onRestore={() => handleRestoreSingle(folder.id, "folders")}
+                                onDelete={() => handleDeleteSingle(folder.id, "folders")}
+                              />
+                            </View>
+                          ))}
+                        </View>
+                      );
+                    })()}
+                  </View>
+                )}
+              </ScrollView>
+            )}
+          </TabsContent>
         </Tabs>
       </View>
 
@@ -690,29 +929,17 @@ export default function ArchiveScreen() {
             <View className="w-full max-w-md rounded-lg border border-border bg-muted p-6 shadow-lg">
               <Text className="mb-2 text-lg font-semibold text-foreground">
                 {deleteAction?.type === "all"
-                  ? `Delete All ${activeTab === "notes" ? "Notes" : "Files"}`
+                  ? `Delete All ${deleteLabelPlural}`
                   : deleteAction?.type === "selected"
-                    ? `Delete Selected ${activeTab === "notes" ? "Notes" : "Files"}`
-                    : `Delete ${activeTab === "notes" ? "Note" : "File"}`}
+                    ? `Delete Selected ${deleteLabelPlural}`
+                    : `Delete ${deleteLabel}`}
               </Text>
               <Text className="mb-6 text-sm text-muted-foreground">
                 {deleteAction?.type === "all"
-                  ? `Are you sure you want to permanently delete all ${activeTab === "notes"
-                    ? filteredNotes.length
-                    : filteredFiles.length
-                  } archived ${activeTab}? This action cannot be undone.`
+                  ? `Are you sure you want to permanently delete all ${deleteCount} archived ${deleteTab}? This will also delete all notes and files inside each folder. This action cannot be undone.`
                   : deleteAction?.type === "selected"
-                    ? `Are you sure you want to permanently delete ${activeTab === "notes"
-                      ? selectedNotes.size
-                      : selectedFiles.size
-                    } selected ${activeTab === "notes" ? "note" : "file"}${(activeTab === "notes"
-                      ? selectedNotes.size
-                      : selectedFiles.size) > 1
-                      ? "s"
-                      : ""
-                    }? This action cannot be undone.`
-                    : `Are you sure you want to permanently delete this ${activeTab === "notes" ? "note" : "file"
-                    }? This action cannot be undone.`}
+                    ? `Are you sure you want to permanently delete ${selectedDeleteCount} selected ${deleteLabel.toLowerCase()}${selectedDeleteCount > 1 ? "s" : ""}?${deleteTab === "folders" ? " This will also delete all notes and files inside each folder." : ""} This action cannot be undone.`
+                    : `Are you sure you want to permanently delete this ${deleteLabel.toLowerCase()}?${deleteTab === "folders" ? " This will also delete all notes and files inside it." : ""} This action cannot be undone.`}
               </Text>
               <View className="flex-row justify-end gap-3">
                 <Pressable
@@ -748,29 +975,17 @@ export default function ArchiveScreen() {
             <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
               <Text className="mb-2 text-lg font-semibold text-foreground">
                 {deleteAction?.type === "all"
-                  ? `Delete All ${activeTab === "notes" ? "Notes" : "Files"}`
+                  ? `Delete All ${deleteLabelPlural}`
                   : deleteAction?.type === "selected"
-                    ? `Delete Selected ${activeTab === "notes" ? "Notes" : "Files"}`
-                    : `Delete ${activeTab === "notes" ? "Note" : "File"}`}
+                    ? `Delete Selected ${deleteLabelPlural}`
+                    : `Delete ${deleteLabel}`}
               </Text>
               <Text className="mb-6 text-sm text-muted-foreground">
                 {deleteAction?.type === "all"
-                  ? `Are you sure you want to permanently delete all ${activeTab === "notes"
-                    ? filteredNotes.length
-                    : filteredFiles.length
-                  } archived ${activeTab}? This action cannot be undone.`
+                  ? `Are you sure you want to permanently delete all ${deleteCount} archived ${deleteTab}?${deleteTab === "folders" ? " This will also delete all notes and files inside each folder." : ""} This action cannot be undone.`
                   : deleteAction?.type === "selected"
-                    ? `Are you sure you want to permanently delete ${activeTab === "notes"
-                      ? selectedNotes.size
-                      : selectedFiles.size
-                    } selected ${activeTab === "notes" ? "note" : "file"}${(activeTab === "notes"
-                      ? selectedNotes.size
-                      : selectedFiles.size) > 1
-                      ? "s"
-                      : ""
-                    }? This action cannot be undone.`
-                    : `Are you sure you want to permanently delete this ${activeTab === "notes" ? "note" : "file"
-                    }? This action cannot be undone.`}
+                    ? `Are you sure you want to permanently delete ${selectedDeleteCount} selected ${deleteLabel.toLowerCase()}${selectedDeleteCount > 1 ? "s" : ""}?${deleteTab === "folders" ? " This will also delete all notes and files inside each folder." : ""} This action cannot be undone.`
+                    : `Are you sure you want to permanently delete this ${deleteLabel.toLowerCase()}?${deleteTab === "folders" ? " This will also delete all notes and files inside it." : ""} This action cannot be undone.`}
               </Text>
               <View className="flex-row justify-end gap-3">
                 <Pressable
@@ -804,29 +1019,17 @@ export default function ArchiveScreen() {
             <View className="w-full max-w-md rounded-lg border border-border bg-muted p-6 shadow-lg">
               <Text className="mb-2 text-lg font-semibold text-foreground">
                 {restoreAction?.type === "all"
-                  ? `Restore All ${activeTab === "notes" ? "Notes" : "Files"}`
+                  ? `Restore All ${restoreLabelPlural}`
                   : restoreAction?.type === "selected"
-                    ? `Restore Selected ${activeTab === "notes" ? "Notes" : "Files"}`
-                    : `Restore ${activeTab === "notes" ? "Note" : "File"}`}
+                    ? `Restore Selected ${restoreLabelPlural}`
+                    : `Restore ${restoreLabel}`}
               </Text>
               <Text className="mb-6 text-sm text-muted-foreground">
                 {restoreAction?.type === "all"
-                  ? `Are you sure you want to restore all ${activeTab === "notes"
-                    ? filteredNotes.length
-                    : filteredFiles.length
-                  } archived ${activeTab}?`
+                  ? `Are you sure you want to restore all ${restoreCount} archived ${restoreTab}?${restoreTab === "folders" ? " This will also restore all notes and files inside each folder." : ""}`
                   : restoreAction?.type === "selected"
-                    ? `Are you sure you want to restore ${activeTab === "notes"
-                      ? selectedNotes.size
-                      : selectedFiles.size
-                    } selected ${activeTab === "notes" ? "note" : "file"}${(activeTab === "notes"
-                      ? selectedNotes.size
-                      : selectedFiles.size) > 1
-                      ? "s"
-                      : ""
-                    }?`
-                    : `Are you sure you want to restore this ${activeTab === "notes" ? "note" : "file"
-                    }?`}
+                    ? `Are you sure you want to restore ${selectedRestoreCount} selected ${restoreLabel.toLowerCase()}${selectedRestoreCount > 1 ? "s" : ""}?${restoreTab === "folders" ? " This will also restore all notes and files inside each folder." : ""}`
+                    : `Are you sure you want to restore this ${restoreLabel.toLowerCase()}?${restoreTab === "folders" ? " This will also restore all notes and files inside it." : ""}`}
               </Text>
               <View className="flex-row justify-end gap-3">
                 <Pressable
@@ -862,29 +1065,17 @@ export default function ArchiveScreen() {
             <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
               <Text className="mb-2 text-lg font-semibold text-foreground">
                 {restoreAction?.type === "all"
-                  ? `Restore All ${activeTab === "notes" ? "Notes" : "Files"}`
+                  ? `Restore All ${restoreLabelPlural}`
                   : restoreAction?.type === "selected"
-                    ? `Restore Selected ${activeTab === "notes" ? "Notes" : "Files"}`
-                    : `Restore ${activeTab === "notes" ? "Note" : "File"}`}
+                    ? `Restore Selected ${restoreLabelPlural}`
+                    : `Restore ${restoreLabel}`}
               </Text>
               <Text className="mb-6 text-sm text-muted-foreground">
                 {restoreAction?.type === "all"
-                  ? `Are you sure you want to restore all ${activeTab === "notes"
-                    ? filteredNotes.length
-                    : filteredFiles.length
-                  } archived ${activeTab}?`
+                  ? `Are you sure you want to restore all ${restoreCount} archived ${restoreTab}?${restoreTab === "folders" ? " This will also restore all notes and files inside each folder." : ""}`
                   : restoreAction?.type === "selected"
-                    ? `Are you sure you want to restore ${activeTab === "notes"
-                      ? selectedNotes.size
-                      : selectedFiles.size
-                    } selected ${activeTab === "notes" ? "note" : "file"}${(activeTab === "notes"
-                      ? selectedNotes.size
-                      : selectedFiles.size) > 1
-                      ? "s"
-                      : ""
-                    }?`
-                    : `Are you sure you want to restore this ${activeTab === "notes" ? "note" : "file"
-                    }?`}
+                    ? `Are you sure you want to restore ${selectedRestoreCount} selected ${restoreLabel.toLowerCase()}${selectedRestoreCount > 1 ? "s" : ""}?${restoreTab === "folders" ? " This will also restore all notes and files inside each folder." : ""}`
+                    : `Are you sure you want to restore this ${restoreLabel.toLowerCase()}?${restoreTab === "folders" ? " This will also restore all notes and files inside it." : ""}`}
               </Text>
               <View className="flex-row justify-end gap-3">
                 <Pressable
@@ -1290,6 +1481,92 @@ function ArchivedFileListCard({
                 {formatDate(file.updated_at)}
               </Text>
             </View>
+          </View>
+        </View>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+interface ArchivedFolderCardProps {
+  folder: Folder;
+  cardWidth: number;
+  isSelected: boolean;
+  onToggleSelect: () => void;
+  onRestore: () => void;
+  onDelete: () => void;
+}
+
+function ArchivedFolderCard({
+  folder,
+  cardWidth,
+  isSelected,
+  onToggleSelect,
+}: ArchivedFolderCardProps) {
+  const { colors } = useThemeColors();
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: 0.98,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 3,
+    }).start();
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+  };
+
+  const cardHeight = 80;
+  const iconSize = 56;
+
+  return (
+    <Pressable
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={onToggleSelect}
+    >
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <View
+          className="flex-row items-center p-3 gap-3 bg-muted border border-border rounded-xl"
+          style={{ width: cardWidth, minHeight: cardHeight }}
+        >
+          <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} />
+          <View
+            className="bg-background border border-muted rounded-xl items-center justify-center"
+            style={{ width: iconSize, height: iconSize }}
+          >
+            <FolderIcon color={colors.mutedForeground} size={28} />
+          </View>
+          <View className="flex-1 justify-center gap-1">
+            <Text
+              className="text-sm font-semibold text-foreground"
+              numberOfLines={1}
+            >
+              {folder.name || "Unnamed folder"}
+            </Text>
+            <Text className="text-[11px] text-muted-foreground">
+              {formatDate(folder.updated_at)}
+            </Text>
           </View>
         </View>
       </Animated.View>

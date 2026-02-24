@@ -25,6 +25,10 @@ export const QueryKeys = {
   files: (userId?: string) => (userId ? ["files", userId] : ["files"]),
   archivedFiles: (userId?: string) => (userId ? ["archivedFiles", userId] : ["archivedFiles"]),
   events: (userId?: string) => (userId ? ["events", userId] : ["events"]),
+  folders: (userId?: string) => (userId ? ["folders", userId] : ["folders"]),
+  archivedFolders: (userId?: string) => (userId ? ["archivedFolders", userId] : ["archivedFolders"]),
+  folderNotes: (folderId: string) => ["folderNotes", folderId],
+  folderFiles: (folderId: string) => ["folderFiles", folderId],
   note: (id: string) => ["note", id],
   attachments: (userId?: string) => (userId ? ["attachments", userId] : ["attachments"]),
 } as const;
@@ -66,6 +70,16 @@ export function invalidateFilesQueries(queryClient: QueryClient, userId?: string
  */
 export function invalidateEventsQueries(queryClient: QueryClient, userId?: string): void {
   queryClient.invalidateQueries({ queryKey: QueryKeys.events(userId) });
+}
+
+/**
+ * Invalidate folders-related queries after a mutation
+ */
+export function invalidateFoldersQueries(queryClient: QueryClient, userId?: string): void {
+  queryClient.invalidateQueries({ queryKey: QueryKeys.folders(userId) });
+  queryClient.invalidateQueries({ queryKey: QueryKeys.archivedFolders(userId) });
+  queryClient.invalidateQueries({ queryKey: ["folderNotes"] });
+  queryClient.invalidateQueries({ queryKey: ["folderFiles"] });
 }
 
 /**

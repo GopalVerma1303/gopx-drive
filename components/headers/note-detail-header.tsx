@@ -10,7 +10,7 @@ import { Text } from "@/components/ui/text";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { ArrowLeft, Check, Edit, Eye, MoreVertical, RefreshCcw, Share2 } from "lucide-react-native";
+import { ArrowLeft, Check, Edit, Eye, Folder, MoreVertical, RefreshCcw, Share2 } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -27,6 +27,9 @@ interface NoteDetailHeaderProps {
   isFetching?: boolean;
   onRefresh?: () => void;
   onOpenShareModal?: () => void;
+  /** Current folder name for the note (e.g. "Work" or "No folder"). When set, shows a "Folder" menu item that opens the Move to modal. */
+  folderName?: string;
+  onOpenMoveModal?: () => void;
 }
 
 export function NoteDetailHeader({
@@ -41,6 +44,8 @@ export function NoteDetailHeader({
   isFetching = false,
   onRefresh,
   onOpenShareModal,
+  folderName,
+  onOpenMoveModal,
 }: NoteDetailHeaderProps) {
   const router = useRouter();
   const { colors } = useThemeColors();
@@ -220,6 +225,20 @@ export function NoteDetailHeader({
                   >
                     <Icon as={Share2} className="size-4 text-foreground" />
                     <Text style={{ color: colors.foreground }}>Share</Text>
+                  </DropdownMenuItem>
+                )}
+                {onOpenMoveModal != null && (
+                  <DropdownMenuItem
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      onOpenMoveModal();
+                    }}
+                    className="flex flex-row items-center gap-2"
+                  >
+                    <Icon as={Folder} className="size-4 text-foreground" />
+                    <Text style={{ color: colors.foreground }}>
+                      {folderName ?? "No folder"}
+                    </Text>
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>

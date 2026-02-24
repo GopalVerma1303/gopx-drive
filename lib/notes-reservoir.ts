@@ -437,7 +437,7 @@ export async function createNote(input: {
 
 export async function updateNote(
   id: string,
-  updates: Partial<Pick<Note, "title" | "content" | "share_token">>
+  updates: Partial<Pick<Note, "title" | "content" | "share_token" | "folder_id">>
 ): Promise<Note | null> {
   if (Platform.OS === "web") {
     return supabaseNotes.updateNote(id, updates);
@@ -481,6 +481,9 @@ export async function updateNote(
     };
     if (updates.share_token !== undefined) {
       payload.share_token = updates.share_token;
+    }
+    if (updates.folder_id !== undefined) {
+      payload.folder_id = updates.folder_id;
     }
     const updated = await supabaseNotes.updateNote(id, payload);
     if (updated) {

@@ -1,24 +1,31 @@
 "use client";
 
+import { FileCard, FileListCard } from "@/components/file-card";
+import { FileUploadModal } from "@/components/file-upload-modal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
-import { archiveFile, getFileDownloadUrl, listFiles, uploadFile } from "@/lib/files";
-import { invalidateFilesQueries } from "@/lib/query-utils";
+import { archiveFile, getFileDownloadUrl, listFiles, updateFile, uploadFile } from "@/lib/files";
+import { listFolders } from "@/lib/folders";
+import { invalidateFilesQueries, invalidateFoldersQueries } from "@/lib/query-utils";
 import type { File as FileRecord } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
 import { Stack } from "expo-router";
-import { ExternalLink, LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
+import { ChevronDown, ExternalLink, LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   Dimensions,
   Linking,
   Modal,
@@ -26,6 +33,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  StyleSheet,
   View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -44,7 +52,7 @@ export default function FilesScreen() {
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
-  const [uploading, setUploading] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [isViewModeLoaded, setIsViewModeLoaded] = useState(false);
   const [screenWidth, setScreenWidth] = useState(() => {
@@ -123,8 +131,20 @@ export default function FilesScreen() {
     retryOnMount: false,
   });
 
+  const { data: folders = [] } = useQuery({
+    queryKey: ["folders", user?.id],
+    queryFn: () => listFolders(user?.id),
+    enabled: !!user?.id,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const [optionsModalOpen, setOptionsModalOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [fileToAction, setFileToAction] = useState<FileRecord | null>(null);
+  const [moveModalOpen, setMoveModalOpen] = useState(false);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [dropdownTriggerWidth, setDropdownTriggerWidth] = useState(0);
   /** In-app preview URL (native only). When set, a modal WebView is shown instead of opening the browser. */
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   /** Original Supabase bucket URL; used for "open in browser" redirect (not Google viewer). */
@@ -138,69 +158,77 @@ export default function FilesScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setActionDialogOpen(false);
       setFileToAction(null);
+      setOptionsModalOpen(false);
+      setSelectedFile(null);
     },
   });
 
-  const handleUploadFile = async () => {
-    try {
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
+  const moveFileMutation = useMutation({
+    mutationFn: ({ fileId, folderId }: { fileId: string; folderId: string | null }) =>
+      updateFile(fileId, { folder_id: folderId }),
+    onSuccess: (_data, { fileId }) => {
+      invalidateFilesQueries(queryClient, user?.id);
+      invalidateFoldersQueries(queryClient, user?.id);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setMoveModalOpen(false);
+      setSelectedFile(null);
+      setSelectedFolderId(null);
+      setDropdownTriggerWidth(0);
+    },
+  });
 
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "*/*",
-        copyToCacheDirectory: true,
-      });
-
-      if (result.canceled || !user) {
-        return;
-      }
-
-      setUploading(true);
-
-      const file = result.assets[0];
-
-      // Get file URI - handle different platforms
-      // On web, expo-document-picker may return a File object directly
-      let fileUri: string | globalThis.File = file.uri;
-      if (Platform.OS === "web" && (file as any).file) {
-        // On web, if file is a File object, use it directly
-        fileUri = (file as any).file;
-      }
-
-      // Use file size from picker
-      const fileSize = file.size || 0;
-
-      await uploadFile({
-        user_id: user.id,
-        file: {
-          uri: fileUri as any, // Type assertion needed due to DOM File vs our File interface
-          name: file.name,
-          type: file.mimeType || "application/octet-stream",
-          size: fileSize,
-        },
-      });
-
-      invalidateFilesQueries(queryClient, user.id);
-
-      if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
-      Alert.alert("Success", "File uploaded successfully");
-    } catch (error: any) {
-      console.error("Upload error:", error);
-      Alert.alert("Error", error.message || "Failed to upload file");
-    } finally {
-      setUploading(false);
-    }
+  const handleOpenUploadModal = () => {
+    setUploadModalOpen(true);
   };
 
-  const handleRightClickAction = (file: FileRecord) => {
+  const handleUploadFromModal = async (params: {
+    file: { uri: string | globalThis.File; name: string; type: string; size: number };
+  }) => {
+    if (!user) return;
+    await uploadFile({
+      user_id: user.id,
+      file: params.file,
+    });
+    invalidateFilesQueries(queryClient, user.id);
+    Alert.alert("Success", "File uploaded successfully");
+  };
+
+  const handleLongPressFile = (file: FileRecord) => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    setFileToAction(file);
-    setActionDialogOpen(true);
+    setSelectedFile(file);
+    setOptionsModalOpen(true);
+  };
+
+  const openArchiveConfirm = () => {
+    setOptionsModalOpen(false);
+    if (selectedFile) {
+      setFileToAction(selectedFile);
+      setActionDialogOpen(true);
+      setSelectedFile(null);
+    }
+  };
+
+  const openMoveModal = () => {
+    setOptionsModalOpen(false);
+    setSelectedFolderId(selectedFile?.folder_id ?? null);
+    setMoveModalOpen(true);
+  };
+
+  const handleMoveConfirm = () => {
+    if (!selectedFile) return;
+    moveFileMutation.mutate({
+      fileId: selectedFile.id,
+      folderId: selectedFolderId,
+    });
+  };
+
+  const closeMoveModal = () => {
+    setMoveModalOpen(false);
+    setSelectedFile(null);
+    setSelectedFolderId(null);
+    setDropdownTriggerWidth(0);
   };
 
   /** On mobile WebView, use a viewer URL for PDFs (and similar) so content displays inline instead of downloading.
@@ -339,19 +367,22 @@ export default function FilesScreen() {
               )}
             </Pressable>
             <Pressable
-              onPress={handleUploadFile}
-              disabled={uploading}
+              onPress={handleOpenUploadModal}
               style={{ paddingVertical: 8 }}
             >
-              {uploading ? (
-                <ActivityIndicator size="small" color={colors.foreground} />
-              ) : (
-                <Plus color={colors.foreground} size={22} />
-              )}
+              <Plus color={colors.foreground} size={22} />
             </Pressable>
           </View>
         </View>
       </View>
+
+      <FileUploadModal
+        visible={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        onUpload={handleUploadFromModal}
+        title="Upload file"
+      />
+
       <View className="w-full h-full">
         {/* Search Container */}
         <View className="w-full max-w-3xl mx-auto">
@@ -455,10 +486,10 @@ export default function FilesScreen() {
                             <FileCard
                               file={file}
                               onPress={() => handleFilePress(file)}
-                              onDelete={() => handleRightClickAction(file)}
+                              onDelete={() => handleLongPressFile(file)}
                               onRightClickAction={
                                 Platform.OS === "web"
-                                  ? () => handleRightClickAction(file)
+                                  ? () => handleLongPressFile(file)
                                   : undefined
                               }
                               formatFileSize={formatFileSize}
@@ -493,10 +524,10 @@ export default function FilesScreen() {
                           <FileListCard
                             file={file}
                             onPress={() => handleFilePress(file)}
-                            onDelete={() => handleRightClickAction(file)}
+                            onDelete={() => handleLongPressFile(file)}
                             onRightClickAction={
                               Platform.OS === "web"
-                                ? () => handleRightClickAction(file)
+                                ? () => handleLongPressFile(file)
                                 : undefined
                             }
                             formatFileSize={formatFileSize}
@@ -513,13 +544,289 @@ export default function FilesScreen() {
         )}
       </View>
 
-      {/* Action Dialog (Download/Delete) */}
+      {/* Long-press options modal: iOS-style action sheet */}
+      {Platform.OS === "web" ? (
+        optionsModalOpen && selectedFile && (
+          <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <Pressable
+              className="absolute inset-0"
+              onPress={() => { setOptionsModalOpen(false); setSelectedFile(null); }}
+            />
+            <View className="w-full max-w-[280px] items-center">
+              <View className="mb-3 w-full rounded-xl border border-border bg-muted px-4 py-3 shadow-sm">
+                <Text className="text-center text-sm font-medium text-muted-foreground" numberOfLines={1}>
+                  {selectedFile.name}
+                </Text>
+              </View>
+              <View className="w-full overflow-hidden rounded-xl border border-border bg-muted shadow-sm">
+                <Pressable
+                  className="items-center justify-center border-b border-border py-3.5 active:bg-accent"
+                  onPress={openMoveModal}
+                >
+                  <Text className="text-base font-medium text-blue-500">Move to</Text>
+                </Pressable>
+                <Pressable
+                  className="items-center justify-center py-3.5 active:bg-accent"
+                  onPress={openArchiveConfirm}
+                >
+                  <Text className="text-base font-semibold text-red-500">Archive</Text>
+                </Pressable>
+              </View>
+              <Pressable
+                className="mt-2 w-full items-center justify-center rounded-xl border border-border bg-muted py-3.5 shadow-sm active:bg-accent"
+                onPress={() => { setOptionsModalOpen(false); setSelectedFile(null); }}
+              >
+                <Text className="text-base font-semibold text-foreground">Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        )
+      ) : (
+        <Modal
+          visible={optionsModalOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => { setOptionsModalOpen(false); setSelectedFile(null); }}
+        >
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.4)", padding: 24 }}>
+            <Pressable
+              style={StyleSheet.absoluteFillObject}
+              onPress={() => { setOptionsModalOpen(false); setSelectedFile(null); }}
+            />
+            <View style={{ width: "100%", maxWidth: 280, alignItems: "center" }}>
+              <View
+                style={{
+                  width: "100%",
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: colors.muted,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  marginBottom: 12,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              >
+                <Text
+                  style={{ textAlign: "center", fontSize: 14, fontWeight: "500", color: colors.mutedForeground }}
+                  numberOfLines={1}
+                >
+                  {selectedFile?.name ?? "File"}
+                </Text>
+              </View>
+              <View
+                style={{
+                  width: "100%",
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: colors.muted,
+                  overflow: "hidden",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              >
+                <Pressable
+                  style={{
+                    width: "100%",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingVertical: 14,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.border,
+                  }}
+                  onPress={openMoveModal}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: "500", color: "#3b82f6" }}>Move to</Text>
+                </Pressable>
+                <Pressable
+                  style={{ width: "100%", alignItems: "center", justifyContent: "center", paddingVertical: 14 }}
+                  onPress={openArchiveConfirm}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: "600", color: colors.destructive }}>Archive</Text>
+                </Pressable>
+              </View>
+              <Pressable
+                style={{
+                  width: "100%",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginTop: 8,
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: colors.muted,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+                onPress={() => { setOptionsModalOpen(false); setSelectedFile(null); }}
+              >
+                <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground }}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Move to folder modal */}
+      {Platform.OS === "web" ? (
+        moveModalOpen && selectedFile && (
+          <View className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+            <Pressable className="absolute inset-0" onPress={closeMoveModal} />
+            <View className="w-full max-w-md rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                Move to
+              </Text>
+              <Text className="mb-4 text-sm text-muted-foreground">
+                Choose a folder for "{selectedFile.name}"
+              </Text>
+              <View
+                className="mb-6 w-full"
+                onLayout={(e) => setDropdownTriggerWidth(e.nativeEvent.layout.width)}
+              >
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Pressable className="w-full flex-row items-center justify-between rounded-md border border-border bg-background px-3 py-2.5">
+                      <Text className="text-sm text-foreground">
+                        {selectedFolderId == null
+                          ? "No folder"
+                          : folders.find((f) => f.id === selectedFolderId)?.name ?? "Select folder"}
+                      </Text>
+                      <ChevronDown color={colors.mutedForeground} size={16} />
+                    </Pressable>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    style={dropdownTriggerWidth > 0 ? { width: dropdownTriggerWidth } : undefined}
+                  >
+                    <DropdownMenuItem onPress={() => setSelectedFolderId(null)}>
+                      <Text className="text-foreground">No folder</Text>
+                    </DropdownMenuItem>
+                    {folders.map((folder) => (
+                      <DropdownMenuItem
+                        key={folder.id}
+                        onPress={() => setSelectedFolderId(folder.id)}
+                      >
+                        <Text className="text-foreground">{folder.name}</Text>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </View>
+              <View className="flex-row justify-end gap-3">
+                <Pressable className="px-4 py-2" onPress={closeMoveModal}>
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleMoveConfirm}
+                  disabled={moveFileMutation.isPending}
+                >
+                  <Text className="font-semibold text-blue-500">
+                    {moveFileMutation.isPending ? "Moving…" : "Move"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )
+      ) : (
+        <Modal
+          visible={moveModalOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={closeMoveModal}
+        >
+          <View className="flex-1 items-center justify-center bg-black/50 p-4">
+            <Pressable className="absolute inset-0" onPress={closeMoveModal} />
+            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                Move to
+              </Text>
+              <Text className="mb-4 text-sm text-muted-foreground">
+                Choose a folder for "{selectedFile?.name}"
+              </Text>
+              <View
+                style={{ marginBottom: 24, width: "100%" }}
+                onLayout={(e) => setDropdownTriggerWidth(e.nativeEvent.layout.width)}
+              >
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Pressable
+                      style={{
+                        width: "100%",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        borderRadius: 6,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        backgroundColor: colors.background,
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                      }}
+                    >
+                      <Text style={{ fontSize: 14, color: colors.foreground }}>
+                        {selectedFolderId == null
+                          ? "No folder"
+                          : folders.find((f) => f.id === selectedFolderId)?.name ?? "Select folder"}
+                      </Text>
+                      <ChevronDown color={colors.mutedForeground} size={16} />
+                    </Pressable>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    style={dropdownTriggerWidth > 0 ? { width: dropdownTriggerWidth } : undefined}
+                  >
+                    <DropdownMenuItem onPress={() => setSelectedFolderId(null)}>
+                      <Text style={{ color: colors.foreground }}>No folder</Text>
+                    </DropdownMenuItem>
+                    {folders.map((folder) => (
+                      <DropdownMenuItem
+                        key={folder.id}
+                        onPress={() => setSelectedFolderId(folder.id)}
+                      >
+                        <Text style={{ color: colors.foreground }}>{folder.name}</Text>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </View>
+              <View className="flex-row justify-end gap-3">
+                <Pressable className="px-4 py-2" onPress={closeMoveModal}>
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleMoveConfirm}
+                  disabled={moveFileMutation.isPending}
+                >
+                  <Text style={{ fontWeight: "600", color: "#3b82f6" }}>
+                    {moveFileMutation.isPending ? "Moving…" : "Move"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Archive confirmation dialog */}
       {Platform.OS === "web" ? (
         actionDialogOpen && (
           <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <Pressable
               className="absolute inset-0"
-              onPress={() => setActionDialogOpen(false)}
+              onPress={() => { setActionDialogOpen(false); setFileToAction(null); }}
             />
             <View className="w-full max-w-md rounded-lg border border-border bg-muted p-6 shadow-lg">
               <Text className="mb-2 text-lg font-semibold text-foreground">
@@ -682,297 +989,3 @@ export default function FilesScreen() {
   );
 }
 
-interface FileCardProps {
-  file: FileRecord;
-  onPress: () => void;
-  onDelete: () => void;
-  onRightClickAction?: () => void;
-  formatFileSize: (bytes: number) => string;
-  cardWidth: number;
-}
-
-function FileCard({
-  file,
-  onPress,
-  onDelete,
-  onRightClickAction,
-  formatFileSize,
-  cardWidth,
-}: FileCardProps) {
-  const { colors } = useThemeColors();
-  const scale = new Animated.Value(1);
-
-  const handlePressIn = () => {
-    Animated.spring(scale, {
-      toValue: 0.96,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: true,
-      friction: 3,
-    }).start();
-  };
-
-  const handleContextMenu = (e: any) => {
-    if (Platform.OS === "web" && onRightClickAction) {
-      e.preventDefault();
-      onRightClickAction();
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
-  };
-
-  // File icon dimensions - scale to fill card width
-  const padding = 8; // Padding around the file icon
-  const fileWidth = cardWidth - padding * 2; // Use full available width minus padding
-  const fileHeight = (fileWidth / 130) * 150; // Maintain aspect ratio (120:150)
-  const foldSize = Math.max(20, fileWidth * 0.2); // Size of the folded corner
-
-  return (
-    <Pressable
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      onPress={onPress}
-      onLongPress={onDelete}
-      {...(Platform.OS === "web" && {
-        onContextMenu: handleContextMenu,
-      })}
-    >
-      <Animated.View style={{ transform: [{ scale }] }}>
-        <View className="mb-3 items-center">
-          {/* File Icon Shape */}
-          <View
-            className="bg-muted rounded overflow-hidden relative"
-            style={{ width: fileWidth, height: fileHeight }}
-          >
-            {/* Folded Corner Inner Triangle (darker shade for depth) */}
-            <View
-              style={{
-                position: "absolute",
-                top: 0,
-                right: 0,
-                width: 0,
-                height: 0,
-                borderTopWidth: foldSize,
-                borderRightWidth: foldSize,
-                borderTopColor: colors.background,
-                borderRightColor: "transparent",
-                borderBottomWidth: 0,
-                borderLeftWidth: 0,
-                opacity: 1,
-                transform: [{ rotate: "90deg" }],
-              }}
-            />
-
-            {/* Content inside file icon */}
-            <View
-              className="flex-1 p-3 pt-4 justify-between"
-              style={{ paddingRight: foldSize + 4 }}
-            >
-              <View className="flex-1">
-                <Text
-                  className="text-sm font-semibold text-foreground mb-1"
-                  numberOfLines={2}
-                >
-                  {file.name.length > 15
-                    ? file.name.substring(0, 15) + "..."
-                    : file.name}
-                </Text>
-                <Text className="text-[10px] text-muted-foreground mt-1">
-                  {file.extension.toUpperCase()}
-                </Text>
-              </View>
-              <View className="mt-auto">
-                <Text className="text-[9px] text-muted-foreground opacity-70">
-                  {formatFileSize(file.file_size)}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* File info below icon */}
-          <View
-            className="mt-2 items-center"
-            style={{ width: cardWidth }}
-          >
-            <Text
-              className="text-xs font-medium text-foreground text-center"
-              numberOfLines={1}
-            >
-              {file.name}
-            </Text>
-            <Text className="text-[10px] text-muted-foreground mt-0.5">
-              {formatDate(file.updated_at)}
-            </Text>
-          </View>
-        </View>
-      </Animated.View>
-    </Pressable>
-  );
-}
-
-interface FileListCardProps {
-  file: FileRecord;
-  onPress: () => void;
-  onDelete: () => void;
-  onRightClickAction?: () => void;
-  formatFileSize: (bytes: number) => string;
-  cardWidth: number;
-}
-
-function FileListCard({
-  file,
-  onPress,
-  onDelete,
-  onRightClickAction,
-  formatFileSize,
-  cardWidth,
-}: FileListCardProps) {
-  const { colors } = useThemeColors();
-  const scale = new Animated.Value(1);
-
-  const handlePressIn = () => {
-    Animated.spring(scale, {
-      toValue: 0.98,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: true,
-      friction: 3,
-    }).start();
-  };
-
-  const handleContextMenu = (e: any) => {
-    if (Platform.OS === "web" && onRightClickAction) {
-      e.preventDefault();
-      onRightClickAction();
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
-  };
-
-  // List card dimensions - horizontal rectangle
-  const cardHeight = 80; // Fixed height for list items
-  const iconSize = 56; // Icon size for list view
-  const padding = 12;
-  const foldSize = Math.max(12, iconSize * 0.2);
-
-  return (
-    <Pressable
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      onPress={onPress}
-      onLongPress={onDelete}
-      {...(Platform.OS === "web" && {
-        onContextMenu: handleContextMenu,
-      })}
-    >
-      <Animated.View style={{ transform: [{ scale }] }}>
-        <View
-          className="flex-row items-center p-3 gap-3 bg-muted border border-border rounded-xl"
-          style={{ width: cardWidth, height: cardHeight }}
-        >
-          {/* File Icon - Smaller version for list */}
-          <View
-            className="bg-background border border-muted rounded overflow-hidden relative"
-            style={{ width: iconSize, height: iconSize }}
-          >
-            {/* Folded Corner */}
-            <View
-              style={{
-                position: "absolute",
-                top: 0,
-                right: 0,
-                width: 0,
-                height: 0,
-                borderTopWidth: foldSize,
-                borderRightWidth: foldSize,
-                borderTopColor: colors.muted,
-                borderRightColor: "transparent",
-                borderBottomWidth: 0,
-                borderLeftWidth: 0,
-                opacity: 1,
-                transform: [{ rotate: "90deg" }],
-              }}
-            />
-
-            {/* Content inside file icon */}
-            <View
-              className="flex-1 pt-2 justify-between"
-              style={{ padding: 6, paddingRight: foldSize + 2 }}
-            >
-              <Text
-                className="text-[8px] font-semibold text-foreground"
-                numberOfLines={1}
-              >
-                {file.extension.toUpperCase().slice(0, 3)}
-              </Text>
-              <View className="mt-auto">
-                <Text className="text-[6px] text-muted-foreground opacity-70">
-                  {formatFileSize(file.file_size)}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* File Info */}
-          <View className="flex-1 justify-center gap-1">
-            <Text
-              className="text-sm font-semibold text-foreground"
-              numberOfLines={1}
-            >
-              {file.name}
-            </Text>
-            <View className="flex-row items-center gap-2">
-              <Text className="text-[11px] text-muted-foreground uppercase">
-                {file.extension}
-              </Text>
-              <Text className="text-[11px] text-muted-foreground">•</Text>
-              <Text className="text-[11px] text-muted-foreground">
-                {formatFileSize(file.file_size)}
-              </Text>
-              <Text className="text-[11px] text-muted-foreground">•</Text>
-              <Text className="text-[11px] text-muted-foreground">
-                {formatDate(file.updated_at)}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </Animated.View>
-    </Pressable>
-  );
-}

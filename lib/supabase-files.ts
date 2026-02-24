@@ -74,6 +74,35 @@ export const listArchivedFiles = async (userId?: string): Promise<File[]> => {
   return data || [];
 };
 
+export const listFilesByFolder = async (
+  userId: string | undefined,
+  folderId: string
+): Promise<File[]> => {
+  if (!userId) {
+    throw new Error("User ID is required");
+  }
+
+  let { data, error } = await withSupabaseTimeout((signal) =>
+    supabase
+      .from("files")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("folder_id", folderId)
+      .eq("is_archived", false)
+      .order("updated_at", { ascending: false })
+      .abortSignal(signal)
+  );
+
+  if (error && (error.code === "PGRST116" || error.message?.includes("folder_id"))) {
+    return [];
+  }
+  if (error) {
+    throw new Error(`Failed to fetch files: ${error.message}`);
+  }
+
+  return data || [];
+};
+
 export const getFileById = async (id: string, includeArchived: boolean = true): Promise<File | null> => {
   let query = supabase
     .from("files")
@@ -232,6 +261,30 @@ export const uploadFile = async (input: {
     // If database insert fails, try to delete the uploaded file
     await supabase.storage.from("files").remove([filePath]);
     throw new Error(`Failed to create file record: ${error.message}`);
+  }
+
+  return data;
+};
+
+export const updateFile = async (
+  id: string,
+  updates: Partial<Pick<File, "name" | "folder_id">>
+): Promise<File | null> => {
+  const { data, error } = await supabase
+    .from("files")
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") {
+      return null;
+    }
+    throw new Error(`Failed to update file: ${error.message}`);
   }
 
   return data;
