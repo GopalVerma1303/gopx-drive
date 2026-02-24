@@ -156,7 +156,7 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
         return (
           <Pressable
             key={item.href}
-            {...(horizontal && { hitSlop: { top: 0, bottom: 0, left: 50, right: 50 } })}
+            {...(horizontal && { hitSlop: { top: 10, bottom: 10, left: 20, right: 20 } })}
             onPress={() => handleNavPress(item.href)}
             style={({ pressed }) => ({
               flex: horizontal ? 1 : undefined,
@@ -169,6 +169,7 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
               backgroundColor: pressed ? colors.accent : "transparent",
               marginHorizontal: iconOnly ? 0 : 8,
               ...(horizontal && { width: "100%" }),
+
             })}
           >
             <Icon

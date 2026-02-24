@@ -214,7 +214,7 @@ export function FileListCard({
           style={{ width: cardWidth, height: cardHeight }}
         >
           <View
-            className="border border-muted rounded-tl rounded-br rounded-bl overflow-hidden relative"
+            className="border border-muted rounded-tl-md rounded-br-md rounded-bl-md overflow-hidden relative"
             style={{
               width: iconSize,
               height: iconSize,

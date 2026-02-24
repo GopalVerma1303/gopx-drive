@@ -2,7 +2,7 @@
 
 import { EventCard } from "@/components/event-card";
 import { EventModal } from "@/components/event-modal";
-import { FileListCard, formatFileSize } from "@/components/file-card";
+import { FileCard, FileListCard, formatFileSize } from "@/components/file-card";
 import { FileUploadModal } from "@/components/file-upload-modal";
 import { LongPressOptionsModal } from "@/components/long-press-options-modal";
 import { MoveToFolderModal } from "@/components/move-to-folder-modal";
@@ -28,7 +28,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Calendar, FileText, Files, Plus } from "lucide-react-native";
+import { Calendar, FileText, Files, LayoutGrid, Pin, Plus, Rows2 } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -56,8 +56,7 @@ const cardGap = 10;
 const maxWidth = 672;
 
 const transicon = require("@/assets/images/transicon.png");
-
-const HOME_CLOCK_STORAGE_KEY = "@home_show_clock";
+const HOME_VIEW_MODE_STORAGE_KEY = "@home_view_mode";
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -65,6 +64,8 @@ export default function HomeScreen() {
   const queryClient = useQueryClient();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [isViewModeLoaded, setIsViewModeLoaded] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [optionsModalOpen, setOptionsModalOpen] = useState(false);
@@ -81,15 +82,38 @@ export default function HomeScreen() {
     }
     return Dimensions.get("window").width;
   });
-  const [time, setTime] = useState(() => new Date());
-  const [showClockOnHome, setShowClockOnHome] = useState(true);
 
   const isNavHorizontal = screenWidth < 768;
 
+  // Load saved view mode preference on mount
   useEffect(() => {
-    const id = setInterval(() => setTime(new Date()), 60 * 1000);
-    return () => clearInterval(id);
+    const loadViewMode = async () => {
+      try {
+        const savedViewMode = await AsyncStorage.getItem(HOME_VIEW_MODE_STORAGE_KEY);
+        if (savedViewMode === "grid" || savedViewMode === "list") {
+          setViewMode(savedViewMode);
+        }
+      } catch (error) {
+        console.error("Failed to load home view mode:", error);
+      } finally {
+        setIsViewModeLoaded(true);
+      }
+    };
+    loadViewMode();
   }, []);
+
+  // Save view mode preference whenever it changes
+  useEffect(() => {
+    if (!isViewModeLoaded) return;
+    const saveViewMode = async () => {
+      try {
+        await AsyncStorage.setItem(HOME_VIEW_MODE_STORAGE_KEY, viewMode);
+      } catch (error) {
+        console.error("Failed to save home view mode:", error);
+      }
+    };
+    saveViewMode();
+  }, [viewMode, isViewModeLoaded]);
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -99,20 +123,6 @@ export default function HomeScreen() {
     }
     const sub = Dimensions.addEventListener("change", ({ window: w }) => setScreenWidth(w.width));
     return () => sub?.remove();
-  }, []);
-
-  useEffect(() => {
-    const loadShowClock = async () => {
-      try {
-        const stored = await AsyncStorage.getItem(HOME_CLOCK_STORAGE_KEY);
-        if (stored === "true" || stored === "false") {
-          setShowClockOnHome(stored === "true");
-        }
-      } catch {
-        // ignore read errors, default stays true
-      }
-    };
-    loadShowClock();
   }, []);
 
   const {
@@ -188,7 +198,12 @@ export default function HomeScreen() {
   );
   const hasAnyEvents = todaysEvents.length > 0 || tomorrowsEvents.length > 0;
 
-  const cardWidth = Math.min(screenWidth, maxWidth) - containerPadding * 2;
+  const contentWidth = Math.min(screenWidth, maxWidth) - containerPadding * 2;
+  const columns = 2;
+  const columnGap = 6;
+  const rowGap = cardGap;
+  const gridCardWidth = (contentWidth - columnGap * (columns - 1)) / columns;
+  const totalGridWidth = gridCardWidth * columns + columnGap * (columns - 1);
 
   const onRefresh = async () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -366,22 +381,6 @@ export default function HomeScreen() {
   const isLoading = notesLoading || filesLoading || eventsLoading;
   const isRefreshing = notesFetching || filesFetching || eventsFetching;
 
-  const hours12 = time.getHours() % 12 || 12;
-  const minutes = time.getMinutes();
-  const clockTimeStr = `${hours12}:${String(minutes).padStart(2, "0")}`;
-  const clockAmpm = time.getHours() < 12 ? "AM" : "PM";
-
-  const dateStr = time.toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-  });
-
-  // Responsive hero typography: scale with width, clamp for readability
-  const heroClockSize = Math.min(96, Math.max(56, screenWidth * 0.18));
-  const heroAmpmSize = Math.max(14, heroClockSize * 0.32);
-  const heroDateSize = Math.min(22, Math.max(16, screenWidth * 0.045));
-
   return (
     <View className="flex-1 w-full" style={{ backgroundColor: colors.background }}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -450,6 +449,22 @@ export default function HomeScreen() {
               paddingRight: 8,
             }}
           >
+            <Pressable
+              onPress={() => {
+                if (Platform.OS !== "web") {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                }
+                const newViewMode = viewMode === "grid" ? "list" : "grid";
+                setViewMode(newViewMode);
+              }}
+              style={{ paddingVertical: 8 }}
+            >
+              {viewMode === "grid" ? (
+                <Rows2 color={colors.foreground} size={22} />
+              ) : (
+                <LayoutGrid color={colors.foreground} size={22} />
+              )}
+            </Pressable>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Pressable
@@ -458,7 +473,7 @@ export default function HomeScreen() {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     }
                   }}
-                  style={{ paddingVertical: 8 }}
+                  style={{ paddingVertical: 8, paddingLeft: 16 }}
                 >
                   <Plus color={colors.foreground} size={22} />
                 </Pressable>
@@ -525,52 +540,6 @@ export default function HomeScreen() {
             />
           }
         >
-          {showClockOnHome && (
-            <View
-              style={{
-                alignItems: "center",
-                justifyContent: "center",
-                paddingVertical: 24,
-                marginBottom: sectionGap,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "baseline" }}>
-                <Text
-                  style={{
-                    fontSize: heroClockSize,
-                    lineHeight: heroClockSize * 1.1,
-                    fontWeight: "200",
-                    color: colors.foreground,
-                    letterSpacing: 3,
-                  }}
-                >
-                  {clockTimeStr}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: heroAmpmSize,
-                    fontWeight: "400",
-                    color: colors.mutedForeground,
-                    marginLeft: 6,
-                  }}
-                >
-                  {clockAmpm}
-                </Text>
-              </View>
-              <Text
-                style={{
-                  fontSize: heroDateSize,
-                  lineHeight: heroDateSize * 1.25,
-                  color: colors.mutedForeground,
-                  marginTop: 20,
-                  fontWeight: "400",
-                }}
-              >
-                {dateStr}
-              </Text>
-            </View>
-          )}
-
           {/* Notes section — always visible */}
           <View style={{ marginBottom: sectionGap }}>
             <View
@@ -581,29 +550,70 @@ export default function HomeScreen() {
                 marginBottom: 12,
               }}
             >
-              <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground }}>
-                Notes
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Pin size={16} color={colors.foreground} fill={colors.foreground} />
+                <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground }}>
+                  Notes
+                </Text>
+              </View>
             </View>
-            <View style={{ width: cardWidth, alignSelf: "center" }}>
+            <View style={{ width: contentWidth, alignSelf: "center" }}>
               {rootNotes.length > 0 ? (
                 <>
-                  {rootNotes.slice(0, 5).map((note, i) => (
+                  {viewMode === "grid" ? (
                     <View
-                      key={note.id}
-                      style={{ marginBottom: i < Math.min(5, rootNotes.length) - 1 ? cardGap : 0 }}
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        justifyContent: "flex-start",
+                        width: totalGridWidth,
+                        alignSelf: "center",
+                      }}
                     >
-                      <NoteCard
-                        note={note}
-                        cardWidth={cardWidth}
-                        isSynced={!unsyncedNoteIds.includes(note.id)}
-                        onPress={() => router.push(`/(app)/note/${note.id}`)}
-                        onDelete={() => handleNoteLongPress(note)}
-                        onRightClickDelete={() => handleNoteLongPress(note)}
-                      />
+                      {rootNotes.slice(0, 6).map((note, index) => {
+                        const marginRight = index % columns < columns - 1 ? columnGap : 0;
+                        const marginBottom = rowGap;
+                        return (
+                          <View
+                            key={note.id}
+                            style={{
+                              width: gridCardWidth,
+                              marginRight,
+                              marginBottom,
+                            }}
+                          >
+                            <NoteCard
+                              note={note}
+                              cardWidth={gridCardWidth}
+                              isSynced={!unsyncedNoteIds.includes(note.id)}
+                              onPress={() => router.push(`/(app)/note/${note.id}`)}
+                              onDelete={() => handleNoteLongPress(note)}
+                              onRightClickDelete={() => handleNoteLongPress(note)}
+                            />
+                          </View>
+                        );
+                      })}
                     </View>
-                  ))}
-                  {rootNotes.length > 5 && (
+                  ) : (
+                    <>
+                      {rootNotes.slice(0, 5).map((note, i) => (
+                        <View
+                          key={note.id}
+                          style={{ marginBottom: i < Math.min(5, rootNotes.length) - 1 ? cardGap : 0 }}
+                        >
+                          <NoteCard
+                            note={note}
+                            cardWidth={contentWidth}
+                            isSynced={!unsyncedNoteIds.includes(note.id)}
+                            onPress={() => router.push(`/(app)/note/${note.id}`)}
+                            onDelete={() => handleNoteLongPress(note)}
+                            onRightClickDelete={() => handleNoteLongPress(note)}
+                          />
+                        </View>
+                      ))}
+                    </>
+                  )}
+                  {rootNotes.length > (viewMode === "grid" ? 6 : 5) && (
                     <Pressable
                       onPress={() => router.push("/(app)/notes")}
                       style={{
@@ -641,29 +651,70 @@ export default function HomeScreen() {
                 marginBottom: 12,
               }}
             >
-              <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground }}>
-                Files
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Pin size={16} color={colors.foreground} fill={colors.foreground} />
+                <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground }}>
+                  Files
+                </Text>
+              </View>
             </View>
-            <View style={{ width: cardWidth, alignSelf: "center" }}>
+            <View style={{ width: contentWidth, alignSelf: "center" }}>
               {rootFiles.length > 0 ? (
                 <>
-                  {rootFiles.slice(0, 5).map((file, i) => (
+                  {viewMode === "grid" ? (
                     <View
-                      key={file.id}
-                      style={{ marginBottom: i < Math.min(5, rootFiles.length) - 1 ? cardGap : 0 }}
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        justifyContent: "flex-start",
+                        width: totalGridWidth,
+                        alignSelf: "center",
+                      }}
                     >
-                      <FileListCard
-                        file={file}
-                        onPress={() => handleFilePress(file)}
-                        onDelete={() => handleFileLongPress(file)}
-                        onRightClickAction={() => handleFileLongPress(file)}
-                        formatFileSize={formatFileSize}
-                        cardWidth={cardWidth}
-                      />
+                      {rootFiles.slice(0, 6).map((file, index) => {
+                        const marginRight = index % columns < columns - 1 ? columnGap : 0;
+                        const marginBottom = rowGap;
+                        return (
+                          <View
+                            key={file.id}
+                            style={{
+                              width: gridCardWidth,
+                              marginRight,
+                              marginBottom,
+                            }}
+                          >
+                            <FileCard
+                              file={file}
+                              onPress={() => handleFilePress(file)}
+                              onDelete={() => handleFileLongPress(file)}
+                              onRightClickAction={() => handleFileLongPress(file)}
+                              formatFileSize={formatFileSize}
+                              cardWidth={gridCardWidth}
+                            />
+                          </View>
+                        );
+                      })}
                     </View>
-                  ))}
-                  {rootFiles.length > 5 && (
+                  ) : (
+                    <>
+                      {rootFiles.slice(0, 5).map((file, i) => (
+                        <View
+                          key={file.id}
+                          style={{ marginBottom: i < Math.min(5, rootFiles.length) - 1 ? cardGap : 0 }}
+                        >
+                          <FileListCard
+                            file={file}
+                            onPress={() => handleFilePress(file)}
+                            onDelete={() => handleFileLongPress(file)}
+                            onRightClickAction={() => handleFileLongPress(file)}
+                            formatFileSize={formatFileSize}
+                            cardWidth={contentWidth}
+                          />
+                        </View>
+                      ))}
+                    </>
+                  )}
+                  {rootFiles.length > (viewMode === "grid" ? 6 : 5) && (
                     <Pressable
                       onPress={() => router.push("/(app)/files")}
                       style={{
@@ -701,11 +752,14 @@ export default function HomeScreen() {
                 marginBottom: 12,
               }}
             >
-              <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground }}>
-                Events
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Pin size={16} color={colors.foreground} fill={colors.foreground} />
+                <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground }}>
+                  Events
+                </Text>
+              </View>
             </View>
-            <View style={{ width: cardWidth, alignSelf: "center" }}>
+            <View style={{ width: contentWidth, alignSelf: "center" }}>
               {hasAnyEvents ? (
                 [...todaysEvents, ...tomorrowsEvents].map((event) => (
                   <EventCard
