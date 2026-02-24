@@ -174,11 +174,23 @@ export function FolderCard({
     </Animated.View>
   );
 
+  const handleLongPress = () => {
+    if (onDoubleTap && !isArchived) {
+      if (singleTapTimer.current) {
+        clearTimeout(singleTapTimer.current);
+        singleTapTimer.current = null;
+      }
+      lastTapTime.current = 0;
+      onDoubleTap();
+    }
+  };
+
   return (
     <Pressable
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      onLongPress={handleLongPress}
     >
       {inner}
     </Pressable>
