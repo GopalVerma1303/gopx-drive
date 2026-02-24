@@ -199,7 +199,10 @@ export function NoteDetailHeader({
               <DropdownMenuContent side="bottom" align="end">
                 {onRefresh && (
                   <DropdownMenuItem
-                    onPress={onRefresh}
+                    onPress={() => {
+                      // Defer so the handler runs after the menu closes (avoids native modal unmount races)
+                      setTimeout(() => onRefresh(), 0);
+                    }}
                     disabled={isFetching}
                     className="flex flex-row items-center gap-2"
                   >

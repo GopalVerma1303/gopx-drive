@@ -8,7 +8,7 @@ import { MarkdownToolbar } from "@/components/markdown-toolbar";
 import { ShareNoteModal } from "@/components/share-note-modal";
 import { useAuth } from "@/contexts/auth-context";
 import { generateAIContent } from "@/lib/ai-providers";
-import { createNote, getNoteById, updateNote } from "@/lib/notes";
+import { createNote, getNoteById, updateNote, syncNotesFromSupabase } from "@/lib/notes";
 import { invalidateNotesListQueries } from "@/lib/query-utils";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -47,6 +47,7 @@ export default function NoteEditorScreen() {
   const [selectedText, setSelectedText] = useState("");
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   /** Last selection from editor (updated on every selection change). Preserved when AI button steals focus. */
   const lastSelectionRef = useRef({ start: 0, end: 0 });
   /** Range to replace with AI output when modal was opened with a selection (so we don't rely on getSelection() after focus is lost). */
@@ -270,22 +271,30 @@ export default function NoteEditorScreen() {
   };
 
   const handleRefresh = async () => {
-    if (isNewNote || !id) return;
+    if (isNewNote || !id || isRefreshing) return;
 
+    setIsRefreshing(true);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // On native, sync from Supabase first (push local + pull remote into SQLite), then refetch
+      if (Platform.OS !== "web" && user?.id) {
+        await syncNotesFromSupabase(user.id);
+      }
       const { data } = await refetch();
       if (data) {
         setTitle(data.title);
         setContent(data.content);
         setLastSavedTitle(data.title);
         setLastSavedContent(data.content);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (error: any) {
       RNAlert.alert(
         "Sync failed",
         error?.message ?? "Unable to sync the latest version of this note."
       );
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -390,7 +399,7 @@ export default function NoteEditorScreen() {
         onSave={handleSave}
         isPreview={isPreview}
         onPreviewToggle={() => setIsPreview(!isPreview)}
-        isFetching={isFetching}
+        isFetching={isFetching || isRefreshing}
         onRefresh={!isNewNote ? handleRefresh : undefined}
         onOpenShareModal={!isNewNote ? () => setShareModalOpen(true) : undefined}
       />
