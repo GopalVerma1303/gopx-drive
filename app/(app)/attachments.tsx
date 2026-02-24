@@ -316,8 +316,7 @@ export default function AttachmentsScreen() {
               {(() => {
                 const maxWidth = 672;
                 const containerPadding = 16;
-                const gap = 8; // half of 16 so column gap matches edge feel (card padding 8+8)
-                const rowGap = 16;
+                const gap = 8; // grid: keep 8 so cards aren’t too far apart
                 const availableWidth =
                   Math.min(screenWidth, maxWidth) - containerPadding * 2;
                 const cardWidth =
@@ -336,7 +335,7 @@ export default function AttachmentsScreen() {
                     {filteredAttachments.map((item, index) => {
                       const marginRight =
                         index % columns < columns - 1 ? gap : 0;
-                      const marginBottom = rowGap;
+                      const marginBottom = gap;
                       return (
                         <View
                           key={item.path}
@@ -365,7 +364,7 @@ export default function AttachmentsScreen() {
               {(() => {
                 const maxWidth = 672;
                 const containerPadding = 16;
-                const listGap = 12; // same as files list view
+                const listGap = 16; // match notes card gap
                 const availableWidth =
                   Math.min(screenWidth, maxWidth) - containerPadding * 2;
                 const cardWidth = availableWidth;

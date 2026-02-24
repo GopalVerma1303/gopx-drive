@@ -419,7 +419,7 @@ export default function FilesScreen() {
                   // max-w-2xl is 672px
                   const maxWidth = 672; // max-w-2xl
                   const containerPadding = 16; // p-4 = 16px
-                  const gap = 8; // half of 16 so column gap (8+gap+8) matches edge feel
+                  const gap = 8; // grid: keep 8 so cards aren’t too far apart
                   const availableWidth = Math.min(screenWidth, maxWidth) - containerPadding * 2;
                   // Calculate width to fill evenly: (availableWidth - gaps) / columns
                   const cardWidth = (availableWidth - gap * (columns - 1)) / columns;
@@ -440,7 +440,7 @@ export default function FilesScreen() {
                       {filteredFiles.map((file: FileRecord, index: number) => {
                         // Calculate margins for grid spacing
                         const marginRight = index % columns < columns - 1 ? gap : 0;
-                        const marginBottom = 16;
+                        const marginBottom = gap;
 
                         return (
                           <View
@@ -476,7 +476,7 @@ export default function FilesScreen() {
                   // List view: full width row cards
                   const maxWidth = 672; // max-w-2xl
                   const containerPadding = 16; // p-4 = 16px
-                  const gap = 12; // gap between cards
+                  const gap = 16; // gap between cards (match notes)
                   const availableWidth = Math.min(screenWidth, maxWidth) - containerPadding * 2;
                   const cardWidth = availableWidth;
 

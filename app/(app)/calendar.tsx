@@ -432,8 +432,8 @@ export default function CalendarScreen() {
             />
           }
         >
-          {/* Calendar always visible */}
-          <View className="w-full max-w-2xl mx-auto mb-6">
+          {/* Calendar always visible — mb-7 matches space above (my-3 + p-4 = 28px) */}
+          <View className="w-full max-w-2xl mx-auto mb-7">
             <CustomCalendar
               events={expandedEvents}
               selectedDate={selectedDate}
@@ -1420,7 +1420,7 @@ function EventCard({ event, onSelectDate, onEdit }: EventCardProps) {
       onLongPress={handleLongPress}
     >
       <Animated.View style={{ transform: [{ scale }] }}>
-        <Card className="p-3 mb-2 rounded-xl bg-muted border border-border">
+        <Card className="p-3 mb-4 rounded-xl bg-muted border border-border">
           <View
             style={{
               flexDirection: "row",
