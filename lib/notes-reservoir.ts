@@ -41,6 +41,11 @@ function getDb(): Promise<SQLite.SQLiteDatabase> | null {
       } catch {
         // Column already exists
       }
+      try {
+        await db.execAsync(`ALTER TABLE ${TABLE} ADD COLUMN folder_id TEXT`);
+      } catch {
+        // Column already exists
+      }
       return db;
     })();
   }
@@ -48,6 +53,7 @@ function getDb(): Promise<SQLite.SQLiteDatabase> | null {
 }
 
 function rowToNote(row: Record<string, unknown>): Note {
+  const folderId = row.folder_id;
   return {
     id: row.id as string,
     user_id: row.user_id as string,
@@ -57,6 +63,8 @@ function rowToNote(row: Record<string, unknown>): Note {
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
     share_token: row.share_token != null ? (row.share_token as string) : null,
+    folder_id:
+      folderId != null && String(folderId).trim() !== "" ? (folderId as string) : null,
   };
 }
 
@@ -206,6 +214,9 @@ export async function syncFromSupabase(userId: string): Promise<void> {
           if (note.share_token !== undefined) {
             updatePayload.share_token = note.share_token;
           }
+          if (note.folder_id !== undefined) {
+            updatePayload.folder_id = note.folder_id;
+          }
           await supabaseNotes.updateNote(note.id, updatePayload);
           if (note.is_archived) {
             await supabaseNotes.archiveNote(note.id);
@@ -225,8 +236,8 @@ export async function syncFromSupabase(userId: string): Promise<void> {
 
     for (const note of allRemote) {
       await db.runAsync(
-        `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty, share_token)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
+        `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty, share_token, folder_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
          ON CONFLICT(id) DO UPDATE SET
            user_id = excluded.user_id,
            title = excluded.title,
@@ -235,7 +246,8 @@ export async function syncFromSupabase(userId: string): Promise<void> {
            created_at = excluded.created_at,
            updated_at = excluded.updated_at,
            dirty = 0,
-           share_token = excluded.share_token`,
+           share_token = excluded.share_token,
+           folder_id = excluded.folder_id`,
         note.id,
         note.user_id,
         note.title,
@@ -243,7 +255,8 @@ export async function syncFromSupabase(userId: string): Promise<void> {
         note.is_archived ? 1 : 0,
         note.created_at,
         note.updated_at,
-        note.share_token ?? null
+        note.share_token ?? null,
+        note.folder_id ?? null
       );
     }
 
@@ -458,13 +471,16 @@ export async function updateNote(
   const content = updates.content !== undefined ? updates.content : currentNote.content;
   const share_token =
     updates.share_token !== undefined ? updates.share_token : currentNote.share_token;
+  const folder_id =
+    updates.folder_id !== undefined ? updates.folder_id : currentNote.folder_id ?? null;
 
   await db.runAsync(
-    `UPDATE ${TABLE} SET title = ?, content = ?, updated_at = ?, dirty = 1, share_token = ? WHERE id = ?`,
+    `UPDATE ${TABLE} SET title = ?, content = ?, updated_at = ?, dirty = 1, share_token = ?, folder_id = ? WHERE id = ?`,
     title,
     content,
     updated_at,
     share_token ?? null,
+    folder_id,
     id
   );
 
@@ -488,8 +504,9 @@ export async function updateNote(
     const updated = await supabaseNotes.updateNote(id, payload);
     if (updated) {
       await db.runAsync(
-        `UPDATE ${TABLE} SET updated_at = ?, dirty = 0 WHERE id = ?`,
+        `UPDATE ${TABLE} SET updated_at = ?, dirty = 0, folder_id = ? WHERE id = ?`,
         updated.updated_at,
+        updated.folder_id ?? null,
         id
       );
       return updated;

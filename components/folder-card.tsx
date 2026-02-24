@@ -112,11 +112,11 @@ export function FolderCard({
       </View>
     ) : (
       <Card
-        className="rounded-2xl border border-border overflow-hidden"
+        className="rounded-2xl border border-border overflow-hidden py-2"
         style={{
           width: cardWidth,
-          minHeight: 72,
-          padding,
+          minHeight: 64,
+          paddingHorizontal: padding,
           backgroundColor: colors.muted,
         }}
       >
@@ -136,8 +136,8 @@ export function FolderCard({
             />
           )}
           <FolderIcon
-            color={colors.foreground}
-            fill={colors.foreground}
+            color={`${colors.foreground}90`}
+            fill={`${colors.foreground}90`}
             size={iconSize}
             strokeWidth={0}
           />

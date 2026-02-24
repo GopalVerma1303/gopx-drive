@@ -76,9 +76,9 @@ const transicon = require("@/assets/images/transicon.png");
 
 const navItems: NavItem[] = [
   { label: "Home", icon: Home, href: "/(app)/home" },
+  { label: "Folders", icon: Folder, href: "/(app)/folders", activePathPrefixes: ["/folder/", "/(app)/folder/"] },
   { label: "Notes", icon: FileText, href: "/(app)/notes", activePathPrefixes: ["/note/", "/(app)/note/"] },
   { label: "Files", icon: Files, href: "/(app)/files" },
-  { label: "Folders", icon: Folder, href: "/(app)/folders", activePathPrefixes: ["/folder/", "/(app)/folder/"] },
   { label: "Calendar", icon: Calendar, href: "/(app)/calendar" },
   {
     label: "Settings",
@@ -124,7 +124,7 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
       justifyContent: horizontal ? "space-around" : "flex-start",
       ...(horizontal && { width: "100%" }),
       backgroundColor: colors.background,
-      paddingVertical: 8,
+      paddingVertical: horizontal ? 12 : 10,
     }}>
       {navItems.map((item) => {
         const Icon = item.icon;
@@ -163,7 +163,7 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
               flexDirection: horizontal ? "column" : "row",
               alignItems: "center",
               justifyContent: horizontal ? "center" : "flex-start",
-              paddingVertical: 12,
+              paddingVertical: horizontal ? 14 : 12,
               paddingHorizontal: horizontal ? 12 : (iconOnly ? 12 : 16),
               borderRadius: 8,
               backgroundColor: pressed ? colors.accent : "transparent",

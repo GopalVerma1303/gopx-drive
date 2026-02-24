@@ -7,10 +7,11 @@ import { useTheme } from "@/contexts/theme-context";
 import { clearAppCache } from "@/lib/clear-cache";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQueryClient } from "@tanstack/react-query";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import { Archive, Eraser, FileText, Heart, ImageIcon, LogOut, Settings2, WandSparkles } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Linking,
@@ -21,6 +22,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const HOME_CLOCK_STORAGE_KEY = "@home_show_clock";
 
 export default function SettingsScreen() {
   const { colors } = useThemeColors();
@@ -33,6 +36,31 @@ export default function SettingsScreen() {
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [clearCacheDialogOpen, setClearCacheDialogOpen] = useState(false);
   const [clearingCache, setClearingCache] = useState(false);
+  const [showHomeClock, setShowHomeClock] = useState(true);
+
+  useEffect(() => {
+    const loadShowClock = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(HOME_CLOCK_STORAGE_KEY);
+        if (stored === "true" || stored === "false") {
+          setShowHomeClock(stored === "true");
+        }
+      } catch {
+        // ignore read errors, default stays true
+      }
+    };
+    loadShowClock();
+  }, []);
+
+  const toggleShowHomeClock = async () => {
+    const next = !showHomeClock;
+    setShowHomeClock(next);
+    try {
+      await AsyncStorage.setItem(HOME_CLOCK_STORAGE_KEY, next ? "true" : "false");
+    } catch {
+      // ignore write errors
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -210,6 +238,33 @@ export default function SettingsScreen() {
                 onCheckedChange={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   toggleTheme();
+                }}
+              />
+            </Pressable>
+            <View className="h-px w-full bg-border" />
+            <Pressable
+              className="flex flex-row justify-between items-center p-4 gap-12"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                toggleShowHomeClock();
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: colors.foreground,
+                    fontWeight: "500",
+                  }}
+                >
+                  Show Clock on Home
+                </Text>
+              </View>
+              <Switch
+                checked={showHomeClock}
+                onCheckedChange={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  toggleShowHomeClock();
                 }}
               />
             </Pressable>

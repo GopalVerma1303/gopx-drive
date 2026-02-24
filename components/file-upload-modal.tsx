@@ -135,14 +135,8 @@ export function FileUploadModal({
 
   const content = (
     <View
+      className="w-full max-w-[480px] rounded-xl border border-border bg-muted p-6 shadow-lg"
       style={{
-        width: "100%",
-        maxWidth: 400,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.muted,
-        padding: 24,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
@@ -150,100 +144,52 @@ export function FileUploadModal({
         elevation: 2,
       }}
     >
-      <Text
-        style={{
-          fontSize: 20,
-          fontWeight: "600",
-          color: colors.foreground,
-          marginBottom: 20,
-        }}
-      >
+      <Text className="mb-5 text-lg font-semibold text-foreground">
         {title}
       </Text>
 
-      <View style={{ marginBottom: 16 }}>
-        <Text
-          style={{
-            fontSize: 14,
-            fontWeight: "500",
-            color: colors.foreground,
-            marginBottom: 8,
-          }}
-        >
-          File name
-        </Text>
+      <View className="mb-4">
+        <Text className="mb-2 text-sm font-medium text-foreground">File name</Text>
         <Input
+          className="border-border bg-background text-foreground"
           value={fileNameInput}
           onChangeText={setFileNameInput}
           placeholder="Enter a name for this file"
           placeholderTextColor={colors.mutedForeground}
           editable={!!pickedFile}
-          style={{
-            borderColor: colors.border,
-            backgroundColor: colors.background,
-            color: colors.foreground,
-          }}
         />
       </View>
 
       <Pressable
         onPress={handleSelectFile}
+        className="mb-5 flex-row items-center justify-center rounded-xl border border-dashed border-border bg-background px-5 py-4"
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          paddingVertical: 16,
-          paddingHorizontal: 20,
-          borderRadius: 10,
-          borderWidth: 1,
           borderStyle: "dashed",
-          borderColor: colors.border,
-          backgroundColor: colors.background,
-          marginBottom: 20,
         }}
       >
         <FileUp color={colors.mutedForeground} size={20} style={{ marginRight: 8 }} />
-        <Text style={{ fontSize: 15, color: colors.mutedForeground }}>
+        <Text className="text-sm text-muted-foreground">
           {pickedFile ? pickedFile.name : "Select file"}
         </Text>
       </Pressable>
 
       {error ? (
-        <Text
-          style={{
-            fontSize: 13,
-            color: colors.destructive,
-            marginBottom: 12,
-          }}
-        >
-          {error}
-        </Text>
+        <Text className="mb-3 text-xs text-destructive">{error}</Text>
       ) : null}
 
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          gap: 12,
-        }}
-      >
-        <Pressable onPress={handleClose} style={{ paddingVertical: 10, paddingHorizontal: 16 }}>
-          <Text style={{ fontSize: 16, color: colors.foreground }}>Cancel</Text>
+      <View className="flex-row items-center justify-end gap-3">
+        <Pressable onPress={handleClose} className="px-4 py-2">
+          <Text className="text-base text-foreground">Cancel</Text>
         </Pressable>
         <Pressable
           onPress={handleUpload}
           disabled={uploading || !pickedFile}
-          style={{
-            paddingVertical: 10,
-            paddingHorizontal: 16,
-            borderRadius: 8,
-          }}
+          className="rounded-lg px-4 py-2"
         >
           {uploading ? (
             <ActivityIndicator size="small" color="#3b82f6" />
           ) : (
-            <Text style={{ fontSize: 16, fontWeight: "600", color: "#3b82f6" }}>Upload</Text>
+            <Text className="text-base font-semibold text-blue-500">Upload</Text>
           )}
         </Pressable>
       </View>
@@ -253,21 +199,16 @@ export function FileUploadModal({
   if (Platform.OS === "web") {
     return (
       <View
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 50,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "rgba(0,0,0,0.5)",
-          padding: 16,
-        }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       >
         <Pressable
-          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+          className="absolute inset-0"
           onPress={handleClose}
         />
-        <Pressable style={{ width: "100%", maxWidth: 400 }} onPress={(e) => e.stopPropagation()}>
+        <Pressable
+          className="w-full max-w-[480px]"
+          onPress={(e) => e.stopPropagation()}
+        >
           {content}
         </Pressable>
       </View>
@@ -285,10 +226,18 @@ export function FileUploadModal({
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={0}
-      >
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)", padding: 16 }}>
-          <Pressable style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }} onPress={handleClose} />
-          <Pressable onPress={(e) => e.stopPropagation()}>{content}</Pressable>
+      > 
+        <View className="flex-1 items-center justify-center bg-black/50 p-4">
+          <Pressable
+            className="absolute inset-0"
+            onPress={handleClose}
+          />
+          <Pressable
+            className="w-full max-w-[480px]"
+            onPress={(e) => e.stopPropagation()}
+          >
+            {content}
+          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </Modal>

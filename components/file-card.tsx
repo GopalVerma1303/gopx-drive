@@ -165,10 +165,11 @@ export function FileListCard({
   formatFileSize: formatFileSizeProp,
   cardWidth,
 }: FileListCardProps) {
-  const { colors, isDark } = useThemeColors();
+  const { colors } = useThemeColors();
   const scale = new Animated.Value(1);
-  const iconBg = isDark ? colors.foreground : undefined;
-  const iconText = isDark ? colors.background : undefined;
+  // Softer icon bg (muted) so contrast isn’t too strong; text stays readable with foreground
+  const iconBg = colors.foreground + "90";
+  const iconText = colors.background;
 
   const handlePressIn = () => {
     Animated.spring(scale, {
@@ -217,7 +218,7 @@ export function FileListCard({
             style={{
               width: iconSize,
               height: iconSize,
-              backgroundColor: iconBg ?? colors.background,
+              backgroundColor: iconBg,
             }}
           >
             <View
@@ -243,7 +244,7 @@ export function FileListCard({
             >
               <Text
                 className="text-[8px] font-semibold"
-                style={{ color: iconText ?? colors.foreground }}
+                style={{ color: iconText }}
                 numberOfLines={1}
               >
                 {file.extension.toUpperCase().slice(0, 3)}
@@ -251,7 +252,7 @@ export function FileListCard({
               <View className="mt-auto">
                 <Text
                   className="text-[6px] opacity-70"
-                  style={{ color: iconText ?? colors.mutedForeground }}
+                  style={{ color: iconText }}
                 >
                   {formatFileSizeProp(file.file_size)}
                 </Text>

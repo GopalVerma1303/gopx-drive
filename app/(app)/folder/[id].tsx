@@ -2,13 +2,9 @@
 
 import { FileCard, FileListCard, formatFileSize } from "@/components/file-card";
 import { FileUploadModal } from "@/components/file-upload-modal";
+import { LongPressOptionsModal } from "@/components/long-press-options-modal";
+import { MoveToFolderModal } from "@/components/move-to-folder-modal";
 import { NoteCard } from "@/components/note-card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
@@ -24,19 +20,17 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, ChevronDown, FileText, Files, Folder, LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
+import { ArrowLeft, FileText, Files, Folder, LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
   Linking,
-  Modal,
   Platform,
   Pressable,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -117,7 +111,6 @@ export default function FolderDetailScreen() {
   >(null);
   const [moveModalOpen, setMoveModalOpen] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [dropdownTriggerWidth, setDropdownTriggerWidth] = useState(0);
   const [notesViewMode, setNotesViewMode] = useState<"grid" | "list">("list");
   const [filesViewMode, setFilesViewMode] = useState<"grid" | "list">("list");
   const [areViewModesLoaded, setAreViewModesLoaded] = useState(false);
@@ -321,7 +314,6 @@ export default function FolderDetailScreen() {
     setMoveModalOpen(false);
     setSelectedItem(null);
     setSelectedFolderId(null);
-    setDropdownTriggerWidth(0);
   };
 
   const onRefresh = async () => {
@@ -672,311 +664,32 @@ export default function FolderDetailScreen() {
         </Tabs>
       </View>
 
-      {/* Long-press options modal for notes/files (iOS-style) */}
-      {Platform.OS === "web" ? (
-        optionsModalOpen && selectedItem && (
-          <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <Pressable
-              className="absolute inset-0"
-              onPress={closeOptionsModal}
-            />
-            <View className="w-full max-w-[280px] items-center">
-              <View className="mb-3 w-full rounded-xl border border-border bg-muted px-4 py-3 shadow-sm">
-                <Text className="text-center text-sm font-medium text-muted-foreground" numberOfLines={1}>
-                  {selectedItem.type === "note"
-                    ? selectedItem.item.title || "Untitled"
-                    : selectedItem.item.name}
-                </Text>
-              </View>
-              <View className="w-full overflow-hidden rounded-xl border border-border bg-muted shadow-sm">
-                <Pressable
-                  className="items-center justify-center border-b border-border py-3.5 active:bg-accent"
-                  onPress={openMoveModal}
-                >
-                  <Text className="text-base font-medium text-blue-500">Move to</Text>
-                </Pressable>
-                <Pressable
-                  className="items-center justify-center py-3.5 active:bg-accent"
-                  onPress={handleArchiveFromOptions}
-                >
-                  <Text className="text-base font-semibold text-red-500">Archive</Text>
-                </Pressable>
-              </View>
-              <Pressable
-                className="mt-2 w-full items-center justify-center rounded-xl border border-border bg-muted py-3.5 shadow-sm active:bg-accent"
-                onPress={closeOptionsModal}
-              >
-                <Text className="text-base font-semibold text-foreground">Cancel</Text>
-              </Pressable>
-            </View>
-          </View>
-        )
-      ) : (
-        <Modal
-          visible={optionsModalOpen}
-          transparent
-          animationType="fade"
-          onRequestClose={closeOptionsModal}
-        >
-          <View
-            style={{
-              flex: 1,
-              justifyContent: "center",
-              alignItems: "center",
-              backgroundColor: "rgba(0,0,0,0.4)",
-              padding: 24,
-            }}
-          >
-            <Pressable
-              style={StyleSheet.absoluteFillObject}
-              onPress={closeOptionsModal}
-            />
-            <View style={{ width: "100%", maxWidth: 280, alignItems: "center" }}>
-              <View
-                style={{
-                  width: "100%",
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  backgroundColor: colors.muted,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  marginBottom: 12,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 2,
-                  elevation: 1,
-                }}
-              >
-                <Text
-                  style={{
-                    textAlign: "center",
-                    fontSize: 14,
-                    fontWeight: "500",
-                    color: colors.mutedForeground,
-                  }}
-                  numberOfLines={1}
-                >
-                  {selectedItem?.type === "note"
-                    ? selectedItem.item.title || "Untitled"
-                    : selectedItem?.item.name}
-                </Text>
-              </View>
-              <View
-                style={{
-                  width: "100%",
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  backgroundColor: colors.muted,
-                  overflow: "hidden",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 2,
-                  elevation: 1,
-                }}
-              >
-                <Pressable
-                  style={{
-                    width: "100%",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    paddingVertical: 14,
-                    borderBottomWidth: 1,
-                    borderBottomColor: colors.border,
-                  }}
-                  onPress={openMoveModal}
-                >
-                  <Text style={{ fontSize: 16, fontWeight: "500", color: "#3b82f6" }}>Move to</Text>
-                </Pressable>
-                <Pressable
-                  style={{
-                    width: "100%",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    paddingVertical: 14,
-                  }}
-                  onPress={handleArchiveFromOptions}
-                >
-                  <Text style={{ fontSize: 16, fontWeight: "600", color: colors.destructive }}>Archive</Text>
-                </Pressable>
-              </View>
-              <Pressable
-                style={{
-                  width: "100%",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginTop: 8,
-                  paddingVertical: 14,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  backgroundColor: colors.muted,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 2,
-                  elevation: 1,
-                }}
-                onPress={closeOptionsModal}
-              >
-                <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground }}>Cancel</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
-      )}
+      <LongPressOptionsModal
+        visible={optionsModalOpen}
+        onClose={closeOptionsModal}
+        title={
+          selectedItem?.type === "note"
+            ? selectedItem.item.title || "Untitled"
+            : selectedItem?.item.name ?? "Item"
+        }
+        onMove={openMoveModal}
+        onArchive={handleArchiveFromOptions}
+      />
 
-      {/* Move to folder modal for notes/files */}
-      {Platform.OS === "web" ? (
-        moveModalOpen && selectedItem && (
-          <View className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-            <Pressable className="absolute inset-0" onPress={closeMoveModal} />
-            <View className="w-full max-w-md rounded-lg border border-border bg-muted p-6 shadow-lg">
-              <Text className="mb-2 text-lg font-semibold text-foreground">
-                Move to
-              </Text>
-              <Text className="mb-4 text-sm text-muted-foreground">
-                Choose a folder for "
-                {selectedItem.type === "note"
-                  ? selectedItem.item.title || "Untitled"
-                  : selectedItem.item.name}
-                "
-              </Text>
-              <View
-                className="mb-6 w-full"
-                onLayout={(e) => setDropdownTriggerWidth(e.nativeEvent.layout.width)}
-              >
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Pressable className="w-full flex-row items-center justify-between rounded-md border border-border bg-background px-3 py-2.5">
-                      <Text className="text-sm text-foreground">
-                        {selectedFolderId == null
-                          ? "No folder"
-                          : folders.find((f) => f.id === selectedFolderId)?.name ?? "Select folder"}
-                      </Text>
-                      <ChevronDown color={colors.mutedForeground} size={16} />
-                    </Pressable>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    style={dropdownTriggerWidth > 0 ? { width: dropdownTriggerWidth } : undefined}
-                  >
-                    <DropdownMenuItem onPress={() => setSelectedFolderId(null)}>
-                      <Text className="text-foreground">No folder</Text>
-                    </DropdownMenuItem>
-                    {folders.map((folder) => (
-                      <DropdownMenuItem
-                        key={folder.id}
-                        onPress={() => setSelectedFolderId(folder.id)}
-                      >
-                        <Text className="text-foreground">{folder.name}</Text>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </View>
-              <View className="flex-row justify-end gap-3">
-                <Pressable className="px-4 py-2" onPress={closeMoveModal}>
-                  <Text className="text-foreground">Cancel</Text>
-                </Pressable>
-                <Pressable
-                  className="rounded-md px-4 py-2"
-                  onPress={handleMoveConfirm}
-                  disabled={moveNoteMutation.isPending || moveFileMutation.isPending}
-                >
-                  <Text className="font-semibold text-blue-500">
-                    {moveNoteMutation.isPending || moveFileMutation.isPending ? "Moving…" : "Move"}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        )
-      ) : (
-        <Modal
-          visible={moveModalOpen}
-          transparent
-          animationType="fade"
-          onRequestClose={closeMoveModal}
-        >
-          <View className="flex-1 items-center justify-center bg-black/50 p-4">
-            <Pressable className="absolute inset-0" onPress={closeMoveModal} />
-            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
-              <Text className="mb-2 text-lg font-semibold text-foreground">
-                Move to
-              </Text>
-              <Text className="mb-4 text-sm text-muted-foreground">
-                Choose a folder for "
-                {selectedItem?.type === "note"
-                  ? selectedItem.item.title || "Untitled"
-                  : selectedItem?.item.name}
-                "
-              </Text>
-              <View
-                style={{ marginBottom: 24, width: "100%" }}
-                onLayout={(e) => setDropdownTriggerWidth(e.nativeEvent.layout.width)}
-              >
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Pressable
-                      style={{
-                        width: "100%",
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        borderRadius: 6,
-                        borderWidth: 1,
-                        borderColor: colors.border,
-                        backgroundColor: colors.background,
-                        paddingHorizontal: 12,
-                        paddingVertical: 10,
-                      }}
-                    >
-                      <Text style={{ fontSize: 14, color: colors.foreground }}>
-                        {selectedFolderId == null
-                          ? "No folder"
-                          : folders.find((f) => f.id === selectedFolderId)?.name ?? "Select folder"}
-                      </Text>
-                      <ChevronDown color={colors.mutedForeground} size={16} />
-                    </Pressable>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    style={dropdownTriggerWidth > 0 ? { width: dropdownTriggerWidth } : undefined}
-                  >
-                    <DropdownMenuItem onPress={() => setSelectedFolderId(null)}>
-                      <Text style={{ color: colors.foreground }}>No folder</Text>
-                    </DropdownMenuItem>
-                    {folders.map((folder) => (
-                      <DropdownMenuItem
-                        key={folder.id}
-                        onPress={() => setSelectedFolderId(folder.id)}
-                      >
-                        <Text style={{ color: colors.foreground }}>{folder.name}</Text>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </View>
-              <View className="flex-row justify-end gap-3">
-                <Pressable className="px-4 py-2" onPress={closeMoveModal}>
-                  <Text className="text-foreground">Cancel</Text>
-                </Pressable>
-                <Pressable
-                  className="rounded-md px-4 py-2"
-                  onPress={handleMoveConfirm}
-                  disabled={moveNoteMutation.isPending || moveFileMutation.isPending}
-                >
-                  <Text style={{ fontWeight: "600", color: "#3b82f6" }}>
-                    {moveNoteMutation.isPending || moveFileMutation.isPending ? "Moving…" : "Move"}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
+      <MoveToFolderModal
+        visible={moveModalOpen}
+        onClose={closeMoveModal}
+        itemName={
+          selectedItem?.type === "note"
+            ? selectedItem.item.title || "Untitled"
+            : selectedItem?.item.name ?? "Item"
+        }
+        selectedFolderId={selectedFolderId}
+        onSelectFolder={setSelectedFolderId}
+        folders={folders}
+        onMoveConfirm={handleMoveConfirm}
+        isPending={moveNoteMutation.isPending || moveFileMutation.isPending}
+      />
     </View>
   );
 }
