@@ -18,12 +18,13 @@ import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
 import { getTodaysAndTomorrowsEvents } from "@/lib/calendar-utils";
 import { createEvent, listEvents } from "@/lib/events";
-import { archiveFile, getFileDownloadUrl, listFiles, updateFile, uploadFile } from "@/lib/files";
+import { archiveFile, listFiles, updateFile, uploadFile } from "@/lib/files";
 import { listFolders } from "@/lib/folders";
 import { archiveNote, getUnsyncedNoteIds, listNotes, updateNote } from "@/lib/notes";
 import { invalidateEventsQueries, invalidateFilesQueries, invalidateFoldersQueries, invalidateNotesListQueries } from "@/lib/query-utils";
 import type { File as FileRecord, Note } from "@/lib/supabase";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import { useFilePreview } from "@/lib/use-file-preview";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
@@ -35,8 +36,6 @@ import {
   Alert,
   Dimensions,
   Image,
-  Linking,
-  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -44,11 +43,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const WebView =
-  Platform.OS === "web"
-    ? null
-    : require("react-native-webview").WebView;
 
 const containerPadding = 16;
 const sectionGap = 24;
@@ -211,40 +205,7 @@ export default function HomeScreen() {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
-  const getPreviewUrlForWebView = (rawUrl: string, fileName: string): string => {
-    const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
-    const viewableDocs = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"];
-    if (viewableDocs.includes(ext)) {
-      return `https://docs.google.com/gview?url=${encodeURIComponent(rawUrl)}&embedded=false`;
-    }
-    return rawUrl;
-  };
-
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewRawUrl, setPreviewRawUrl] = useState<string | null>(null);
-  const [previewFileName, setPreviewFileName] = useState<string | null>(null);
-
-  const handleFilePress = async (file: FileRecord) => {
-    try {
-      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      const downloadUrl = await getFileDownloadUrl(file.file_path);
-      if (Platform.OS === "web") {
-        if (typeof window !== "undefined") window.open(downloadUrl, "_blank");
-      } else {
-        setPreviewFileName(file.name);
-        setPreviewRawUrl(downloadUrl);
-        setPreviewUrl(getPreviewUrlForWebView(downloadUrl, file.name));
-      }
-    } catch (error: unknown) {
-      Alert.alert("Error", error instanceof Error ? error.message : "Failed to open file");
-    }
-  };
-
-  const closePreview = () => {
-    setPreviewUrl(null);
-    setPreviewRawUrl(null);
-    setPreviewFileName(null);
-  };
+  const { handleFilePress, PreviewModal } = useFilePreview();
 
   const handleUploadFromModal = async (params: {
     file: { uri: string | globalThis.File; name: string; type: string; size: number };
@@ -828,44 +789,7 @@ export default function HomeScreen() {
         isPending={moveNoteMutation.isPending || moveFileMutation.isPending}
       />
 
-      {/* File preview (native WebView) */}
-      {Platform.OS !== "web" && WebView && previewUrl && previewFileName && (
-        <Modal visible={!!previewUrl} animationType="slide" onRequestClose={closePreview}>
-          <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: colors.background }}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingHorizontal: 8,
-                paddingVertical: 12,
-                borderBottomWidth: 1,
-                borderBottomColor: colors.border,
-              }}
-            >
-              <Text
-                style={{ fontSize: 16, fontWeight: "600", color: colors.foreground }}
-                numberOfLines={1}
-              >
-                {previewFileName}
-              </Text>
-              <Pressable onPress={closePreview} style={{ padding: 8 }}>
-                <Text style={{ fontSize: 16, fontWeight: "600", color: colors.primary }}>Done</Text>
-              </Pressable>
-            </View>
-            <WebView
-              source={{ uri: previewUrl }}
-              style={{ flex: 1 }}
-              onShouldStartLoadWithRequest={(req: { url: string }) => {
-                if (req.url && req.url.startsWith("https://docs.google.com/gview")) return true;
-                if (previewRawUrl && req.url === previewRawUrl) return true;
-                Linking.openURL(req.url);
-                return false;
-              }}
-            />
-          </View>
-        </Modal>
-      )}
+      {PreviewModal}
     </View>
   );
 }

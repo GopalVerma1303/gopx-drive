@@ -7,23 +7,23 @@ import { MoveToFolderModal } from "@/components/move-to-folder-modal";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
-import { archiveFile, getFileDownloadUrl, listFiles, updateFile, uploadFile } from "@/lib/files";
+import { archiveFile, listFiles, updateFile, uploadFile } from "@/lib/files";
 import { listFolders } from "@/lib/folders";
 import { invalidateFilesQueries, invalidateFoldersQueries } from "@/lib/query-utils";
 import type { File as FileRecord } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import { useFilePreview } from "@/lib/use-file-preview";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack } from "expo-router";
-import { ExternalLink, LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
+import { LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Linking,
   Modal,
   Platform,
   Pressable,
@@ -32,12 +32,6 @@ import {
   View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-// WebView is native-only; avoid importing on web to prevent native-module errors
-const WebView =
-  Platform.OS === "web"
-    ? null
-    : require("react-native-webview").WebView;
 
 const FILES_VIEW_MODE_STORAGE_KEY = "@files_view_mode";
 
@@ -139,11 +133,7 @@ export default function FilesScreen() {
   const [fileToAction, setFileToAction] = useState<FileRecord | null>(null);
   const [moveModalOpen, setMoveModalOpen] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  /** In-app preview URL (native only). When set, a modal WebView is shown instead of opening the browser. */
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  /** Original Supabase bucket URL; used for "open in browser" redirect (not Google viewer). */
-  const [previewRawUrl, setPreviewRawUrl] = useState<string | null>(null);
-  const [previewFileName, setPreviewFileName] = useState<string | null>(null);
+  const { handleFilePress, PreviewModal } = useFilePreview();
 
   const archiveMutation = useMutation({
     mutationFn: (id: string) => archiveFile(id),
@@ -221,47 +211,6 @@ export default function FilesScreen() {
     setMoveModalOpen(false);
     setSelectedFile(null);
     setSelectedFolderId(null);
-  };
-
-  /** On mobile WebView, use a viewer URL for PDFs (and similar) so content displays inline instead of downloading.
-   *  Use embedded=false so the full Google Docs viewer UI is shown (Add to Drive, Print, Share, menu). */
-  const getPreviewUrlForWebView = (rawUrl: string, fileName: string): string => {
-    const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
-    const viewableDocs = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"];
-    if (viewableDocs.includes(ext)) {
-      return `https://docs.google.com/gview?url=${encodeURIComponent(rawUrl)}&embedded=false`;
-    }
-    return rawUrl;
-  };
-
-  const handleFilePress = async (file: FileRecord) => {
-    try {
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
-
-      const downloadUrl = await getFileDownloadUrl(file.file_path);
-
-      if (Platform.OS === "web") {
-        // For web, open in new tab (browser)
-        if (typeof window !== "undefined") {
-          window.open(downloadUrl, "_blank");
-        }
-      } else {
-        // For native (iOS/Android), open in-app WebView with a viewer URL when needed so content previews instead of downloading
-        setPreviewFileName(file.name);
-        setPreviewRawUrl(downloadUrl);
-        setPreviewUrl(getPreviewUrlForWebView(downloadUrl, file.name));
-      }
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to open file");
-    }
-  };
-
-  const closePreview = () => {
-    setPreviewUrl(null);
-    setPreviewRawUrl(null);
-    setPreviewFileName(null);
   };
 
   const handleArchiveConfirm = () => {
@@ -635,91 +584,7 @@ export default function FilesScreen() {
         </Modal>
       )}
 
-      {/* In-app WebView preview (native only; web keeps opening in browser tab) */}
-      {Platform.OS !== "web" && previewUrl !== null && (
-        <Modal
-          visible={true}
-          animationType="slide"
-          presentationStyle="fullScreen"
-          onRequestClose={closePreview}
-        >
-          <View className="flex-1 bg-background">
-            {/* Header — same paddings and layout as share/[token].tsx */}
-            <View
-              style={{
-                width: "100%",
-                paddingTop: insets.top,
-                backgroundColor: colors.background,
-                borderBottomWidth: 1,
-                borderBottomColor: colors.border,
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  height: 56,
-                  paddingHorizontal: 6,
-                }}
-              >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    flex: 1,
-                    minWidth: 0,
-                    paddingLeft: 8,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 18,
-                      color: colors.foreground,
-                      flex: 1,
-                    }}
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                  >
-                    {previewFileName ?? "Preview"}
-                  </Text>
-                </View>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 16,
-                    marginLeft: 16,
-                    paddingRight: 8,
-                  }}
-                >
-                  <Pressable
-                    onPress={() => {
-                      const url = previewRawUrl ?? previewUrl;
-                      if (url) Linking.openURL(url);
-                    }}
-                    style={{ paddingVertical: 8 }}
-                  >
-                    <ExternalLink color={colors.foreground} size={22} />
-                  </Pressable>
-                  <Pressable onPress={closePreview} style={{ paddingVertical: 8 }}>
-                    <X color={colors.foreground} size={24} />
-                  </Pressable>
-                </View>
-              </View>
-            </View>
-            {WebView ? (
-              <WebView
-                source={{ uri: previewUrl }}
-                style={{ flex: 1 }}
-                onError={() => {
-                  Alert.alert("Error", "Failed to load preview");
-                  closePreview();
-                }}
-              />
-            ) : null}
-          </View>
-        </Modal>
-      )}
+      {PreviewModal}
     </View>
   );
 }

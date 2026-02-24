@@ -9,13 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
-import { archiveFile, getFileDownloadUrl, listFilesByFolder, updateFile, uploadFile } from "@/lib/files";
+import { archiveFile, listFilesByFolder, updateFile, uploadFile } from "@/lib/files";
 import { getFolderById, listFolders } from "@/lib/folders";
 import { archiveNote, getUnsyncedNoteIds, listNotesByFolder, updateNote } from "@/lib/notes";
 import { invalidateFilesQueries, invalidateFoldersQueries, invalidateNotesListQueries } from "@/lib/query-utils";
 import type { File as FileRecord, Note } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import { useFilePreview } from "@/lib/use-file-preview";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
@@ -24,9 +25,7 @@ import { ArrowLeft, FileText, Files, Folder, LayoutGrid, Plus, Rows2, Search, X 
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
-  Linking,
   Platform,
   Pressable,
   RefreshControl,
@@ -48,6 +47,7 @@ export default function FolderDetailScreen() {
   const queryClient = useQueryClient();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
+  const { handleFilePress, PreviewModal } = useFilePreview();
   const [activeTab, setActiveTab] = useState<"notes" | "files">("notes");
   const [searchQuery, setSearchQuery] = useState("");
   const [screenWidth, setScreenWidth] = useState(() => {
@@ -252,20 +252,6 @@ export default function FolderDetailScreen() {
     }
     setSelectedItem({ type: "note", item: note });
     setOptionsModalOpen(true);
-  };
-
-  const handleFilePress = async (file: FileRecord) => {
-    try {
-      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      const downloadUrl = await getFileDownloadUrl(file.file_path);
-      if (Platform.OS === "web" && typeof window !== "undefined") {
-        window.open(downloadUrl, "_blank");
-      } else {
-        await Linking.openURL(downloadUrl);
-      }
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to open file");
-    }
   };
 
   const handleFileLongPress = (file: FileRecord) => {
@@ -690,6 +676,8 @@ export default function FolderDetailScreen() {
         onMoveConfirm={handleMoveConfirm}
         isPending={moveNoteMutation.isPending || moveFileMutation.isPending}
       />
+
+      {PreviewModal}
     </View>
   );
 }
