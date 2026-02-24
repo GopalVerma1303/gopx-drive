@@ -316,12 +316,13 @@ export default function AttachmentsScreen() {
               {(() => {
                 const maxWidth = 672;
                 const containerPadding = 16;
-                const gap = 8; // grid: keep 8 so cards aren’t too far apart
+                const columnGap = 6; // horizontal gap between columns
+                const rowGap = 12; // vertical gap between cards
                 const availableWidth =
                   Math.min(screenWidth, maxWidth) - containerPadding * 2;
                 const cardWidth =
-                  (availableWidth - gap * (columns - 1)) / columns;
-                const totalWidth = cardWidth * columns + gap * (columns - 1);
+                  (availableWidth - columnGap * (columns - 1)) / columns;
+                const totalWidth = cardWidth * columns + columnGap * (columns - 1);
                 return (
                   <View
                     style={{
@@ -334,8 +335,8 @@ export default function AttachmentsScreen() {
                   >
                     {filteredAttachments.map((item, index) => {
                       const marginRight =
-                        index % columns < columns - 1 ? gap : 0;
-                      const marginBottom = gap;
+                        index % columns < columns - 1 ? columnGap : 0;
+                      const marginBottom = rowGap;
                       return (
                         <View
                           key={item.path}
@@ -364,7 +365,7 @@ export default function AttachmentsScreen() {
               {(() => {
                 const maxWidth = 672;
                 const containerPadding = 16;
-                const listGap = 16; // match notes card gap
+                const listGap = 12; // match notes card gap
                 const availableWidth =
                   Math.min(screenWidth, maxWidth) - containerPadding * 2;
                 const cardWidth = availableWidth;

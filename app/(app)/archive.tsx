@@ -563,7 +563,7 @@ export default function ArchiveScreen() {
                     {(() => {
                       const maxWidth = 672;
                       const containerPadding = 16;
-                      const gap = 16;
+                      const gap = 12;
                       const availableWidth =
                         Math.min(screenWidth, maxWidth) - containerPadding * 2;
                       const cardWidth = availableWidth;
@@ -639,7 +639,7 @@ export default function ArchiveScreen() {
                     {(() => {
                       const maxWidth = 672;
                       const containerPadding = 16;
-                      const gap = 16; // match notes card gap
+                      const gap = 12; // match notes card gap
                       const availableWidth =
                         Math.min(screenWidth, maxWidth) - containerPadding * 2;
                       const cardWidth = availableWidth;

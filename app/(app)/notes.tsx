@@ -359,10 +359,11 @@ export default function NotesScreen() {
                   // Calculate card width
                   const maxWidth = 672; // max-w-2xl
                   const containerPadding = 16; // p-4 = 16px
-                  const gap = 16; // gap between cards and columns
+                  const columnGap = 12; // horizontal gap between columns
+                  const rowGap = 12; // vertical gap between cards
                   const availableWidth = Math.min(screenWidth, maxWidth) - containerPadding * 2;
                   // Calculate card width accounting for gap between columns
-                  const cardWidth = (availableWidth - gap * (columns - 1)) / columns;
+                  const cardWidth = (availableWidth - columnGap * (columns - 1)) / columns;
 
                   // Distribute notes into columns for masonry layout
                   const columnHeights = new Array(columns).fill(0);
@@ -387,12 +388,12 @@ export default function NotesScreen() {
                     // A4 paper aspect ratio: height/width = 297/210 ≈ 1.414
                     const a4MaxHeight = cardWidth * 1.414;
                     const calculatedHeight = titleHeight + contentHeight + dateHeight + padding + 8;
-                    const estimatedHeight = Math.min(calculatedHeight, a4MaxHeight) + gap;
+                    const estimatedHeight = Math.min(calculatedHeight, a4MaxHeight) + rowGap;
                     columnHeights[shortestColumnIndex] += estimatedHeight;
                   });
 
                   // Calculate total width needed for columns
-                  const totalWidth = cardWidth * columns + gap * (columns - 1);
+                  const totalWidth = cardWidth * columns + columnGap * (columns - 1);
 
                   return (
                     <View
@@ -408,14 +409,14 @@ export default function NotesScreen() {
                           key={columnIndex}
                           style={{
                             width: cardWidth,
-                            marginRight: columnIndex < columns - 1 ? gap : 0,
+                            marginRight: columnIndex < columns - 1 ? columnGap : 0,
                           }}
                         >
                           {columnNotes.map((note, noteIndex) => (
                             <View
                               key={note.id}
                               style={{
-                                marginBottom: noteIndex < columnNotes.length - 1 ? gap : 0,
+                                marginBottom: noteIndex < columnNotes.length - 1 ? rowGap : 0,
                               }}
                             >
                               <NoteCard
@@ -444,7 +445,7 @@ export default function NotesScreen() {
                   // List view: full width cards
                   const maxWidth = 672; // max-w-2xl
                   const containerPadding = 16; // p-4 = 16px
-                  const gap = 16; // gap between cards
+                  const gap = 12; // gap between cards
                   const availableWidth = Math.min(screenWidth, maxWidth) - containerPadding * 2;
                   const cardWidth = availableWidth;
 

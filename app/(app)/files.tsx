@@ -419,13 +419,14 @@ export default function FilesScreen() {
                   // max-w-2xl is 672px
                   const maxWidth = 672; // max-w-2xl
                   const containerPadding = 16; // p-4 = 16px
-                  const gap = 8; // grid: keep 8 so cards aren’t too far apart
+                  const columnGap = 6; // horizontal gap between columns
+                  const rowGap = 12; // vertical gap between cards
                   const availableWidth = Math.min(screenWidth, maxWidth) - containerPadding * 2;
                   // Calculate width to fill evenly: (availableWidth - gaps) / columns
-                  const cardWidth = (availableWidth - gap * (columns - 1)) / columns;
+                  const cardWidth = (availableWidth - columnGap * (columns - 1)) / columns;
 
                   // Calculate total width needed for grid
-                  const totalWidth = cardWidth * columns + gap * (columns - 1);
+                  const totalWidth = cardWidth * columns + columnGap * (columns - 1);
 
                   return (
                     <View
@@ -439,8 +440,8 @@ export default function FilesScreen() {
                     >
                       {filteredFiles.map((file: FileRecord, index: number) => {
                         // Calculate margins for grid spacing
-                        const marginRight = index % columns < columns - 1 ? gap : 0;
-                        const marginBottom = gap;
+                        const marginRight = index % columns < columns - 1 ? columnGap : 0;
+                        const marginBottom = rowGap;
 
                         return (
                           <View
@@ -476,7 +477,7 @@ export default function FilesScreen() {
                   // List view: full width row cards
                   const maxWidth = 672; // max-w-2xl
                   const containerPadding = 16; // p-4 = 16px
-                  const gap = 16; // gap between cards (match notes)
+                  const gap = 12; // gap between cards
                   const availableWidth = Math.min(screenWidth, maxWidth) - containerPadding * 2;
                   const cardWidth = availableWidth;
 
