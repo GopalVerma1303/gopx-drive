@@ -688,7 +688,7 @@ export default function FoldersScreen() {
                                   `/(app)/folder/${folder.id}?name=${encodeURIComponent(folder.name)}` as never
                                 );
                               }}
-                              onLongPress={() => openEditFolderModal(folder)}
+                              onDoubleTap={() => openEditFolderModal(folder)}
                             />
                           </View>
                         ))}
@@ -726,7 +726,7 @@ export default function FoldersScreen() {
                               `/(app)/folder/${folder.id}?name=${encodeURIComponent(folder.name)}` as never
                             );
                           }}
-                          onLongPress={() => openEditFolderModal(folder)}
+                          onDoubleTap={() => openEditFolderModal(folder)}
                         />
                       </View>
                     ))}

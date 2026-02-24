@@ -3,7 +3,7 @@
 import { useThemeColors } from "@/lib/use-theme-colors";
 import * as Haptics from "expo-haptics";
 import { usePathname, useRouter } from "expo-router";
-import { Calendar, FileText, Files, Folder, Menu, Settings } from "lucide-react-native";
+import { Calendar, FileText, Files, Folder, Home, Menu, Settings } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   Dimensions,
@@ -68,16 +68,31 @@ interface NavItem {
   label: string;
   icon: typeof FileText;
   href: string;
+  /** Extra path prefixes that make this item active (e.g. folder detail under Folders). */
+  activePathPrefixes?: string[];
 }
 
 const transicon = require("@/assets/images/transicon.png");
 
 const navItems: NavItem[] = [
-  { label: "Notes", icon: FileText, href: "/(app)/notes" },
+  { label: "Home", icon: Home, href: "/(app)/home" },
+  { label: "Notes", icon: FileText, href: "/(app)/notes", activePathPrefixes: ["/note/", "/(app)/note/"] },
   { label: "Files", icon: Files, href: "/(app)/files" },
-  { label: "Folders", icon: Folder, href: "/(app)/folders" },
+  { label: "Folders", icon: Folder, href: "/(app)/folders", activePathPrefixes: ["/folder/", "/(app)/folder/"] },
   { label: "Calendar", icon: Calendar, href: "/(app)/calendar" },
-  { label: "Settings", icon: Settings, href: "/(app)/settings" },
+  {
+    label: "Settings",
+    icon: Settings,
+    href: "/(app)/settings",
+    activePathPrefixes: [
+      "/settings/",
+      "/(app)/settings/",
+      "/(app)/archive",
+      "/(app)/toolbar-order",
+      "/archive",
+      "/toolbar-order",
+    ],
+  },
 ];
 
 export function Navigation({ isOpen, onClose }: NavigationProps) {
@@ -129,15 +144,14 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
 
         const currentSegment = getFinalSegment(pathname || "");
         const itemSegment = getFinalSegment(item.href);
+        const path = pathname || "";
 
-        // Check if active using multiple strategies
+        // Check if active: direct match, nested under href, or under a parent path prefix (e.g. /folder/xyz -> Folders)
         const isActive =
-          // Direct pathname match
-          pathname === item.href ||
-          // Pathname starts with href (for nested routes like /notes/123)
-          (pathname && pathname.startsWith(item.href + "/")) ||
-          // Final segment match (handles different path formats)
-          (currentSegment && itemSegment && currentSegment === itemSegment);
+          path === item.href ||
+          (path && path.startsWith(item.href + "/")) ||
+          (currentSegment && itemSegment && currentSegment === itemSegment) ||
+          (item.activePathPrefixes?.some((prefix) => path.startsWith(prefix)));
 
         return (
           <Pressable

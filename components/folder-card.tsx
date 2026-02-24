@@ -6,13 +6,17 @@ import { Text } from "@/components/ui/text";
 import type { Folder } from "@/lib/supabase";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { Folder as FolderIcon } from "lucide-react-native";
+import { useRef } from "react";
 import { Animated, Pressable, View } from "react-native";
+
+const DOUBLE_TAP_DELAY_MS = 280;
 
 export interface FolderCardProps {
   folder: Folder;
   cardWidth: number;
   onPress: () => void;
-  onLongPress?: () => void;
+  /** Fires on double-tap (replaces long-press). */
+  onDoubleTap?: () => void;
   variant?: "grid" | "list";
   /** When true (e.g. in archive), show checkbox and use onToggleSelect for press */
   isArchived?: boolean;
@@ -20,26 +24,11 @@ export interface FolderCardProps {
   onToggleSelect?: () => void;
 }
 
-function formatDate(dateString: string) {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
-
 export function FolderCard({
   folder,
   cardWidth,
   onPress,
-  onLongPress,
+  onDoubleTap,
   variant = "list",
   isArchived = false,
   isSelected = false,
@@ -47,6 +36,8 @@ export function FolderCard({
 }: FolderCardProps) {
   const { colors } = useThemeColors();
   const scale = new Animated.Value(1);
+  const lastTapTime = useRef(0);
+  const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handlePressIn = () => {
     Animated.spring(scale, {
@@ -73,6 +64,24 @@ export function FolderCard({
   const handlePress = () => {
     if (isArchived && onToggleSelect) {
       onToggleSelect();
+      return;
+    }
+    if (onDoubleTap) {
+      const now = Date.now();
+      if (now - lastTapTime.current < DOUBLE_TAP_DELAY_MS) {
+        if (singleTapTimer.current) {
+          clearTimeout(singleTapTimer.current);
+          singleTapTimer.current = null;
+        }
+        lastTapTime.current = 0;
+        onDoubleTap();
+        return;
+      }
+      lastTapTime.current = now;
+      singleTapTimer.current = setTimeout(() => {
+        singleTapTimer.current = null;
+        onPress();
+      }, DOUBLE_TAP_DELAY_MS);
     } else {
       onPress();
     }
@@ -82,10 +91,10 @@ export function FolderCard({
     variant === "grid" ? (
       <View className="items-center">
         <FolderIcon
-          color={colors.muted}
+          color={colors.ring}
           fill={colors.muted}
           size={gridIconSize}
-          strokeWidth={1}
+          strokeWidth={0.1}
         />
         <View className="items-center" style={{ width: cardWidth, marginTop: gridInfoMarginTop }}>
           <Text
@@ -98,16 +107,6 @@ export function FolderCard({
             ellipsizeMode="tail"
           >
             {folder.name || "Unnamed folder"}
-          </Text>
-          <Text
-            style={{
-              fontSize: 11,
-              color: colors.mutedForeground,
-              marginTop: 2,
-            }}
-            numberOfLines={1}
-          >
-            Updated {formatDate(folder.updated_at)}
           </Text>
         </View>
       </View>
@@ -130,8 +129,11 @@ export function FolderCard({
             minHeight: 44,
           }}
         >
-          {isArchived && (
-            <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} />
+          {isArchived && onToggleSelect && (
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() => onToggleSelect()}
+            />
           )}
           <FolderIcon
             color={colors.foreground}
@@ -161,15 +163,6 @@ export function FolderCard({
             >
               {folder.name || "Unnamed folder"}
             </Text>
-            <Text
-              style={{
-                fontSize: 12,
-                color: colors.mutedForeground,
-              }}
-              numberOfLines={1}
-            >
-              Updated {formatDate(folder.updated_at)}
-            </Text>
           </View>
         </View>
       </Card>
@@ -184,7 +177,6 @@ export function FolderCard({
   return (
     <Pressable
       onPress={handlePress}
-      onLongPress={isArchived ? undefined : onLongPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
     >

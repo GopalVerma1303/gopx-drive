@@ -1351,9 +1351,13 @@ interface EventCardProps {
   onEdit: () => void;
 }
 
+const EVENT_DOUBLE_TAP_DELAY_MS = 280;
+
 function EventCard({ event, onSelectDate, onEdit }: EventCardProps) {
   const { colors } = useThemeColors();
   const scale = new Animated.Value(1);
+  const lastTapTime = useRef(0);
+  const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handlePressIn = () => {
     Animated.spring(scale, {
@@ -1397,19 +1401,28 @@ function EventCard({ event, onSelectDate, onEdit }: EventCardProps) {
   }
 
   const handlePress = () => {
-    // Extract date from event and select it
-    const eventDateStr = event.instanceDate || event.event_date.split("T")[0];
-    onSelectDate(eventDateStr);
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const now = Date.now();
+    if (now - lastTapTime.current < EVENT_DOUBLE_TAP_DELAY_MS) {
+      if (singleTapTimer.current) {
+        clearTimeout(singleTapTimer.current);
+        singleTapTimer.current = null;
+      }
+      lastTapTime.current = 0;
+      onEdit();
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      return;
     }
-  };
-
-  const handleLongPress = () => {
-    onEdit();
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    lastTapTime.current = now;
+    singleTapTimer.current = setTimeout(() => {
+      singleTapTimer.current = null;
+      const eventDateStr = event.instanceDate || event.event_date.split("T")[0];
+      onSelectDate(eventDateStr);
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    }, EVENT_DOUBLE_TAP_DELAY_MS);
   };
 
   return (
@@ -1417,7 +1430,6 @@ function EventCard({ event, onSelectDate, onEdit }: EventCardProps) {
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      onLongPress={handleLongPress}
     >
       <Animated.View style={{ transform: [{ scale }] }}>
         <Card className="p-3 mb-3 rounded-xl bg-muted border border-border">

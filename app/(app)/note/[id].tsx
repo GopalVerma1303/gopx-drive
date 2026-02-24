@@ -16,7 +16,7 @@ import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
 import { generateAIContent } from "@/lib/ai-providers";
 import { listFolders } from "@/lib/folders";
-import { createNote, getNoteById, updateNote, syncNotesFromSupabase } from "@/lib/notes";
+import { createNote, getNoteById, syncNotesFromSupabase, updateNote } from "@/lib/notes";
 import { invalidateFoldersQueries, invalidateNotesListQueries } from "@/lib/query-utils";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

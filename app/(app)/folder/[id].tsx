@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
-import { archiveFile, getFileDownloadUrl, listFilesByFolder, uploadFile, updateFile } from "@/lib/files";
+import { archiveFile, getFileDownloadUrl, listFilesByFolder, updateFile, uploadFile } from "@/lib/files";
 import { getFolderById, listFolders } from "@/lib/folders";
 import { archiveNote, getUnsyncedNoteIds, listNotesByFolder, updateNote } from "@/lib/notes";
 import { invalidateFilesQueries, invalidateFoldersQueries, invalidateNotesListQueries } from "@/lib/query-utils";
@@ -350,7 +350,7 @@ export default function FolderDetailScreen() {
             paddingHorizontal: 6,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1, minWidth: 0 }}>
             <Pressable
               onPress={() => {
                 if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -365,6 +365,7 @@ export default function FolderDetailScreen() {
                 fontSize: 18,
                 fontWeight: "600",
                 color: colors.foreground,
+                flex: 1,
               }}
               numberOfLines={1}
             >
@@ -454,7 +455,7 @@ export default function FolderDetailScreen() {
                 <ActivityIndicator size="large" color={colors.foreground} />
               </View>
             ) : (
-            <ScrollView
+              <ScrollView
                 className="flex-1"
                 style={{ flex: 1 }}
                 contentContainerClassName="p-4 pb-32"
@@ -568,7 +569,7 @@ export default function FolderDetailScreen() {
                 <ActivityIndicator size="large" color={colors.foreground} />
               </View>
             ) : (
-            <ScrollView
+              <ScrollView
                 className="flex-1"
                 style={{ flex: 1 }}
                 contentContainerClassName="p-4 pb-32"
