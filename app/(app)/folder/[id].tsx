@@ -25,6 +25,7 @@ import { ArrowLeft, FileText, Files, Folder, LayoutGrid, Plus, Rows2, Search, X 
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Platform,
   Pressable,
@@ -115,6 +116,7 @@ export default function FolderDetailScreen() {
   const [filesViewMode, setFilesViewMode] = useState<"grid" | "list">("list");
   const [areViewModesLoaded, setAreViewModesLoaded] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [, setDropdownTriggerWidth] = useState(0);
 
   const archiveNoteMutation = useMutation({
     mutationFn: (noteId: string) => archiveNote(noteId),
