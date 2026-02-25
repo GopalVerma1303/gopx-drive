@@ -80,9 +80,15 @@ export default function FolderDetailScreen() {
 
   const { data: notesInFolder = [], isLoading: notesLoading, refetch: refetchNotes, isFetching: notesFetching } = useQuery({
     queryKey: ["folderNotes", id, user?.id],
-    queryFn: () => listNotesByFolder(user?.id, id),
+    queryFn: () => listNotesByFolder(user?.id, id ?? ""),
     enabled: !!user?.id && !!id,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes - match archive
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    placeholderData: (previousData) => previousData,
+    retry: false,
+    retryOnMount: false,
   });
 
   const { data: unsyncedNoteIds = [] } = useQuery({
@@ -93,9 +99,15 @@ export default function FolderDetailScreen() {
 
   const { data: filesInFolder = [], isLoading: filesLoading, refetch: refetchFiles, isFetching: filesFetching } = useQuery({
     queryKey: ["folderFiles", id, user?.id],
-    queryFn: () => listFilesByFolder(user?.id, id),
+    queryFn: () => listFilesByFolder(user?.id, id ?? ""),
     enabled: !!user?.id && !!id,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes - match archive
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    placeholderData: (previousData) => previousData,
+    retry: false,
+    retryOnMount: false,
   });
 
   const { data: folders = [] } = useQuery({
@@ -104,6 +116,8 @@ export default function FolderDetailScreen() {
     enabled: !!user?.id,
     staleTime: 2 * 60 * 1000,
   });
+
+  // No refetch on mount/focus — useQuery fetches when cache is empty; create/update uses setQueryData; move refetches only affected folders.
 
   const [optionsModalOpen, setOptionsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<

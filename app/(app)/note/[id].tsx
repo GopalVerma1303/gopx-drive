@@ -268,8 +268,29 @@ export default function NoteEditorScreen() {
         }
       });
 
-      // Only invalidate list/sync so they refetch; note detail cache already updated above
+      // Optimistically update folder notes cache when note belongs to a folder
+      // So returning to folder/id shows the updated note without manual refresh (same as notes page)
+      if (savedNote.folder_id && user?.id) {
+        const folderNotesKey = ["folderNotes", savedNote.folder_id, user.id];
+        queryClient.setQueryData<typeof savedNote[]>(folderNotesKey, (oldData) => {
+          if (!oldData) return [savedNote];
+          const existingIndex = oldData.findIndex((n) => n.id === savedNote.id);
+          if (existingIndex >= 0) {
+            const updated = [...oldData];
+            updated[existingIndex] = savedNote;
+            return updated.sort((a, b) =>
+              new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+            );
+          }
+          if (!savedNote.is_archived) {
+            return [savedNote, ...oldData];
+          }
+          return oldData;
+        });
+      }
+
       invalidateNotesListQueries(queryClient, user?.id);
+      invalidateFoldersQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     onError: (error: any) => {
@@ -281,15 +302,30 @@ export default function NoteEditorScreen() {
   });
 
   const moveNoteMutation = useMutation({
-    mutationFn: ({ noteId, folderId }: { noteId: string; folderId: string | null }) =>
-      updateNote(noteId, { folder_id: folderId }),
-    onSuccess: (_data, { noteId, folderId }) => {
+    mutationFn: ({
+      noteId,
+      folderId,
+    }: {
+      noteId: string;
+      folderId: string | null;
+      previousFolderId?: string | null;
+    }) => updateNote(noteId, { folder_id: folderId }),
+    onSuccess: (_data, { noteId, folderId, previousFolderId }) => {
       invalidateNotesListQueries(queryClient, user?.id);
       invalidateFoldersQueries(queryClient, user?.id);
       queryClient.invalidateQueries({ queryKey: ["note", noteId] });
       queryClient.setQueryData(["note", noteId], (prev: typeof note) =>
         prev ? { ...prev, folder_id: folderId } : prev
       );
+      // Refetch only the two affected folder note lists (no refetch on every focus)
+      if (user?.id) {
+        if (previousFolderId) {
+          queryClient.refetchQueries({ queryKey: ["folderNotes", previousFolderId, user.id] });
+        }
+        if (folderId) {
+          queryClient.refetchQueries({ queryKey: ["folderNotes", folderId, user.id] });
+        }
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setMoveModalOpen(false);
       setSelectedFolderId(null);
@@ -309,7 +345,11 @@ export default function NoteEditorScreen() {
 
   const handleMoveConfirm = () => {
     if (!id || isNewNote) return;
-    moveNoteMutation.mutate({ noteId: id, folderId: selectedFolderId });
+    moveNoteMutation.mutate({
+      noteId: id,
+      folderId: selectedFolderId,
+      previousFolderId: note?.folder_id ?? null,
+    });
   };
 
   const handleSave = () => {
