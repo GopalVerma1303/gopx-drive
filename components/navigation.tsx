@@ -163,7 +163,7 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
               flexDirection: horizontal ? "column" : "row",
               alignItems: "center",
               justifyContent: horizontal ? "center" : "flex-start",
-              paddingVertical: horizontal ? 14 : 12,
+              paddingVertical: horizontal ? 12 : 12,
               paddingHorizontal: horizontal ? 12 : (iconOnly ? 12 : 16),
               borderRadius: 8,
               backgroundColor: pressed ? colors.accent : "transparent",
