@@ -452,6 +452,7 @@ export default function NoteEditorScreen() {
         isNewNote={isNewNote}
         isDirty={isDirty}
         canSave={canSave}
+        isSaving={saveMutation.isPending}
         onSave={handleSave}
         isPreview={isPreview}
         onPreviewToggle={() => setIsPreview(!isPreview)}

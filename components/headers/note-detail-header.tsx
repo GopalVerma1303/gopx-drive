@@ -12,7 +12,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { ArrowLeft, Check, Edit, Eye, Folder, MoreVertical, RefreshCcw, Share2 } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, View } from "react-native";
+import { ActivityIndicator, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface NoteDetailHeaderProps {
@@ -21,6 +21,8 @@ interface NoteDetailHeaderProps {
   isNewNote: boolean;
   isDirty: boolean;
   canSave: boolean;
+  /** True while save is in progress (Supabase or local). Show spinner instead of tick. */
+  isSaving?: boolean;
   onSave: () => void;
   isPreview: boolean;
   onPreviewToggle: () => void;
@@ -38,6 +40,7 @@ export function NoteDetailHeader({
   isNewNote,
   isDirty,
   canSave,
+  isSaving = false,
   onSave,
   isPreview,
   onPreviewToggle,
@@ -165,13 +168,20 @@ export function NoteDetailHeader({
         >
           <Pressable
             onPress={onSave}
-            disabled={!canSave}
-            style={[{ paddingVertical: 8 }, !canSave && { opacity: 0.4 }]}
+            disabled={!canSave || isSaving}
+            style={[
+              { paddingVertical: 8, minWidth: 22, alignItems: "center", justifyContent: "center" },
+              !canSave && !isSaving && { opacity: 0.4 },
+            ]}
           >
-            <Check
-              color={canSave ? colors.foreground : colors.mutedForeground}
-              size={22}
-            />
+            {isSaving ? (
+              <ActivityIndicator size="small" color={colors.foreground} />
+            ) : (
+              <Check
+                color={canSave ? colors.foreground : colors.mutedForeground}
+                size={22}
+              />
+            )}
           </Pressable>
           <Pressable
             onPress={() => {
