@@ -23,8 +23,8 @@ import { listFolders } from "@/lib/folders";
 import { archiveNote, getUnsyncedNoteIds, listNotes, updateNote } from "@/lib/notes";
 import { invalidateEventsQueries, invalidateFilesQueries, invalidateFoldersQueries, invalidateNotesListQueries } from "@/lib/query-utils";
 import type { File as FileRecord, Note } from "@/lib/supabase";
-import { useThemeColors } from "@/lib/use-theme-colors";
 import { useFilePreview } from "@/lib/use-file-preview";
+import { useThemeColors } from "@/lib/use-theme-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
@@ -724,7 +724,7 @@ export default function HomeScreen() {
               {hasAnyEvents ? (
                 <>
                   {todaysEvents.length > 0 && (
-                    <View style={{ marginBottom: 8 }}>
+                    <View>
                       <Text
                         style={{
                           fontSize: 14,
