@@ -1,16 +1,34 @@
 import { deleteFile } from "@/lib/files";
+import {
+  getCachedArchivedFolders,
+  getCachedFolders,
+  setCachedArchivedFolders,
+  setCachedFolders,
+} from "@/lib/folders-cache";
 import { deleteNote } from "@/lib/notes";
 import type { Folder } from "@/lib/supabase";
 import * as supabaseFolders from "@/lib/supabase-folders";
 
 export const listFolders = async (userId?: string): Promise<Folder[]> => {
   if (!userId) return [];
-  return supabaseFolders.listFolders(userId);
+  try {
+    const folders = await supabaseFolders.listFolders(userId);
+    await setCachedFolders(userId, folders);
+    return folders;
+  } catch {
+    return getCachedFolders(userId);
+  }
 };
 
 export const listArchivedFolders = async (userId?: string): Promise<Folder[]> => {
   if (!userId) return [];
-  return supabaseFolders.listArchivedFolders(userId);
+  try {
+    const folders = await supabaseFolders.listArchivedFolders(userId);
+    await setCachedArchivedFolders(userId, folders);
+    return folders;
+  } catch {
+    return getCachedArchivedFolders(userId);
+  }
 };
 
 export const getFolderById = async (id: string): Promise<Folder | null> => {

@@ -1,5 +1,5 @@
 /**
- * Clear app caches (React Query persistence, files cache, events cache)
+ * Clear app caches (React Query persistence, files cache, folders cache, events cache)
  * without touching auth or user preferences (theme, view mode).
  */
 
@@ -10,6 +10,8 @@ const CACHE_KEY_PREFIXES = [
   "@react-query-cache",
   "@files_cache",
   "@archived_files_cache",
+  "@folders_cache",
+  "@archived_folders_cache",
   "@events_cache",
 ];
 
