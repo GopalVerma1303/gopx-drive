@@ -15,8 +15,10 @@ export const listFolders = async (userId?: string): Promise<Folder[]> => {
     const folders = await supabaseFolders.listFolders(userId);
     await setCachedFolders(userId, folders);
     return folders;
-  } catch {
-    return getCachedFolders(userId);
+  } catch (err) {
+    const cached = await getCachedFolders(userId);
+    if (cached.length > 0) return cached;
+    throw err;
   }
 };
 

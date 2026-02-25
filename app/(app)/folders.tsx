@@ -118,7 +118,7 @@ export default function FoldersScreen() {
     refetchOnMount: false,
     staleTime: 2 * 60 * 1000,
     placeholderData: (prev) => prev,
-    retry: false, // When offline, fail once and show cached folder list from listFolders() fallback
+    retry: 2, // Retry when API fails and no cache (e.g. session not ready right after login)
   });
 
   const createFolderMutation = useMutation({

@@ -1,6 +1,6 @@
 "use client";
 
-import { Stack, useRouter } from "expo-router";
+import { Stack } from "expo-router";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react-native";
 import { useState } from "react";
 import {
@@ -29,7 +29,6 @@ import { UI_DEV } from "@/lib/config";
 import { THEME } from "@/lib/theme";
 
 export default function LoginScreen() {
-  const router = useRouter();
   const { alert } = useAlert();
   const { signIn, signUp } = useAuth();
   const insets = useSafeAreaInsets();
@@ -58,8 +57,8 @@ export default function LoginScreen() {
       } else {
         await signIn(email, password);
       }
-      // Only route to home if we have a verified session
-      router.replace("/(app)/home");
+      // Auth layout will redirect to /home when user is set (avoids race where
+      // home mounts before auth state is committed and queries stay disabled).
     } catch (error: any) {
       alert(
         "Error",

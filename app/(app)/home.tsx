@@ -177,6 +177,7 @@ export default function HomeScreen() {
     queryFn: () => listFolders(user?.id),
     enabled: !!user?.id,
     staleTime: 2 * 60 * 1000,
+    retry: 2,
   });
 
   const rootNotes = useMemo(
