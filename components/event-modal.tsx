@@ -16,13 +16,13 @@ import { useEffect, useState } from "react";
 import {
   Alert,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 export interface EventModalProps {
   open: boolean;
@@ -340,8 +340,8 @@ export function EventModal({
         >
           <KeyboardAvoidingView
             className="flex-1"
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={0}
+            behavior="padding"
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
             enabled={keyboardVisible}
           >
             <View className="flex-1 bg-black/50">
