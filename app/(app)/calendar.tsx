@@ -203,6 +203,9 @@ export default function CalendarScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setDeleteDialogOpen(false);
       setEventToDelete(null);
+      // Close event modal when the deleted event was being edited
+      setEventModalOpen(false);
+      setEditingEvent(null);
       // Invalidate after a brief delay to ensure DB has processed
       setTimeout(() => {
         invalidateEventsQueries(queryClient, user?.id);
