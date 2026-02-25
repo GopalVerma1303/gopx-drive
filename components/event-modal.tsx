@@ -341,7 +341,11 @@ export function EventModal({
           <KeyboardAvoidingView
             className="flex-1"
             behavior="padding"
-            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+            // Modals cover the full screen and don't sit under a header,
+            // so we don't need any extra vertical offset here. Using 0
+            // avoids an artificial gap between the keyboard and modal
+            // content that can appear in release builds.
+            keyboardVerticalOffset={0}
             enabled={keyboardVisible}
           >
             <View className="flex-1 bg-black/50">
