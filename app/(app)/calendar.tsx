@@ -1101,7 +1101,8 @@ function CustomCalendar({
                     : todayDate
                       ? colors.accent
                       : "transparent",
-                  borderWidth: todayDate && !selected ? 2 : 0,
+                  // Reserve border space when today so dimensions don't change on select
+                  borderWidth: todayDate ? 2 : 0,
                   borderColor: colors.primary,
                 }}
               >
@@ -1295,7 +1296,8 @@ function CustomCalendar({
                       : todayDate
                         ? colors.accent
                         : "transparent",
-                    borderWidth: todayDate && !selected ? 2 : 0,
+                    // Reserve border space when today so dimensions don't change on select
+                    borderWidth: todayDate ? 2 : 0,
                     borderColor: colors.primary,
                   }}
                 >
