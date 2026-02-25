@@ -15,8 +15,8 @@ import { archiveNote, getUnsyncedNoteIds, listNotesByFolder, updateNote } from "
 import { invalidateFilesQueries, invalidateFoldersQueries, invalidateNotesListQueries } from "@/lib/query-utils";
 import type { File as FileRecord, Note } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
-import { useThemeColors } from "@/lib/use-theme-colors";
 import { useFilePreview } from "@/lib/use-file-preview";
+import { useThemeColors } from "@/lib/use-theme-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
@@ -325,10 +325,10 @@ export default function FolderDetailScreen() {
             alignItems: "center",
             justifyContent: "space-between",
             height: 56,
-            paddingHorizontal: 6,
+            paddingHorizontal: 8,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", flex: 1, minWidth: 0 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
             <Pressable
               onPress={() => {
                 if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -355,7 +355,7 @@ export default function FolderDetailScreen() {
               flexDirection: "row",
               alignItems: "center",
               gap: 16,
-              paddingRight: 6,
+              paddingRight: 8,
             }}
           >
             <Pressable
