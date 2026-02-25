@@ -1,5 +1,6 @@
 "use client";
 
+import { AlertProvider, useAlert } from "@/contexts/alert-context";
 import { AuthProvider } from "@/contexts/auth-context";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import "@/global.css";
@@ -13,7 +14,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { Alert, Platform, View } from "react-native";
+import { Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import {
@@ -44,6 +45,7 @@ function RootLayoutNav() {
   const { resolvedTheme } = useTheme();
   const router = useRouter();
   const segments = useSegments();
+  const { alert } = useAlert();
 
   useEffect(() => {
     // Handle deep links for email verification
@@ -66,7 +68,7 @@ function RootLayoutNav() {
             .error_description as string;
 
           if (error === "access_denied" || errorCode === "otp_expired") {
-            Alert.alert(
+            alert(
               "Verification Link Expired",
               errorDescription?.replace(/\+/g, " ") ||
               "The email verification link has expired. Please request a new verification email.",
@@ -74,7 +76,6 @@ function RootLayoutNav() {
                 {
                   text: "OK",
                   onPress: () => {
-                    // Navigate to login if not already there
                     const isOnAuthScreen = segments.some(
                       (seg) => seg === "login" || seg.includes("auth")
                     );
@@ -101,17 +102,10 @@ function RootLayoutNav() {
               data: { session },
             } = await supabase.auth.getSession();
             if (session?.user?.email_confirmed_at) {
-              Alert.alert(
+              alert(
                 "Email Verified",
                 "Your email has been verified successfully!",
-                [
-                  {
-                    text: "OK",
-                    onPress: () => {
-                      // The auth context will handle routing automatically
-                    },
-                  },
-                ]
+                [{ text: "OK" }]
               );
             }
           }, 1000);
@@ -132,7 +126,7 @@ function RootLayoutNav() {
     return () => {
       subscription.remove();
     };
-  }, [router, segments]);
+  }, [router, segments, alert]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -218,16 +212,20 @@ export default function RootLayout() {
           {Platform.OS === "web" ? (
             <AuthProvider>
               <ThemeProvider>
-                <RootLayoutNav />
-                <PortalHost />
+                <AlertProvider>
+                  <RootLayoutNav />
+                  <PortalHost />
+                </AlertProvider>
               </ThemeProvider>
             </AuthProvider>
           ) : (
             <KeyboardProvider>
               <AuthProvider>
                 <ThemeProvider>
-                  <RootLayoutNav />
-                  <PortalHost />
+                  <AlertProvider>
+                    <RootLayoutNav />
+                    <PortalHost />
+                  </AlertProvider>
                 </ThemeProvider>
               </AuthProvider>
             </KeyboardProvider>

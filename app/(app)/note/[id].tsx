@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Text } from "@/components/ui/text";
+import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
 import { generateAIContent } from "@/lib/ai-providers";
 import { listFolders } from "@/lib/folders";
@@ -30,7 +31,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  Alert as RNAlert,
   ScrollView,
   StyleSheet,
   View,
@@ -43,6 +43,7 @@ export default function NoteEditorScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { alert } = useAlert();
   const { colors } = useThemeColors();
   const isNewNote = id === "new";
   const initialFolderId = typeof folderId === "string" && folderId.length > 0 ? folderId : null;
@@ -272,7 +273,7 @@ export default function NoteEditorScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     onError: (error: any) => {
-      RNAlert.alert("Error", error.message);
+      alert("Error", error.message);
     },
     onSettled: () => {
       saveInProgressRef.current = false;
@@ -313,7 +314,7 @@ export default function NoteEditorScreen() {
 
   const handleSave = () => {
     if (!title.trim() && !content.trim()) {
-      RNAlert.alert("Empty Note", "Please add a title or content");
+      alert("Empty Note", "Please add a title or content");
       return;
     }
     if (!isDirty) {
@@ -345,7 +346,7 @@ export default function NoteEditorScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (error: any) {
-      RNAlert.alert(
+      alert(
         "Sync failed",
         error?.message ?? "Unable to sync the latest version of this note."
       );

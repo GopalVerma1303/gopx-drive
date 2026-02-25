@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
 import {
   createEvent,
@@ -36,7 +37,6 @@ import { ChevronDown, ChevronUp, Plus, Search, X } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Keyboard,
   Modal,
@@ -52,6 +52,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export default function CalendarScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { alert } = useAlert();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
@@ -133,7 +134,7 @@ export default function CalendarScreen() {
     },
     onError: (error: any) => {
       console.error("Create event error:", error);
-      Alert.alert("Error", error.message || "Failed to create event");
+      alert("Error", error.message || "Failed to create event");
     },
   });
 
@@ -153,7 +154,7 @@ export default function CalendarScreen() {
     },
     onError: (error: any) => {
       console.error("Update event error:", error);
-      Alert.alert("Error", error.message || "Failed to update event");
+      alert("Error", error.message || "Failed to update event");
     },
   });
 
@@ -196,7 +197,7 @@ export default function CalendarScreen() {
         console.log("Rolling back to previous events");
         queryClient.setQueryData(["events", user?.id], context.previousEvents);
       }
-      Alert.alert("Error", error.message || "Failed to delete event");
+      alert("Error", error.message || "Failed to delete event");
     },
     onSuccess: async (data, id: string) => {
       console.log("deleteMutation.onSuccess called for id:", id);
@@ -218,7 +219,7 @@ export default function CalendarScreen() {
       setEventToDelete({ id, title });
       setDeleteDialogOpen(true);
     } else {
-      Alert.alert("Delete Event", `Are you sure you want to delete "${title}"?`, [
+      alert("Delete Event", `Are you sure you want to delete "${title}"?`, [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",

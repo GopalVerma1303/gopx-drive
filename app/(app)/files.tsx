@@ -6,6 +6,7 @@ import { LongPressOptionsModal } from "@/components/long-press-options-modal";
 import { MoveToFolderModal } from "@/components/move-to-folder-modal";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
 import { archiveFile, listFiles, updateFile, uploadFile } from "@/lib/files";
 import { listFolders } from "@/lib/folders";
@@ -22,7 +23,6 @@ import { LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Modal,
   Platform,
@@ -38,6 +38,7 @@ const FILES_VIEW_MODE_STORAGE_KEY = "@files_view_mode";
 export default function FilesScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { alert } = useAlert();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
@@ -173,7 +174,7 @@ export default function FilesScreen() {
       file: params.file,
     });
     invalidateFilesQueries(queryClient, user.id);
-    Alert.alert("Success", "File uploaded successfully");
+    alert("Success", "File uploaded successfully");
   };
 
   const handleLongPressFile = (file: FileRecord) => {

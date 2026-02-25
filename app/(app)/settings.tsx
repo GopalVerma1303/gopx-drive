@@ -2,6 +2,7 @@
 
 import { Switch } from "@/components/ui/switch";
 import { Text } from "@/components/ui/text";
+import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { clearAppCache } from "@/lib/clear-cache";
@@ -12,7 +13,6 @@ import { Stack, useRouter } from "expo-router";
 import { Archive, Eraser, FileText, Heart, ImageIcon, LogOut, Settings2, WandSparkles } from "lucide-react-native";
 import { useState } from "react";
 import {
-  Alert,
   Linking,
   Modal,
   Platform,
@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
   const { colors } = useThemeColors();
+  const { alert } = useAlert();
   const { user, signOut } = useAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -39,7 +40,7 @@ export default function SettingsScreen() {
       setLogoutDialogOpen(false);
       await signOut();
     } catch (error: any) {
-      Alert.alert("Error", error.message);
+      alert("Error", error.message);
     }
   };
 
@@ -76,9 +77,9 @@ export default function SettingsScreen() {
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      Alert.alert("Done", "Cache cleared. Your data will refresh when you open each screen.");
+      alert("Done", "Cache cleared. Your data will refresh when you open each screen.");
     } catch (error: any) {
-      Alert.alert("Error", error?.message ?? "Failed to clear cache");
+      alert("Error", error?.message ?? "Failed to clear cache");
     } finally {
       setClearingCache(false);
     }

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
+import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
 import { getTodaysAndTomorrowsEvents } from "@/lib/calendar-utils";
 import { createEvent, listEvents } from "@/lib/events";
@@ -33,7 +34,6 @@ import { Calendar, FileText, Files, LayoutGrid, Pin, Plus, Rows2 } from "lucide-
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Image,
   Platform,
@@ -56,6 +56,7 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { alert } = useAlert();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
@@ -216,7 +217,7 @@ export default function HomeScreen() {
       file: params.file,
     });
     invalidateFilesQueries(queryClient, user.id);
-    Alert.alert("Success", "File uploaded successfully");
+    alert("Success", "File uploaded successfully");
   };
 
   const createEventMutation = useMutation({
@@ -233,7 +234,7 @@ export default function HomeScreen() {
       setEventModalOpen(false);
     },
     onError: (error: Error) => {
-      Alert.alert("Error", error.message || "Failed to create event");
+      alert("Error", error.message || "Failed to create event");
     },
   });
 

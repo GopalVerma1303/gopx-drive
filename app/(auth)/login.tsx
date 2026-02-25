@@ -5,7 +5,6 @@ import { Eye, EyeOff, Lock, Mail } from "lucide-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -24,12 +23,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Text } from "@/components/ui/text";
+import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
 import { UI_DEV } from "@/lib/config";
 import { THEME } from "@/lib/theme";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { alert } = useAlert();
   const { signIn, signUp } = useAuth();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
@@ -41,7 +42,7 @@ export default function LoginScreen() {
 
   const handleAuth = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please enter both email and password");
+      alert("Error", "Please enter both email and password");
       return;
     }
 
@@ -60,7 +61,7 @@ export default function LoginScreen() {
       // Only route to home if we have a verified session
       router.replace("/(app)/home");
     } catch (error: any) {
-      Alert.alert(
+      alert(
         "Error",
         UI_DEV
           ? "This is a new login. Any credentials will work."

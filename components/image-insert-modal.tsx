@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
 import { uploadImageToNoteImages } from "@/lib/supabase-images";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -11,7 +12,6 @@ import { Link as LinkIcon, Upload, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Keyboard,
   Modal,
   Platform,
@@ -33,6 +33,7 @@ export function ImageInsertModal({
   onInsert,
 }: ImageInsertModalProps) {
   const { user } = useAuth();
+  const { alert } = useAlert();
   const { colors } = useThemeColors();
   const [altText, setAltText] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -65,7 +66,7 @@ export function ImageInsertModal({
 
   const handleInsert = () => {
     if (!imageUrl.trim()) {
-      Alert.alert("Error", "Please provide an image URL or upload an image");
+      alert("Error", "Please provide an image URL or upload an image");
       return;
     }
 
@@ -82,7 +83,7 @@ export function ImageInsertModal({
 
   const handleUploadImage = async () => {
     if (!user?.id) {
-      Alert.alert("Error", "You must be logged in to upload images");
+      alert("Error", "You must be logged in to upload images");
       return;
     }
 
@@ -160,7 +161,7 @@ export function ImageInsertModal({
         errorMessage = "Permission denied (403). Please check your Supabase Storage RLS policies. See SUPABASE_BUCKET_SETUP.md for setup instructions.";
       }
 
-      Alert.alert("Upload Failed", errorMessage);
+      alert("Upload Failed", errorMessage);
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }

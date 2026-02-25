@@ -8,13 +8,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { useAlert } from "@/contexts/alert-context";
 import { formatDateToLocalString } from "@/lib/calendar-utils";
 import type { Event } from "@/lib/supabase";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { ChevronDown } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
-  Alert,
   Keyboard,
   Modal,
   Platform,
@@ -55,6 +55,7 @@ export function EventModal({
   userId,
 }: EventModalProps) {
   const { colors } = useThemeColors();
+  const { alert } = useAlert();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [eventDate, setEventDate] = useState(
@@ -165,7 +166,7 @@ export function EventModal({
 
   const handleSave = () => {
     if (!title.trim()) {
-      Alert.alert("Error", "Please enter a title");
+      alert("Error", "Please enter a title");
       return;
     }
     if (!validateDate(eventDate)) {
@@ -205,7 +206,7 @@ export function EventModal({
     if (Platform.OS === "web") {
       setDeleteDialogOpen(true);
     } else {
-      Alert.alert("Delete Event", `Are you sure you want to delete "${event.title}"?`, [
+      alert("Delete Event", `Are you sure you want to delete "${event.title}"?`, [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",

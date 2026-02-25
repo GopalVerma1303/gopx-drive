@@ -5,6 +5,7 @@ import { MoveToFolderModal } from "@/components/move-to-folder-modal";
 import { NoteCard } from "@/components/note-card";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
 import { listFolders } from "@/lib/folders";
 import { CARD_LIST_MAX_WIDTH } from "@/lib/layout";
@@ -27,7 +28,6 @@ import { LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Modal,
   Platform,
@@ -44,6 +44,7 @@ export default function NotesScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { alert } = useAlert();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
@@ -201,7 +202,7 @@ export default function NotesScreen() {
   });
 
   const handleArchiveNote = (id: string, title: string) => {
-    Alert.alert("Archive Note", `Are you sure you want to archive "${title}"?`, [
+    alert("Archive Note", `Are you sure you want to archive "${title}"?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Archive",

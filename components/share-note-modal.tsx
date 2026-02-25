@@ -2,6 +2,7 @@
 
 import { Switch } from "@/components/ui/switch";
 import { Text } from "@/components/ui/text";
+import { useAlert } from "@/contexts/alert-context";
 import { updateNote } from "@/lib/notes";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import * as Clipboard from "expo-clipboard";
@@ -48,6 +49,7 @@ export function ShareNoteModal({
   onShareTokenChange,
 }: ShareNoteModalProps) {
   const { colors } = useThemeColors();
+  const { alert } = useAlert();
   const [toggling, setToggling] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -78,15 +80,12 @@ export function ShareNoteModal({
         }
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : "Failed to update share";
-        if (Platform.OS !== "web") {
-          const { Alert } = require("react-native");
-          Alert.alert("Error", message);
-        }
+        alert("Error", message);
       } finally {
         setToggling(false);
       }
     },
-    [noteId, onShareTokenChange]
+    [noteId, onShareTokenChange, alert]
   );
 
   const handleCopy = useCallback(async () => {

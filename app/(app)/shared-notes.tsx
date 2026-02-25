@@ -1,6 +1,7 @@
 "use client";
 
 import { Text } from "@/components/ui/text";
+import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
 import { listArchivedNotes, listNotes, updateNote } from "@/lib/notes";
 import { invalidateNotesQueries } from "@/lib/query-utils";
@@ -14,7 +15,6 @@ import { ArrowLeft, Check, FileText, Link, Unlink } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Platform,
   Pressable,
@@ -35,6 +35,7 @@ export default function SharedNotesScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { alert } = useAlert();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
 
@@ -81,7 +82,7 @@ export default function SharedNotesScreen() {
       setNoteToDisable(null);
     },
     onError: (e: Error) => {
-      Alert.alert("Error", e.message ?? "Failed to disable sharing");
+      alert("Error", e.message ?? "Failed to disable sharing");
     },
   });
 

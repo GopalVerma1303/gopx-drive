@@ -8,6 +8,7 @@ import { NoteCard } from "@/components/note-card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
+import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
 import { archiveFile, listFilesByFolder, updateFile, uploadFile } from "@/lib/files";
 import { getFolderById, listFolders } from "@/lib/folders";
@@ -25,7 +26,6 @@ import { ArrowLeft, FileText, Files, Folder, LayoutGrid, Plus, Rows2, Search, X 
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Platform,
   Pressable,
@@ -46,6 +46,7 @@ export default function FolderDetailScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { alert } = useAlert();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
   const { handleFilePress, PreviewModal } = useFilePreview();
@@ -245,7 +246,7 @@ export default function FolderDetailScreen() {
     await updateFile(createdFile.id, { folder_id: id });
     invalidateFilesQueries(queryClient, user.id);
     invalidateFoldersQueries(queryClient, user.id);
-    Alert.alert("Success", "File uploaded to this folder");
+    alert("Success", "File uploaded to this folder");
   };
 
   const handleNoteLongPress = (note: Note) => {

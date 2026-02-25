@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Alert, Linking, Modal, Platform, Pressable, View } from "react-native";
+import { Linking, Modal, Platform, Pressable, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ExternalLink, X } from "lucide-react-native";
 
+import { useAlert } from "@/contexts/alert-context";
 import { getFileDownloadUrl } from "@/lib/files";
 import type { File as FileRecord } from "@/lib/supabase";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -27,6 +28,7 @@ const getPreviewUrlForWebView = (rawUrl: string, fileName: string): string => {
 export function useFilePreview() {
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
+  const { alert } = useAlert();
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewRawUrl, setPreviewRawUrl] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export function useFilePreview() {
         setPreviewUrl(getPreviewUrlForWebView(downloadUrl, file.name));
       }
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to open file");
+      alert("Error", error.message || "Failed to open file");
     }
   };
 
@@ -137,7 +139,7 @@ export function useFilePreview() {
               source={{ uri: previewUrl }}
               style={{ flex: 1 }}
               onError={() => {
-                Alert.alert("Error", "Failed to load preview");
+                alert("Error", "Failed to load preview");
                 closePreview();
               }}
             />
