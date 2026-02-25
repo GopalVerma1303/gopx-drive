@@ -73,11 +73,13 @@ export function invalidateEventsQueries(queryClient: QueryClient, userId?: strin
 }
 
 /**
- * Invalidate folders-related queries after a mutation
+ * Invalidate folders-related queries after a mutation (list, archived, single-folder detail, folderNotes, folderFiles).
+ * Single-folder ["folder", id] is invalidated so folder detail header shows updated name after rename.
  */
 export function invalidateFoldersQueries(queryClient: QueryClient, userId?: string): void {
   queryClient.invalidateQueries({ queryKey: QueryKeys.folders(userId) });
   queryClient.invalidateQueries({ queryKey: QueryKeys.archivedFolders(userId) });
+  queryClient.invalidateQueries({ queryKey: ["folder"] });
   queryClient.invalidateQueries({ queryKey: ["folderNotes"] });
   queryClient.invalidateQueries({ queryKey: ["folderFiles"] });
 }

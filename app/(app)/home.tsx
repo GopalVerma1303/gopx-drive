@@ -722,14 +722,60 @@ export default function HomeScreen() {
             </View>
             <View style={{ width: contentWidth, alignSelf: "center" }}>
               {hasAnyEvents ? (
-                [...todaysEvents, ...tomorrowsEvents].map((event) => (
-                  <EventCard
-                    key={`${event.id}-${event.instanceDate ?? ""}-${event.event_date}`}
-                    event={event}
-                    onSelectDate={() => router.push("/(app)/calendar")}
-                    onEdit={() => router.push("/(app)/calendar")}
-                  />
-                ))
+                <>
+                  {todaysEvents.length > 0 && (
+                    <View style={{ marginBottom: 8 }}>
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontWeight: "600",
+                          color: colors.mutedForeground,
+                          marginBottom: 8,
+                        }}
+                      >
+                        Today
+                      </Text>
+                      {todaysEvents.map((event, i) => (
+                        <View
+                          key={`${event.id}-${event.instanceDate ?? ""}-${event.event_date}`}
+                          style={{ marginBottom: i < todaysEvents.length - 1 ? cardGap : 0 }}
+                        >
+                          <EventCard
+                            event={event}
+                            onSelectDate={() => router.push("/(app)/calendar")}
+                            onEdit={() => router.push("/(app)/calendar")}
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  {tomorrowsEvents.length > 0 && (
+                    <View>
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontWeight: "600",
+                          color: colors.mutedForeground,
+                          marginBottom: 8,
+                        }}
+                      >
+                        Tomorrow
+                      </Text>
+                      {tomorrowsEvents.map((event, i) => (
+                        <View
+                          key={`${event.id}-${event.instanceDate ?? ""}-${event.event_date}`}
+                          style={{ marginBottom: i < tomorrowsEvents.length - 1 ? cardGap : 0 }}
+                        >
+                          <EventCard
+                            event={event}
+                            onSelectDate={() => router.push("/(app)/calendar")}
+                            onEdit={() => router.push("/(app)/calendar")}
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </>
               ) : (
                 <Pressable
                   onPress={() => setEventModalOpen(true)}
