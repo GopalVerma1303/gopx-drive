@@ -135,7 +135,14 @@ export default function FolderDetailScreen() {
 
   const archiveNoteMutation = useMutation({
     mutationFn: (noteId: string) => archiveNote(noteId),
-    onSuccess: () => {
+    onSuccess: (_data, noteId) => {
+      // Optimistically remove the archived note from this folder's list
+      if (id && user?.id) {
+        queryClient.setQueryData<Note[]>(
+          ["folderNotes", id, user.id],
+          (old) => (old ? old.filter((n) => n.id !== noteId) : old)
+        );
+      }
       invalidateFoldersQueries(queryClient, user?.id);
       invalidateNotesListQueries(queryClient, user?.id);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -144,7 +151,15 @@ export default function FolderDetailScreen() {
 
   const archiveFileMutation = useMutation({
     mutationFn: (fileId: string) => archiveFile(fileId),
-    onSuccess: () => {
+    onSuccess: (_data, fileId) => {
+      // Optimistically remove the archived file from this folder's list so the UI
+      // doesn't show an empty list if refetch fails or returns stale data
+      if (id && user?.id) {
+        queryClient.setQueryData<FileRecord[]>(
+          ["folderFiles", id, user.id],
+          (old) => (old ? old.filter((f) => f.id !== fileId) : old)
+        );
+      }
       invalidateFoldersQueries(queryClient, user?.id);
       invalidateFilesQueries(queryClient, user?.id);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

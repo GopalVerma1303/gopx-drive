@@ -353,6 +353,7 @@ export async function createNote(input: {
   user_id: string;
   title: string;
   content: string;
+  folder_id?: string | null;
 }): Promise<Note> {
   if (Platform.OS === "web") {
     return supabaseNotes.createNote(input);
@@ -364,6 +365,7 @@ export async function createNote(input: {
   const id = generateId();
   const now = new Date().toISOString();
   const title = input.title || "Untitled";
+  const folderId = input.folder_id ?? null;
 
   // Check if a note with the same content already exists locally (prevent duplicates)
   const existingLocal = await db.getFirstAsync<Record<string, unknown>>(
@@ -379,14 +381,15 @@ export async function createNote(input: {
   }
 
   await db.runAsync(
-    `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty)
-     VALUES (?, ?, ?, ?, 0, ?, ?, 1)`,
+    `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty, folder_id)
+     VALUES (?, ?, ?, ?, 0, ?, ?, 1, ?)`,
     id,
     input.user_id,
     title,
     input.content,
     now,
-    now
+    now,
+    folderId
   );
 
   const note: Note = {
@@ -397,6 +400,7 @@ export async function createNote(input: {
     is_archived: false,
     created_at: now,
     updated_at: now,
+    folder_id: folderId,
   };
 
   try {
@@ -412,14 +416,15 @@ export async function createNote(input: {
       // Update local note to use existing Supabase ID
       await db.runAsync(`DELETE FROM ${TABLE} WHERE id = ?`, id);
       await db.runAsync(
-        `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty)
-         VALUES (?, ?, ?, ?, 0, ?, ?, 0)`,
+        `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty, folder_id)
+         VALUES (?, ?, ?, ?, 0, ?, ?, 0, ?)`,
         duplicate.id,
         duplicate.user_id,
         duplicate.title,
         duplicate.content,
         duplicate.created_at,
-        duplicate.updated_at
+        duplicate.updated_at,
+        duplicate.folder_id ?? null
       );
       return { ...duplicate };
     }
@@ -428,17 +433,19 @@ export async function createNote(input: {
       user_id: input.user_id,
       title,
       content: input.content,
+      folder_id: input.folder_id,
     });
     await db.runAsync(`DELETE FROM ${TABLE} WHERE id = ?`, id);
     await db.runAsync(
-      `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty)
-       VALUES (?, ?, ?, ?, 0, ?, ?, 0)`,
+      `INSERT INTO ${TABLE} (id, user_id, title, content, is_archived, created_at, updated_at, dirty, folder_id)
+       VALUES (?, ?, ?, ?, 0, ?, ?, 0, ?)`,
       created.id,
       created.user_id,
       created.title,
       created.content,
       created.created_at,
-      created.updated_at
+      created.updated_at,
+      created.folder_id ?? null
     );
     return { ...created };
   } catch (error) {

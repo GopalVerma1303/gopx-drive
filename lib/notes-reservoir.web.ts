@@ -43,6 +43,7 @@ export async function createNote(input: {
   user_id: string;
   title: string;
   content: string;
+  folder_id?: string | null;
 }): Promise<Note> {
   return supabaseNotes.createNote(input);
 }
