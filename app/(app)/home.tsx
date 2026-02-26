@@ -737,17 +737,13 @@ export default function HomeScreen() {
                       >
                         Today
                       </Text>
-                      {todaysEvents.map((event, i) => (
-                        <View
+                      {todaysEvents.map((event) => (
+                        <EventCard
                           key={`${event.id}-${event.instanceDate ?? ""}-${event.event_date}`}
-                          style={{ marginBottom: i < todaysEvents.length - 1 ? cardGap : 0 }}
-                        >
-                          <EventCard
-                            event={event}
-                            onSelectDate={() => router.push("/(app)/calendar")}
-                            onEdit={() => router.push("/(app)/calendar")}
-                          />
-                        </View>
+                          event={event}
+                          onSelectDate={() => router.push("/(app)/calendar")}
+                          onEdit={() => router.push("/(app)/calendar")}
+                        />
                       ))}
                     </View>
                   )}
@@ -763,17 +759,13 @@ export default function HomeScreen() {
                       >
                         Tomorrow
                       </Text>
-                      {tomorrowsEvents.map((event, i) => (
-                        <View
+                      {tomorrowsEvents.map((event) => (
+                        <EventCard
                           key={`${event.id}-${event.instanceDate ?? ""}-${event.event_date}`}
-                          style={{ marginBottom: i < tomorrowsEvents.length - 1 ? cardGap : 0 }}
-                        >
-                          <EventCard
-                            event={event}
-                            onSelectDate={() => router.push("/(app)/calendar")}
-                            onEdit={() => router.push("/(app)/calendar")}
-                          />
-                        </View>
+                          event={event}
+                          onSelectDate={() => router.push("/(app)/calendar")}
+                          onEdit={() => router.push("/(app)/calendar")}
+                        />
                       ))}
                     </View>
                   )}
