@@ -4,6 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import { createEditor, type EditorHandle } from "@/lib/editor";
 import { cn } from "@/lib/utils";
 import * as Clipboard from "expo-clipboard";
 import { Check, Copy } from "lucide-react-native";
@@ -109,13 +110,21 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     },
     ref
   ) {
-    const { colors } = useThemeColors();
+    const { colors, isDark } = useThemeColors();
     const { width: windowWidth } = useWindowDimensions();
     const inputRef = useRef<TextInput>(null);
+    const editorRootRef = useRef<HTMLDivElement | null>(null);
+    const editorHandleRef = useRef<EditorHandle | null>(null);
     const previousValueRef = useRef<string>(value);
     const isProcessingListRef = useRef<boolean>(false);
     const pendingInternalValueRef = useRef<string | null>(null);
+    const onChangeTextRef = useRef(onChangeText);
+    const onSelectionChangeRef = useRef(onSelectionChange);
     const [imageMeta, setImageMeta] = useState<Record<string, { width: number; height: number }>>({});
+
+    // Keep callback refs current so CodeMirror creation effect doesn't need them in deps (avoids recreating editor on every keystroke)
+    onChangeTextRef.current = onChangeText;
+    onSelectionChangeRef.current = onSelectionChange;
 
     // Use extracted hooks
     const {
@@ -135,6 +144,58 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       pushRedoSnapshot,
       clearHistory,
     } = useUndoRedo();
+
+    // Web-only: create and manage CodeMirror editor instance when the editor div is actually mounted (edit mode)
+    useEffect(() => {
+      if (Platform.OS !== "web") return;
+      if (isPreview || previewOnly) return; // Editor div is not rendered in preview; re-run when switching to edit
+      if (!editorRootRef.current) return;
+
+      // Clean up any previous instance
+      editorHandleRef.current?.destroy?.();
+
+      const handle = createEditor(editorRootRef.current, {
+        initialText: value,
+        onChange: (text) => {
+          onChangeTextRef.current?.(text);
+        },
+        onSelectionChange: (from, to) => {
+          const sel = { start: from, end: to };
+          setSelectionBoth(sel);
+          onSelectionChangeRef.current?.(sel);
+        },
+        theme: {
+          background: colors.muted,
+          foreground: colors.foreground,
+          cursor: colors.foreground,
+          selection: hexToRgba(colors.primary, 0.25),
+          lineHighlight: hexToRgba(colors.muted, 0.6),
+          fontSize: 16,
+          lineHeight: 24,
+          isDark,
+        },
+      });
+
+      editorHandleRef.current = handle;
+
+      return () => {
+        handle.destroy?.();
+        if (editorHandleRef.current === handle) {
+          editorHandleRef.current = null;
+        }
+      };
+    }, [colors, isPreview, previewOnly, isDark]);
+
+    // Keep CodeMirror document in sync if value prop changes externally
+    useEffect(() => {
+      if (Platform.OS !== "web") return;
+      const handle = editorHandleRef.current;
+      if (!handle) return;
+      const current = handle.getValue();
+      if (current !== value) {
+        handle.setValue(value);
+      }
+    }, [value]);
 
     // Utility functions are now imported from extracted modules
 
@@ -1106,6 +1167,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     };
 
     const getWebInputElement = (): any => {
+      // On web we use CodeMirror inside editorRootRef; use it for focus detection so Tab/Ctrl+B etc. work
+      if (Platform.OS === "web" && editorRootRef.current) return editorRootRef.current;
+
       const refAny = inputRef.current as any;
       if (!refAny) return null;
 
@@ -1272,9 +1336,39 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
     useImperativeHandle(ref, () => ({
       insertText: (text: string, cursorOffset?: number) => {
+        if (Platform.OS === "web" && editorHandleRef.current) {
+          const handle = editorHandleRef.current;
+          const sel = handle.getSelection();
+          const newCursor = sel.from + (cursorOffset ?? text.length);
+          handle.replaceRange(sel.from, sel.to, text);
+          handle.setSelection(newCursor, newCursor);
+          return;
+        }
         insertTextAtSelection(text, cursorOffset);
       },
       wrapSelection: (before: string, after: string, cursorOffset?: number) => {
+        if (Platform.OS === "web" && editorHandleRef.current) {
+          const handle = editorHandleRef.current;
+          const { from, to } = handle.getSelection();
+          const currentText = handle.getValue();
+          const selectedText = currentText.substring(from, to);
+
+          let nextText: string;
+          let newCursorPosition: number;
+
+          if (selectedText.length > 0) {
+            nextText = currentText.substring(0, from) + before + selectedText + after + currentText.substring(to);
+            newCursorPosition = from + before.length + selectedText.length + after.length;
+          } else {
+            nextText = currentText.substring(0, from) + before + after + currentText.substring(to);
+            newCursorPosition = from + (cursorOffset ?? before.length);
+          }
+
+          handle.replaceRange(0, currentText.length, nextText);
+          handle.setSelection(newCursorPosition, newCursorPosition);
+          return;
+        }
+
         if (isPreview || !inputRef.current) return;
 
         const start = selection.start;
@@ -1302,9 +1396,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       },
       indent: () => {
         indentAtSelection();
+        if (Platform.OS === "web" && editorHandleRef.current) editorHandleRef.current.focus();
       },
       outdent: () => {
         unindentAtSelection();
+        if (Platform.OS === "web" && editorHandleRef.current) editorHandleRef.current.focus();
       },
       undo: () => {
         if (isPreview || !inputRef.current) return;
@@ -2784,6 +2880,23 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           >
             {markdownContent}
           </ScrollView>
+        ) : Platform.OS === "web" ? (
+          <View
+            style={{
+              flex: 1,
+              paddingHorizontal: 32,
+              paddingTop: 24,
+              paddingBottom: 65,
+            }}
+          >
+            <div
+              ref={editorRootRef}
+              style={{
+                width: "100%",
+                height: "100%",
+              }}
+            />
+          </View>
         ) : (
           <Input
             ref={inputRef}

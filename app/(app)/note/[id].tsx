@@ -586,13 +586,25 @@ export default function NoteEditorScreen() {
                   isPreview={isPreview}
                 />
               )}
-              <ScrollView
-                className="flex-1"
-                contentContainerStyle={{ flexGrow: 1 }}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={true}
-                keyboardDismissMode="interactive"
-              >
+              {isPreview ? (
+                <ScrollView
+                  className="flex-1"
+                  contentContainerStyle={{ flexGrow: 1 }}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={true}
+                  keyboardDismissMode="interactive"
+                >
+                  <MarkdownEditor
+                    value={content}
+                    onChangeText={setContent}
+                    onSelectionChange={(sel) => {
+                      lastSelectionRef.current = sel;
+                    }}
+                    placeholder="Start writing in markdown..."
+                    isPreview={true}
+                  />
+                </ScrollView>
+              ) : (
                 <MarkdownEditor
                   ref={editorRef}
                   value={content}
@@ -601,9 +613,10 @@ export default function NoteEditorScreen() {
                     lastSelectionRef.current = sel;
                   }}
                   placeholder="Start writing in markdown..."
-                  isPreview={isPreview}
+                  isPreview={false}
+                  onSave={handleSave}
                 />
-              </ScrollView>
+              )}
             </View>
           </View>
         </Animated.View>

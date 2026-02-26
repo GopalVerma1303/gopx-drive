@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
+    "test": "jest",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
@@ -11,7 +12,14 @@
     "eas": "eas build"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.10.2",
+    "@codemirror/history": "^0.19.2",
+    "@codemirror/lang-markdown": "^6.5.0",
+    "@codemirror/language": "^6.12.2",
+    "@codemirror/state": "^6.5.4",
+    "@codemirror/view": "^6.39.15",
     "@expo/vector-icons": "^15.0.3",
+    "@lezer/highlight": "^1.2.3",
     "@nkzw/create-context-hook": "^1.1.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@rn-primitives/alert-dialog": "^1.2.0",
@@ -31,6 +39,7 @@
     "base64-arraybuffer": "^1.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "codemirror": "^6.0.2",
     "expo": "~54.0.27",
     "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.11",
@@ -73,15 +82,18 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
-    "eas-cli": "^16.0.0",
     "@babel/core": "^7.25.2",
     "@expo/metro-config": "^54.0.13",
     "@expo/ngrok": "^4.1.0",
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.1.10",
+    "eas-cli": "^16.0.0",
     "eslint": "^9.31.0",
     "eslint-config-expo": "~10.0.0",
+    "jest": "^30.2.0",
     "prettier-plugin-tailwindcss": "^0.5.11",
     "tailwindcss": "^3.4.17",
+    "ts-jest": "^29.4.6",
     "typescript": "~5.9.2"
   },
   "private": true
