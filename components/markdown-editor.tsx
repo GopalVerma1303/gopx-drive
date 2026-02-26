@@ -1,3 +1,4 @@
+import { EditorWebView } from "@/components/EditorWebView";
 import { detectCheckboxInLine, toggleCheckboxInMarkdown } from "@/components/markdown-toolbar";
 import { SyntaxHighlighter } from "@/components/syntax-highlighter";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -115,6 +116,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     const inputRef = useRef<TextInput>(null);
     const editorRootRef = useRef<HTMLDivElement | null>(null);
     const editorHandleRef = useRef<EditorHandle | null>(null);
+    const editorWebViewRef = useRef<MarkdownEditorRef>(null);
     const previousValueRef = useRef<string>(value);
     const isProcessingListRef = useRef<boolean>(false);
     const pendingInternalValueRef = useRef<string | null>(null);
@@ -1336,6 +1338,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
     useImperativeHandle(ref, () => ({
       insertText: (text: string, cursorOffset?: number) => {
+        if (Platform.OS !== "web" && editorWebViewRef.current) {
+          editorWebViewRef.current.insertText(text, cursorOffset);
+          return;
+        }
         if (Platform.OS === "web" && editorHandleRef.current) {
           const handle = editorHandleRef.current;
           const sel = handle.getSelection();
@@ -1347,6 +1353,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         insertTextAtSelection(text, cursorOffset);
       },
       wrapSelection: (before: string, after: string, cursorOffset?: number) => {
+        if (Platform.OS !== "web" && editorWebViewRef.current) {
+          editorWebViewRef.current.wrapSelection(before, after, cursorOffset);
+          return;
+        }
         if (Platform.OS === "web" && editorHandleRef.current) {
           const handle = editorHandleRef.current;
           const { from, to } = handle.getSelection();
@@ -1395,14 +1405,26 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         applyTextAndSelection(nextText, { start: newCursorPosition, end: newCursorPosition });
       },
       indent: () => {
+        if (Platform.OS !== "web" && editorWebViewRef.current) {
+          editorWebViewRef.current.indent();
+          return;
+        }
         indentAtSelection();
         if (Platform.OS === "web" && editorHandleRef.current) editorHandleRef.current.focus();
       },
       outdent: () => {
+        if (Platform.OS !== "web" && editorWebViewRef.current) {
+          editorWebViewRef.current.outdent();
+          return;
+        }
         unindentAtSelection();
         if (Platform.OS === "web" && editorHandleRef.current) editorHandleRef.current.focus();
       },
       undo: () => {
+        if (Platform.OS !== "web" && editorWebViewRef.current) {
+          editorWebViewRef.current.undo();
+          return;
+        }
         if (isPreview || !inputRef.current) return;
         if (undoStackRef.current.length === 0) return;
 
@@ -1413,6 +1435,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         applyTextAndSelection(snap.text, snap.selection, { skipHistory: true });
       },
       redo: () => {
+        if (Platform.OS !== "web" && editorWebViewRef.current) {
+          editorWebViewRef.current.redo();
+          return;
+        }
         if (isPreview || !inputRef.current) return;
         if (redoStackRef.current.length === 0) return;
 
@@ -1422,13 +1448,21 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         pushUndoSnapshot({ text: currentText, selection: currentSel });
         applyTextAndSelection(snap.text, snap.selection, { skipHistory: true });
       },
-      canUndo: () => undoStackRef.current.length > 0,
-      canRedo: () => redoStackRef.current.length > 0,
+      canUndo: () => (Platform.OS !== "web" && editorWebViewRef.current ? editorWebViewRef.current.canUndo() : undoStackRef.current.length > 0),
+      canRedo: () => (Platform.OS !== "web" && editorWebViewRef.current ? editorWebViewRef.current.canRedo() : redoStackRef.current.length > 0),
       focus: () => {
+        if (Platform.OS !== "web" && editorWebViewRef.current) {
+          editorWebViewRef.current.focus();
+          return;
+        }
         inputRef.current?.focus();
       },
-      getSelection: () => selection,
+      getSelection: () => (Platform.OS !== "web" && editorWebViewRef.current ? editorWebViewRef.current.getSelection() : selection),
       replaceRange: (start: number, end: number, text: string) => {
+        if (Platform.OS !== "web" && editorWebViewRef.current) {
+          editorWebViewRef.current.replaceRange(start, end, text);
+          return;
+        }
         if (isPreview || !inputRef.current) return;
         const currentText = previousValueRef.current;
         const nextText = currentText.substring(0, start) + text + currentText.substring(end);
@@ -2898,44 +2932,19 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             />
           </View>
         ) : (
-          <Input
-            ref={inputRef}
-            className="flex-1 border-0 shadow-none bg-transparent text-base leading-6 font-mono px-8"
-            placeholder={placeholder}
-            placeholderTextColor={colors.mutedForeground}
+          <EditorWebView
+            ref={editorWebViewRef}
             value={value}
-            onChangeText={handleTextChange}
-            selection={selection}
-            {...(Platform.OS === "web" ? ({ onKeyDown: handleWebKeyDown } as any) : {})}
-            onSelectionChange={(e) => {
-              const next = e.nativeEvent.selection;
-              const pending = pendingSelectionRef.current;
-
-              // During programmatic updates, ignore transient selection events (often {0,0} on Android)
-              if (isProcessingListRef.current || suppressSelectionUpdatesRef.current > 0) {
-                if (!pending || pending.start !== next.start || pending.end !== next.end) {
-                  return;
-                }
-              }
-
-              const sel = { start: next.start, end: next.end };
+            onChangeText={onChangeText}
+            onSelectionChange={(sel) => {
               setSelectionBoth(sel);
               onSelectionChange?.(sel);
             }}
-            multiline
-            blurOnSubmit={false}
-            textAlignVertical="top"
-            style={{
-              paddingHorizontal: 32,
-              paddingTop: 24,
-              paddingBottom: 65,
-              fontSize: 16,
-              lineHeight: 24,
-              fontFamily: Platform.select({
-                web: "Iosevka, monospace",
-                default: "Iosevka",
-              }),
-              flex: 1,
+            theme={{
+              background: colors.muted,
+              foreground: colors.foreground,
+              selection: hexToRgba(colors.primary, 0.25),
+              lineHighlight: hexToRgba(colors.muted, 0.6),
             }}
           />
         )}

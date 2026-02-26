@@ -2,6 +2,7 @@
 
 import type { MarkdownEditorRef } from "@/components/markdown-editor/types";
 import { EDITOR_SHELL_HTML } from "@/assets/editor/editorShellHtml";
+import { EDITOR_BUNDLE } from "@/assets/editor/editorBundle.generated";
 import React, { forwardRef, useCallback, useImperativeHandle, useRef, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 
@@ -9,6 +10,9 @@ const WebView =
   Platform.OS === "web"
     ? null
     : require("react-native-webview").WebView;
+
+// Inline HTML + injected bundle. We do NOT use file:// because on Android
+// injectedJavaScript often does not run when the WebView source is a file URI.
 
 export interface EditorWebViewProps {
   value: string;
@@ -34,6 +38,10 @@ export const EditorWebView = forwardRef<MarkdownEditorRef, EditorWebViewProps>(
     const lastSelectionRef = useRef({ start: 0, end: 0 });
     const lastValueRef = useRef<string>(value);
     const initSentRef = useRef(false);
+    const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pendingChangeRef = useRef<string | null>(null);
+    const onChangeTextRef = useRef(onChangeText);
+    onChangeTextRef.current = onChangeText;
 
     const sendInit = useCallback(() => {
       if (!bridgeReady || initSentRef.current) return;
@@ -57,6 +65,14 @@ export const EditorWebView = forwardRef<MarkdownEditorRef, EditorWebViewProps>(
       }
     }, [bridgeReady, sendInit]);
 
+    // Sync external value changes (e.g. note loaded, switch note) into the WebView
+    React.useEffect(() => {
+      if (!bridgeReady || initSentRef.current !== true) return;
+      if (value === lastValueRef.current) return;
+      lastValueRef.current = value;
+      postMessage(webViewRef, { type: "setValue", text: value });
+    }, [bridgeReady, value]);
+
     const handleMessage = useCallback(
       (e: { nativeEvent: { data: string } }) => {
         try {
@@ -65,9 +81,22 @@ export const EditorWebView = forwardRef<MarkdownEditorRef, EditorWebViewProps>(
             case "bridgeReady":
               setBridgeReady(true);
               break;
+            case "bridgeError":
+              if (__DEV__) console.warn("[EditorWebView] bridgeError", data.message);
+              break;
             case "change":
               lastValueRef.current = data.text;
-              onChangeText?.(data.text);
+              pendingChangeRef.current = data.text;
+              // Debounce parent updates so re-renders don't steal focus / dismiss keyboard on Android
+              if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+              debounceTimerRef.current = setTimeout(() => {
+                debounceTimerRef.current = null;
+                const text = pendingChangeRef.current;
+                if (text !== null) {
+                  pendingChangeRef.current = null;
+                  onChangeTextRef.current?.(text);
+                }
+              }, 150);
               break;
             case "selectionChange":
               lastSelectionRef.current = { start: data.from, end: data.to };
@@ -78,6 +107,15 @@ export const EditorWebView = forwardRef<MarkdownEditorRef, EditorWebViewProps>(
       },
       [onChangeText, onSelectionChange]
     );
+
+    React.useEffect(() => () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      const text = pendingChangeRef.current;
+      if (text !== null) {
+        pendingChangeRef.current = null;
+        onChangeTextRef.current?.(text);
+      }
+    }, []);
 
     useImperativeHandle(
       ref,
@@ -131,18 +169,35 @@ export const EditorWebView = forwardRef<MarkdownEditorRef, EditorWebViewProps>(
       return <View style={styles.placeholder} />;
     }
 
+    const injectedJavaScript =
+      "try { " +
+      EDITOR_BUNDLE +
+      " } catch (e) { typeof window !== 'undefined' && window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'bridgeError', message: (e && (e.message || String(e))) || 'Unknown' })); } true;";
+
     return (
       <View style={styles.container}>
         <WebView
           ref={webViewRef}
           source={{ html: EDITOR_SHELL_HTML, baseUrl: "about:blank" }}
+          injectedJavaScript={injectedJavaScript}
           onMessage={handleMessage}
+          onError={(e) => {
+            if (__DEV__) {
+              console.warn("[EditorWebView] onError", e.nativeEvent?.description);
+            }
+          }}
+          onHttpError={(e) => {
+            if (__DEV__) {
+              console.warn("[EditorWebView] onHttpError", e.nativeEvent?.statusCode, e.nativeEvent?.url);
+            }
+          }}
           style={styles.webview}
           scrollEnabled={true}
           keyboardDisplayRequiresUserAction={false}
           originWhitelist={["*"]}
           javaScriptEnabled={true}
           domStorageEnabled={true}
+          mixedContentMode="always"
         />
       </View>
     );

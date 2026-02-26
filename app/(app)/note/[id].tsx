@@ -36,7 +36,7 @@ import {
   View,
 } from "react-native";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
-import Animated, { useAnimatedStyle } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 
 export default function NoteEditorScreen() {
   const { id, edit: editParam, folderId } = useLocalSearchParams<{ id: string; edit?: string; folderId?: string }>();
@@ -73,12 +73,24 @@ export default function NoteEditorScreen() {
   /** Guards against double submission (e.g. double-tap save) before isPending updates. */
   const saveInProgressRef = useRef(false);
 
+  const isPreviewShared = useSharedValue(isPreview);
+  useEffect(() => {
+    isPreviewShared.value = isPreview;
+  }, [isPreview]);
+
   const containerAnimatedStyle = useAnimatedStyle(() => {
+    "worklet";
     // Only apply keyboard avoidance on native platforms
     if (Platform.OS === "web") {
       return {};
     }
-
+    // In edit mode we use a WebView editor. On Android, applying keyboard avoidance
+    // (marginBottom) when the keyboard opens causes a layout shift that dismisses
+    // the keyboard as soon as the user touches to type. So skip avoidance in edit mode;
+    // the user can scroll the editor to see content under the keyboard.
+    if (!isPreviewShared.value) {
+      return {};
+    }
     return {
       marginBottom: -keyboardHeight.value,
     };
@@ -605,17 +617,26 @@ export default function NoteEditorScreen() {
                   />
                 </ScrollView>
               ) : (
-                <MarkdownEditor
-                  ref={editorRef}
-                  value={content}
-                  onChangeText={setContent}
-                  onSelectionChange={(sel) => {
-                    lastSelectionRef.current = sel;
-                  }}
-                  placeholder="Start writing in markdown..."
-                  isPreview={false}
-                  onSave={handleSave}
-                />
+                <ScrollView
+                  className="flex-1"
+                  contentContainerStyle={{ flexGrow: 1 }}
+                  keyboardShouldPersistTaps="always"
+                  keyboardDismissMode="none"
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled={true}
+                >
+                  <MarkdownEditor
+                    ref={editorRef}
+                    value={content}
+                    onChangeText={setContent}
+                    onSelectionChange={(sel) => {
+                      lastSelectionRef.current = sel;
+                    }}
+                    placeholder="Start writing in markdown..."
+                    isPreview={false}
+                    onSave={handleSave}
+                  />
+                </ScrollView>
               )}
             </View>
           </View>
