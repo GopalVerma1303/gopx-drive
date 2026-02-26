@@ -24,6 +24,7 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  Keyboard,
   Modal,
   Platform,
   Pressable,
@@ -51,6 +52,7 @@ export default function FoldersScreen() {
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   const [editFolderNameInput, setEditFolderNameInput] = useState("");
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [screenWidth, setScreenWidth] = useState(() => {
     if (Platform.OS === "web") {
       if (typeof window !== "undefined") {
@@ -106,6 +108,21 @@ export default function FoldersScreen() {
     }
   }, []);
 
+  const folderModalOpen = createFolderModalOpen || !!editingFolder;
+  useEffect(() => {
+    if (!folderModalOpen) setKeyboardVisible(false);
+  }, [folderModalOpen]);
+
+  useEffect(() => {
+    if (Platform.OS === "web" || !folderModalOpen) return;
+    const showSub = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [folderModalOpen]);
+
   const {
     data: folders = [],
     isLoading: foldersLoading,
@@ -116,7 +133,7 @@ export default function FoldersScreen() {
     queryFn: () => listFolders(user?.id),
     enabled: !!user?.id,
     refetchOnMount: false,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes - match notes
     placeholderData: (prev) => prev,
     retry: 2, // Retry when API fails and no cache (e.g. session not ready right after login)
   });
@@ -134,7 +151,7 @@ export default function FoldersScreen() {
 
   const updateFolderMutation = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) =>
-      updateFolder(id, { name }),
+      updateFolder(id, { name }, { userId: user?.id }),
     onSuccess: () => {
       invalidateFoldersQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -143,7 +160,7 @@ export default function FoldersScreen() {
   });
 
   const archiveFolderMutation = useMutation({
-    mutationFn: (id: string) => archiveFolder(id),
+    mutationFn: (id: string) => archiveFolder(id, { userId: user?.id }),
     onSuccess: () => {
       invalidateFoldersQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -329,8 +346,9 @@ export default function FoldersScreen() {
         >
           <KeyboardAvoidingView
             className="flex-1"
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={0}
+            behavior="padding"
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+            enabled={keyboardVisible}
           >
             <View className="flex-1 bg-black/50">
               <View className="flex-1 p-4">
@@ -436,8 +454,9 @@ export default function FoldersScreen() {
           >
             <KeyboardAvoidingView
               className="flex-1"
-              behavior={Platform.OS === "ios" ? "padding" : "height"}
-              keyboardVerticalOffset={0}
+              behavior="padding"
+              keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+              enabled={keyboardVisible}
             >
               <View className="flex-1 bg-black/50">
                 <View className="flex-1 p-4">

@@ -46,7 +46,7 @@ export const getFileById = async (id: string): Promise<File | null> => {
   return supabaseFiles.getFileById(id);
 };
 
-/** List files that belong to a folder. Uses Supabase when not UI_DEV; in UI_DEV returns []. */
+/** List files that belong to a folder. Tries Supabase; when offline or fetch fails, uses cached file list filtered by folder_id. */
 export const listFilesByFolder = async (
   userId: string | undefined,
   folderId: string
@@ -55,7 +55,8 @@ export const listFilesByFolder = async (
   try {
     return await supabaseFiles.listFilesByFolder(userId, folderId);
   } catch {
-    return [];
+    const cached = await getCachedFiles(userId);
+    return cached.filter((f) => f.folder_id === folderId);
   }
 };
 

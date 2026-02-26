@@ -231,7 +231,7 @@ export default function ArchiveScreen() {
   });
 
   const restoreFolderMutation = useMutation({
-    mutationFn: (id: string) => restoreFolder(id),
+    mutationFn: (id: string) => restoreFolder(id, { userId: user?.id }),
     onSuccess: () => {
       invalidateFoldersQueries(queryClient, user?.id);
       invalidateNotesQueries(queryClient, user?.id);
@@ -241,7 +241,7 @@ export default function ArchiveScreen() {
   });
 
   const deleteFolderMutation = useMutation({
-    mutationFn: (id: string) => deleteFolder(id),
+    mutationFn: (id: string) => deleteFolder(id, { userId: user?.id }),
     onSuccess: () => {
       invalidateFoldersQueries(queryClient, user?.id);
       invalidateNotesQueries(queryClient, user?.id);

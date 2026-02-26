@@ -12,6 +12,11 @@ const CACHE_KEY_PREFIXES = [
   "@archived_files_cache",
   "@folders_cache",
   "@archived_folders_cache",
+  "@pending_folder_creates",
+  "@pending_folder_deletes",
+  "@pending_folder_updates",
+  "@pending_folder_archives",
+  "@pending_folder_restores",
   "@events_cache",
 ];
 

@@ -95,7 +95,7 @@ export const getUnsyncedNoteIds = async (
   return notesReservoir.getUnsyncedNoteIds(userId);
 };
 
-/** List notes that belong to a folder. Uses Supabase when not UI_DEV; in UI_DEV returns []. */
+/** List notes that belong to a folder. Tries Supabase; when offline or fetch fails, uses cached notes (e.g. from SQLite) filtered by folder_id. */
 export const listNotesByFolder = async (
   userId: string | undefined,
   folderId: string
@@ -104,7 +104,12 @@ export const listNotesByFolder = async (
   try {
     return await supabaseNotes.listNotesByFolder(userId, folderId);
   } catch {
-    return [];
+    try {
+      const allNotes = await listNotes(userId);
+      return allNotes.filter((n) => n.folder_id === folderId);
+    } catch {
+      return [];
+    }
   }
 };
 
