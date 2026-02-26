@@ -27,7 +27,6 @@ import { invalidateEventsQueries, invalidateFilesQueries, invalidateFoldersQueri
 import type { File as FileRecord, Note } from "@/lib/supabase";
 import { useFilePreview } from "@/lib/use-file-preview";
 import { useThemeColors } from "@/lib/use-theme-colors";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
@@ -47,7 +46,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const containerPadding = 16;
 const sectionGap = 24;
-const cardGap = 10;
+const cardGap = 12;
 const maxWidth = 672;
 
 const transicon = require("@/assets/images/transicon.png");
@@ -167,7 +166,7 @@ export default function HomeScreen() {
 
   const contentWidth = Math.min(screenWidth, maxWidth) - containerPadding * 2;
   const columns = 2;
-  const columnGap = 6;
+  const columnGap = 12;
   const rowGap = cardGap;
   const gridCardWidth = (contentWidth - columnGap * (columns - 1)) / columns;
   const totalGridWidth = gridCardWidth * columns + columnGap * (columns - 1);
