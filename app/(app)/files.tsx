@@ -112,6 +112,7 @@ export default function FilesScreen() {
   } = useQuery({
     queryKey: ["files", user?.id],
     queryFn: () => listFiles(user?.id),
+    enabled: !!user?.id,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes

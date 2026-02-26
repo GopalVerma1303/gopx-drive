@@ -104,11 +104,43 @@ function AppLayoutContent() {
   );
 }
 
+/** Query key prefixes for user-scoped data. Invalidated after login so screens refetch. */
+const USER_SCOPED_QUERY_KEYS = [
+  "notes",
+  "files",
+  "events",
+  "folders",
+  "archivedNotes",
+  "archivedFiles",
+  "archivedFolders",
+  "folderNotes",
+  "folderFiles",
+  "notes-sync-status",
+  "notes-unsynced-ids",
+  "attachments",
+] as const;
+
 export default function AppLayout() {
   const { user, isLoading } = useAuth();
   const { colors } = useThemeColors();
   const queryClient = useQueryClient();
   const appState = useRef(AppState.currentState);
+  const prevUserIdRef = useRef<string | null>(null);
+
+  // After login (or user change), invalidate all user-scoped queries so every screen
+  // refetches instead of showing empty until manual refresh.
+  useEffect(() => {
+    const userId = user?.id ?? null;
+    if (userId && prevUserIdRef.current !== userId) {
+      prevUserIdRef.current = userId;
+      USER_SCOPED_QUERY_KEYS.forEach((key) => {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      });
+    }
+    if (!userId) {
+      prevUserIdRef.current = null;
+    }
+  }, [user?.id, queryClient]);
 
   useEffect(() => {
     // When app comes to foreground (e.g. user switches browser tab back), do not

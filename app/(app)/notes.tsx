@@ -125,6 +125,7 @@ export default function NotesScreen() {
   } = useQuery({
     queryKey: ["notes", user?.id],
     queryFn: () => listNotes(user?.id),
+    enabled: !!user?.id,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes

@@ -78,6 +78,7 @@ export default function CalendarScreen() {
     // Stable key so calendar stays visible when month changes (we refetch in background, keep showing previous data)
     queryKey: ["events", user?.id],
     queryFn: () => listEvents(user?.id),
+    enabled: !!user?.id,
     refetchOnMount: false, // Don't block on mount - use cache first
     refetchOnWindowFocus: false,
     staleTime: Infinity, // Don't auto-refetch based on stale time - we'll refetch manually on month change

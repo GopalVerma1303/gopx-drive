@@ -98,6 +98,7 @@ export default function AttachmentsScreen() {
   } = useQuery({
     queryKey: ["attachments", user?.id],
     queryFn: () => listAttachments(user?.id),
+    enabled: !!user?.id,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000, // 5 minutes - cache for 5 minutes
