@@ -337,35 +337,35 @@ export default function SharedNoteScreen() {
                   <Pressable
                     style={({ pressed }) => [{ paddingVertical: 8 }, pressed && { opacity: 1 }]}
                     className="active:bg-transparent focus:outline-none"
-                    accessibilityLabel="Note information"
+                    accessibilityLabel="Note Information"
                   >
                     <Info size={22} color={colors.foreground} />
                   </Pressable>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="bottom" align="end" sideOffset={10} className="min-w-[240px]">
-                  <DropdownMenuLabel>Note information</DropdownMenuLabel>
+                  <DropdownMenuLabel>Note Information</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem disabled className="flex flex-col items-start gap-0.5">
+                  <DropdownMenuItem disabled className="flex flex-col items-start gap-0.5 opacity-100">
                     <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Title</Text>
                     <Text style={{ color: colors.foreground, fontSize: 14 }} numberOfLines={1}>
                       {note.title || "Untitled"}
                     </Text>
                   </DropdownMenuItem>
-                  <DropdownMenuItem disabled className="flex flex-col items-start gap-0.5">
+                  <DropdownMenuItem disabled className="flex flex-col items-start gap-0.5 opacity-100">
                     <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Last updated</Text>
                     <Text style={{ color: colors.foreground, fontSize: 14 }}>
                       {formatDateTime(note.updated_at)}
                     </Text>
                   </DropdownMenuItem>
                   {note.shared_by_email ? (
-                    <DropdownMenuItem disabled className="flex flex-col items-start gap-0.5">
+                    <DropdownMenuItem disabled className="flex flex-col items-start gap-0.5 opacity-100">
                       <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Shared by</Text>
                       <Text style={{ color: colors.foreground, fontSize: 14 }} numberOfLines={1}>
                         {note.shared_by_email}
                       </Text>
                     </DropdownMenuItem>
                   ) : null}
-                  <DropdownMenuItem disabled className="flex flex-col items-start gap-0.5">
+                  <DropdownMenuItem disabled className="flex flex-col items-start gap-0.5 opacity-100">
                     <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Content</Text>
                     <Text style={{ color: colors.foreground, fontSize: 14 }}>
                       {note.content?.length ?? 0} characters · {wordCount(note.content ?? "")} words
