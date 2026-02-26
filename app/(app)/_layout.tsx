@@ -2,6 +2,7 @@ import { DefaultAppHead } from "@/components/default-app-head";
 import { Navigation } from "@/components/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { NavigationProvider, useNavigation } from "@/contexts/navigation-context";
+import { ViewModeProvider } from "@/contexts/view-mode-context";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQueryClient } from "@tanstack/react-query";
 import { Redirect, Stack, usePathname } from "expo-router";
@@ -204,7 +205,9 @@ export default function AppLayout() {
 
   return (
     <NavigationProvider>
-      <AppLayoutContent />
+      <ViewModeProvider>
+        <AppLayoutContent />
+      </ViewModeProvider>
     </NavigationProvider>
   );
 }

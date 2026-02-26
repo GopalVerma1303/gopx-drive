@@ -4,6 +4,7 @@ import { FolderCard } from "@/components/folder-card";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/auth-context";
+import { useViewMode } from "@/contexts/view-mode-context";
 import {
   archiveFolder,
   createFolder,
@@ -15,7 +16,6 @@ import { invalidateFoldersQueries } from "@/lib/query-utils";
 import type { Folder } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
@@ -36,7 +36,6 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const columns = 2;
-const FOLDERS_VIEW_MODE_STORAGE_KEY = "@folders_view_mode";
 
 export default function FoldersScreen() {
   const { user } = useAuth();
@@ -44,8 +43,7 @@ export default function FoldersScreen() {
   const queryClient = useQueryClient();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
-  const [isViewModeLoaded, setIsViewModeLoaded] = useState(false);
+  const { getViewMode, toggleViewMode } = useViewMode();
   const [searchQuery, setSearchQuery] = useState("");
   const [createFolderModalOpen, setCreateFolderModalOpen] = useState(false);
   const [folderNameInput, setFolderNameInput] = useState("");
@@ -62,34 +60,7 @@ export default function FoldersScreen() {
     return Dimensions.get("window").width;
   });
 
-  // Load saved view mode preference on mount
-  useEffect(() => {
-    const loadViewMode = async () => {
-      try {
-        const savedViewMode = await AsyncStorage.getItem(FOLDERS_VIEW_MODE_STORAGE_KEY);
-        if (savedViewMode === "grid" || savedViewMode === "list") {
-          setViewMode(savedViewMode);
-        }
-      } catch (error) {
-        console.error("Failed to load folders view mode:", error);
-      } finally {
-        setIsViewModeLoaded(true);
-      }
-    };
-    loadViewMode();
-  }, []);
-
-  useEffect(() => {
-    if (!isViewModeLoaded) return;
-    const saveViewMode = async () => {
-      try {
-        await AsyncStorage.setItem(FOLDERS_VIEW_MODE_STORAGE_KEY, viewMode);
-      } catch (error) {
-        console.error("Failed to save folders view mode:", error);
-      }
-    };
-    saveViewMode();
-  }, [viewMode, isViewModeLoaded]);
+  const viewMode = getViewMode("folders");
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -270,7 +241,7 @@ export default function FoldersScreen() {
                 if (Platform.OS !== "web") {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 }
-                setViewMode((prev) => (prev === "grid" ? "list" : "grid"));
+                toggleViewMode("folders");
               }}
               style={{ paddingVertical: 8 }}
             >

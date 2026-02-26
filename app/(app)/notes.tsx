@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
+import { useViewMode } from "@/contexts/view-mode-context";
 import { listFolders } from "@/lib/folders";
 import { CARD_LIST_MAX_WIDTH } from "@/lib/layout";
 import {
@@ -20,7 +21,6 @@ import { invalidateFoldersQueries, invalidateNotesListQueries } from "@/lib/quer
 import type { Note } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
@@ -38,8 +38,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const NOTES_VIEW_MODE_STORAGE_KEY = "@notes_view_mode";
-
 export default function NotesScreen() {
   const { user } = useAuth();
   const router = useRouter();
@@ -47,9 +45,8 @@ export default function NotesScreen() {
   const { alert } = useAlert();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
+  const { getViewMode, toggleViewMode } = useViewMode();
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
-  const [isViewModeLoaded, setIsViewModeLoaded] = useState(false);
   const [screenWidth, setScreenWidth] = useState(() => {
     if (Platform.OS === "web") {
       if (typeof window !== "undefined") {
@@ -64,23 +61,6 @@ export default function NotesScreen() {
   // - App foreground sync in (app)/_layout.tsx
   // - Pull-to-refresh on this screen
   // - staleTime so cached data is used when returning to the tab
-
-  // Load saved view mode preference on mount
-  useEffect(() => {
-    const loadViewMode = async () => {
-      try {
-        const savedViewMode = await AsyncStorage.getItem(NOTES_VIEW_MODE_STORAGE_KEY);
-        if (savedViewMode && (savedViewMode === "grid" || savedViewMode === "list")) {
-          setViewMode(savedViewMode);
-        }
-      } catch (error) {
-        console.error("Failed to load view mode:", error);
-      } finally {
-        setIsViewModeLoaded(true);
-      }
-    };
-    loadViewMode();
-  }, []);
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -100,19 +80,7 @@ export default function NotesScreen() {
     }
   }, []);
 
-  // Save view mode preference whenever it changes
-  useEffect(() => {
-    if (isViewModeLoaded) {
-      const saveViewMode = async () => {
-        try {
-          await AsyncStorage.setItem(NOTES_VIEW_MODE_STORAGE_KEY, viewMode);
-        } catch (error) {
-          console.error("Failed to save view mode:", error);
-        }
-      };
-      saveViewMode();
-    }
-  }, [viewMode, isViewModeLoaded]);
+  const viewMode = getViewMode("notes");
 
   // Always use 2 columns for all devices
   const columns = 2;
@@ -324,8 +292,7 @@ export default function NotesScreen() {
                 if (Platform.OS !== "web") {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 }
-                const newViewMode = viewMode === "grid" ? "list" : "grid";
-                setViewMode(newViewMode);
+                toggleViewMode("notes");
               }}
               style={{ paddingVertical: 8 }}
             >

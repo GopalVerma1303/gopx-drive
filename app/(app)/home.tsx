@@ -17,6 +17,7 @@ import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
+import { useViewMode } from "@/contexts/view-mode-context";
 import { getTodaysAndTomorrowsEvents } from "@/lib/calendar-utils";
 import { createEvent, listEvents } from "@/lib/events";
 import { archiveFile, listFiles, updateFile, uploadFile } from "@/lib/files";
@@ -50,7 +51,6 @@ const cardGap = 10;
 const maxWidth = 672;
 
 const transicon = require("@/assets/images/transicon.png");
-const HOME_VIEW_MODE_STORAGE_KEY = "@home_view_mode";
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -59,8 +59,7 @@ export default function HomeScreen() {
   const { alert } = useAlert();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
-  const [isViewModeLoaded, setIsViewModeLoaded] = useState(false);
+  const { getViewMode, toggleViewMode, isLoaded: isViewModeLoaded } = useViewMode();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [optionsModalOpen, setOptionsModalOpen] = useState(false);
@@ -78,37 +77,9 @@ export default function HomeScreen() {
     return Dimensions.get("window").width;
   });
 
+  const viewMode = getViewMode("home");
+
   const isNavHorizontal = screenWidth < 768;
-
-  // Load saved view mode preference on mount
-  useEffect(() => {
-    const loadViewMode = async () => {
-      try {
-        const savedViewMode = await AsyncStorage.getItem(HOME_VIEW_MODE_STORAGE_KEY);
-        if (savedViewMode === "grid" || savedViewMode === "list") {
-          setViewMode(savedViewMode);
-        }
-      } catch (error) {
-        console.error("Failed to load home view mode:", error);
-      } finally {
-        setIsViewModeLoaded(true);
-      }
-    };
-    loadViewMode();
-  }, []);
-
-  // Save view mode preference whenever it changes
-  useEffect(() => {
-    if (!isViewModeLoaded) return;
-    const saveViewMode = async () => {
-      try {
-        await AsyncStorage.setItem(HOME_VIEW_MODE_STORAGE_KEY, viewMode);
-      } catch (error) {
-        console.error("Failed to save home view mode:", error);
-      }
-    };
-    saveViewMode();
-  }, [viewMode, isViewModeLoaded]);
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -417,8 +388,7 @@ export default function HomeScreen() {
                 if (Platform.OS !== "web") {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 }
-                const newViewMode = viewMode === "grid" ? "list" : "grid";
-                setViewMode(newViewMode);
+                toggleViewMode("home");
               }}
               style={{ paddingVertical: 8 }}
             >

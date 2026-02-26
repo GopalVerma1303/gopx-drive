@@ -7,7 +7,7 @@ import { deleteAttachment, listAttachments, type AttachmentBucketItem } from "@/
 import { invalidateAttachmentsQueries } from "@/lib/query-utils";
 import { THEME } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useViewMode } from "@/contexts/view-mode-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
@@ -28,17 +28,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const ATTACHMENTS_VIEW_MODE_STORAGE_KEY = "@attachments_view_mode";
-
 export default function AttachmentsScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
+  const { getViewMode, toggleViewMode } = useViewMode();
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
-  const [isViewModeLoaded, setIsViewModeLoaded] = useState(false);
   const [screenWidth, setScreenWidth] = useState(() => {
     if (Platform.OS === "web") {
       if (typeof window !== "undefined") {
@@ -68,27 +65,7 @@ export default function AttachmentsScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    const loadViewMode = async () => {
-      try {
-        const saved = await AsyncStorage.getItem(ATTACHMENTS_VIEW_MODE_STORAGE_KEY);
-        if (saved && (saved === "grid" || saved === "list")) {
-          setViewMode(saved);
-        }
-      } catch {
-        // ignore
-      } finally {
-        setIsViewModeLoaded(true);
-      }
-    };
-    loadViewMode();
-  }, []);
-
-  useEffect(() => {
-    if (isViewModeLoaded) {
-      AsyncStorage.setItem(ATTACHMENTS_VIEW_MODE_STORAGE_KEY, viewMode).catch(() => { });
-    }
-  }, [viewMode, isViewModeLoaded]);
+  const viewMode = getViewMode("attachments");
 
   const {
     data: attachments = [],
@@ -235,7 +212,7 @@ export default function AttachmentsScreen() {
                 if (Platform.OS !== "web") {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 }
-                setViewMode((m) => (m === "grid" ? "list" : "grid"));
+                toggleViewMode("attachments");
               }}
               style={{ paddingVertical: 8 }}
             >
