@@ -733,6 +733,7 @@ export default function HomeScreen() {
                           fontWeight: "600",
                           color: colors.mutedForeground,
                           marginBottom: 8,
+                          textTransform: "uppercase",
                         }}
                       >
                         Today
@@ -755,6 +756,7 @@ export default function HomeScreen() {
                           fontWeight: "600",
                           color: colors.mutedForeground,
                           marginBottom: 8,
+                          textTransform: "uppercase",
                         }}
                       >
                         Tomorrow

@@ -3,29 +3,23 @@
 import { EventCard } from "@/components/event-card";
 import { EventModal } from "@/components/event-modal";
 import { Card } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
+import {
+  expandEventsIntoInstances,
+  formatDateDisplay,
+  formatDateToLocalString,
+  parseLocalDate,
+  type ExpandedEvent,
+} from "@/lib/calendar-utils";
 import {
   createEvent,
   deleteEvent,
   listEvents,
   updateEvent,
 } from "@/lib/events";
-import {
-  expandEventsIntoInstances,
-  type ExpandedEvent,
-  formatDateDisplay,
-  formatDateToLocalString,
-  parseLocalDate,
-} from "@/lib/calendar-utils";
 import { debounce, invalidateEventsQueries } from "@/lib/query-utils";
 import type { Event } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
@@ -37,8 +31,6 @@ import { ChevronDown, ChevronUp, Plus, Search, X } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
-  Keyboard,
   Modal,
   Platform,
   Pressable,
@@ -46,7 +38,6 @@ import {
   ScrollView,
   View
 } from "react-native";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function CalendarScreen() {
@@ -127,7 +118,18 @@ export default function CalendarScreen() {
       event_date: string;
       repeat_interval?: "once" | "daily" | "weekly" | "monthly" | "yearly" | null;
     }) => createEvent(input),
-    onSuccess: () => {
+    onSuccess: (createdEvent) => {
+      // Optimistically add the newly created event so filters (including selectedDate) see it immediately
+      queryClient.setQueryData<Event[]>(["events", user?.id], (old) =>
+        old ? [...old, createdEvent] : [createdEvent]
+      );
+
+      // Ensure the active date filter matches the created event's date
+      if (createdEvent?.event_date) {
+        const createdDate = createdEvent.event_date.split("T")[0];
+        setSelectedDate(createdDate);
+      }
+
       invalidateEventsQueries(queryClient, user?.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setEventModalOpen(false);
@@ -479,6 +481,20 @@ export default function CalendarScreen() {
           )}
 
           {/* Events List */}
+          {!selectedDate && (
+            <View className="w-full max-w-2xl mx-auto mb-2">
+              <Text
+                style={{
+                  color: colors.mutedForeground,
+                  fontSize: 14,
+                  fontWeight: "600",
+                  textTransform: "uppercase",
+                }}
+              >
+                Upcoming
+              </Text>
+            </View>
+          )}
           {isLoading ? (
             <View className="w-full max-w-2xl mx-auto flex-1 justify-center items-center pt-12">
               <ActivityIndicator size="small" color={colors.foreground} />
