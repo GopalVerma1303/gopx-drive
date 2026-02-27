@@ -102,6 +102,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       placeholder = "Start writing in markdown...",
       className,
       isPreview = false,
+      searchQuery,
+      activeMatchIndex,
       onSave,
       onSelectionChange,
       previewOnly = false,
@@ -112,6 +114,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     const { colors } = useThemeColors();
     const { width: windowWidth } = useWindowDimensions();
     const inputRef = useRef<TextInput>(null);
+    const previewScrollRef = useRef<ScrollView | null>(null);
+    // Global match counter for the current render, used to determine which occurrence is "active"
+    const globalMatchCounterRef = useRef(0);
     const previousValueRef = useRef<string>(value);
     const isProcessingListRef = useRef<boolean>(false);
     const pendingInternalValueRef = useRef<string | null>(null);
@@ -1760,16 +1765,22 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       return children;
     };
 
-    // Create a stable key for Markdown component that changes when value changes
-    // This ensures proper remounting when content is refreshed/saved
+    // Create a stable key for Markdown component that changes when value or search highlighting changes.
+    // This ensures proper remounting when content is refreshed/saved or when active search match moves,
+    // so that onLayout is re-fired for the currently active match and scrolling works reliably.
     const markdownKey = useMemo(() => {
       // Create a simple hash from value for the key
       // Use length + first 200 chars + last 200 chars to ensure uniqueness while being performant
       const hash = value.length > 400
         ? `${value.length}-${value.slice(0, 200)}-${value.slice(-200)}`
         : value;
-      return `markdown-${hash}-${isPreview}`;
-    }, [value, isPreview]);
+      const searchPart = searchQuery ? `-${searchQuery}` : "";
+      const activePart =
+        typeof activeMatchIndex === "number" && activeMatchIndex >= 0
+          ? `-${activeMatchIndex}`
+          : "";
+      return `markdown-${hash}-${isPreview}${searchPart}${activePart}`;
+    }, [value, isPreview, searchQuery, activeMatchIndex]);
 
     // NOTE (web): Strikethrough is "propagated" to nested inline elements.
     // If `~~` wraps inline code, the line color can come from the *parent* text color (often black),
@@ -1929,6 +1940,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         </RNText>
       );
     };
+
+    // Reset global match counter at the start of each markdown render pass
+    globalMatchCounterRef.current = 0;
 
     // Custom renderer for checkboxes in task lists and code blocks
     const markdownRules = {
@@ -2681,18 +2695,127 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           </View>
         );
       },
-      // Make text selectable on mobile
+      // Make text selectable on mobile and support search highlighting + navigation in preview
       text: (node: any, children: any, parent: any, styles: any, inheritedStyles: any = {}) => {
         const defaultRenderer = renderRules?.text;
-        if (defaultRenderer) {
-          const rendered = defaultRenderer(node, children, parent, styles, inheritedStyles);
-          if (rendered && React.isValidElement(rendered)) {
-            return React.cloneElement(rendered as React.ReactElement<any>, { selectable: true });
+        const content: string = node.content ?? "";
+
+        const normalizedSearchQuery =
+          typeof searchQuery === "string" && searchQuery.trim().length > 0
+            ? searchQuery.trim()
+            : undefined;
+
+        // When no search query, fall back to default selectable rendering
+        if (!normalizedSearchQuery || typeof content !== "string" || !content) {
+          if (defaultRenderer) {
+            const rendered = defaultRenderer(node, children, parent, styles, inheritedStyles);
+            if (rendered && React.isValidElement(rendered)) {
+              return React.cloneElement(rendered as React.ReactElement<any>, { selectable: true });
+            }
           }
+          return (
+            <RNText key={node.key} style={[inheritedStyles, styles.text]} selectable={true}>
+              {content}
+            </RNText>
+          );
         }
+
+        const lowerContent = content.toLowerCase();
+        const lowerQuery = normalizedSearchQuery.toLowerCase();
+
+        if (!lowerContent.includes(lowerQuery)) {
+          if (defaultRenderer) {
+            const rendered = defaultRenderer(node, children, parent, styles, inheritedStyles);
+            if (rendered && React.isValidElement(rendered)) {
+              return React.cloneElement(rendered as React.ReactElement<any>, { selectable: true });
+            }
+          }
+          return (
+            <RNText key={node.key} style={[inheritedStyles, styles.text]} selectable={true}>
+              {content}
+            </RNText>
+          );
+        }
+
+        const parts: React.ReactNode[] = [];
+        let searchIndex = 0;
+
+        while (searchIndex < content.length) {
+          const matchIndex = lowerContent.indexOf(lowerQuery, searchIndex);
+          if (matchIndex === -1) {
+            const remaining = content.slice(searchIndex);
+            if (remaining) {
+              parts.push(
+                <RNText
+                  key={`${node.key}-p-${searchIndex}`}
+                  style={[inheritedStyles, styles.text]}
+                  selectable={true}
+                >
+                  {remaining}
+                </RNText>
+              );
+            }
+            break;
+          }
+
+          if (matchIndex > searchIndex) {
+            const nonMatch = content.slice(searchIndex, matchIndex);
+            parts.push(
+              <RNText
+                key={`${node.key}-p-${searchIndex}`}
+                style={[inheritedStyles, styles.text]}
+                selectable={true}
+              >
+                {nonMatch}
+              </RNText>
+            );
+          }
+
+          const matchedText = content.slice(matchIndex, matchIndex + normalizedSearchQuery.length);
+          const thisMatchIndex = globalMatchCounterRef.current;
+          const isActiveMatch =
+            typeof activeMatchIndex === "number" && activeMatchIndex === thisMatchIndex;
+          globalMatchCounterRef.current += 1;
+
+          const highlightNode = (
+            <RNText
+              key={`${node.key}-h-${matchIndex}-${activeMatchIndex ?? 0}`}
+              style={[
+                inheritedStyles,
+                styles.text,
+                {
+                  // Yellow for all matches, orange for active match
+                  backgroundColor: isActiveMatch
+                    ? hexToRgba("#f97316", 0.4) // orange-500
+                    : hexToRgba("#facc15", 0.4), // yellow-400
+                },
+              ]}
+              selectable={true}
+              onLayout={
+                isActiveMatch
+                  ? (event) => {
+                      const y = event.nativeEvent.layout.y ?? 0;
+                      if (previewScrollRef.current) {
+                        previewScrollRef.current.scrollTo({
+                          y: Math.max(y - 80, 0),
+                          animated: true,
+                        });
+                      }
+                    }
+                  : undefined
+              }
+            >
+              {matchedText}
+            </RNText>
+          );
+
+        parts.push(highlightNode);
+        searchIndex = matchIndex + normalizedSearchQuery.length;
+        }
+
         return (
-          <RNText key={node.key} style={[inheritedStyles, styles.text]} selectable={true}>
-            {node.content}
+          <RNText key={node.key} selectable={true}>
+            {parts}
           </RNText>
         );
       },
@@ -2773,6 +2896,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         {/* Editor or Preview */}
         {showPreview ? (
           <ScrollView
+            ref={previewScrollRef}
             className="flex-1"
             contentContainerStyle={{
               paddingHorizontal: 32,

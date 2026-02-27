@@ -4,6 +4,10 @@ export interface MarkdownEditorProps {
   placeholder?: string;
   className?: string;
   isPreview?: boolean;
+  /** Optional case-insensitive search query used to highlight and scroll to matches in preview mode. */
+  searchQuery?: string;
+  /** Zero-based index of the active match for scrolling when searchQuery is set. */
+  activeMatchIndex?: number;
   onSave?: () => void;
   /** Called whenever selection changes so parent can preserve it (e.g. before opening a modal that steals focus). */
   onSelectionChange?: (selection: { start: number; end: number }) => void;

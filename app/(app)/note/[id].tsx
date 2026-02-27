@@ -23,8 +23,8 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronDown } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, Search, X } from "lucide-react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   BackHandler,
@@ -35,6 +35,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import { Input } from "@/components/ui/input";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import Animated, { useAnimatedStyle } from "react-native-reanimated";
 
@@ -65,6 +66,9 @@ export default function NoteEditorScreen() {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [dropdownTriggerWidth, setDropdownTriggerWidth] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
   /** Last selection from editor (updated on every selection change). Preserved when AI button steals focus. */
   const lastSelectionRef = useRef({ start: 0, end: 0 });
   /** Range to replace with AI output when modal was opened with a selection (so we don't rely on getSelection() after focus is lost). */
@@ -397,6 +401,63 @@ export default function NoteEditorScreen() {
 
   const canSave = isDirty && !saveMutation.isPending;
 
+  const handleOpenSearch = () => {
+    // Always search in preview mode
+    setIsPreview(true);
+    setIsSearchOpen(true);
+    setActiveMatchIndex(0);
+  };
+
+  const handleCloseSearch = () => {
+    setIsSearchOpen(false);
+    setSearchQuery("");
+    setActiveMatchIndex(0);
+  };
+
+  const performBrowserFind = (direction: "next" | "prev") => {
+    if (Platform.OS !== "web") return;
+    const term = searchQuery.trim();
+    if (!term) return;
+    if (typeof window === "undefined") return;
+    const win: any = window as any;
+    if (typeof win.find !== "function") return;
+    const backwards = direction === "prev";
+    // Use browser's native find to handle scrolling and selection on web.
+    // window.find(string, caseSensitive, backwards, wrap, wholeWord, searchInFrames, showDialog)
+    win.find(term, false, backwards, true, false, false, false);
+  };
+
+  const matchCount = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) return 0;
+    const lowerContent = content.toLowerCase();
+    let count = 0;
+    let index = 0;
+    while (index < lowerContent.length) {
+      const found = lowerContent.indexOf(normalizedQuery, index);
+      if (found === -1) break;
+      count += 1;
+      index = found + normalizedQuery.length;
+    }
+    return count;
+  }, [content, searchQuery]);
+
+  const handleNextMatch = () => {
+    if (Platform.OS === "web") {
+      performBrowserFind("next");
+    }
+    if (matchCount === 0) return;
+    setActiveMatchIndex((prev) => (prev + 1) % matchCount);
+  };
+
+  const handlePrevMatch = () => {
+    if (Platform.OS === "web") {
+      performBrowserFind("prev");
+    }
+    if (matchCount === 0) return;
+    setActiveMatchIndex((prev) => (prev - 1 + matchCount) % matchCount);
+  };
+
   const handleOpenAIModal = () => {
     // Use last known selection (from onSelectionChange); getSelection() is already collapsed once the toolbar button takes focus.
     const { start, end } = lastSelectionRef.current;
@@ -508,10 +569,67 @@ export default function NoteEditorScreen() {
             : undefined
         }
         onOpenMoveModal={!isNewNote && note ? openMoveModal : undefined}
+        onOpenSearch={handleOpenSearch}
       />
       {Platform.OS === "web" ? (
         <View className="flex-1 bg-background" style={{ flex: 1, height: "100%" }}>
           <View className="flex-1 w-full max-w-2xl mx-auto bg-muted" style={{ minHeight: "100%" }}>
+            {isPreview && isSearchOpen && (
+              <View className="px-4 pt-2 pb-2 border-b border-border bg-muted/80">
+                <View className="flex-row items-center gap-2">
+                  <View className="flex-1 flex-row items-center rounded-md border border-border bg-background px-2 h-9">
+                    <Search color={colors.mutedForeground} size={16} />
+                    <Input
+                      value={searchQuery}
+                      onChangeText={(text) => {
+                        setSearchQuery(text);
+                        setActiveMatchIndex(0);
+                      }}
+                      placeholder="Search in note..."
+                      className="flex-1 h-9 text-sm border-0 bg-transparent px-2"
+                      autoFocus
+                    />
+                    {searchQuery.length > 0 && (
+                      <Pressable
+                        onPress={() => setSearchQuery("")}
+                        hitSlop={8}
+                        className="px-1 py-1"
+                      >
+                        <X color={colors.mutedForeground} size={16} />
+                      </Pressable>
+                    )}
+                  </View>
+                  <View className="flex-row items-center gap-1">
+                    <Pressable
+                      onPress={handlePrevMatch}
+                      disabled={matchCount === 0}
+                      className="px-1 py-1"
+                    >
+                      <ChevronUp
+                        size={16}
+                        color={matchCount === 0 ? colors.mutedForeground : colors.foreground}
+                      />
+                    </Pressable>
+                    <Pressable
+                      onPress={handleNextMatch}
+                      disabled={matchCount === 0}
+                      className="px-1 py-1"
+                    >
+                      <ChevronDown
+                        size={16}
+                        color={matchCount === 0 ? colors.mutedForeground : colors.foreground}
+                      />
+                    </Pressable>
+                    <Text className="text-xs text-muted-foreground ml-1">
+                      {matchCount === 0 ? "0/0" : `${activeMatchIndex + 1}/${matchCount}`}
+                    </Text>
+                  </View>
+                  <Pressable onPress={handleCloseSearch} className="px-2 py-1">
+                    <Text className="text-sm text-foreground">Close</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
             {!isPreview && (
               <MarkdownToolbar
                 onInsertText={(text, cursorOffset) => {
@@ -537,12 +655,7 @@ export default function NoteEditorScreen() {
                 isPreview={isPreview}
               />
             )}
-            <ScrollView
-              className="flex-1"
-              contentContainerStyle={{ flexGrow: 1, minHeight: "100%" }}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={true}
-            >
+            {isPreview ? (
               <MarkdownEditor
                 ref={editorRef}
                 value={content}
@@ -551,16 +664,91 @@ export default function NoteEditorScreen() {
                   lastSelectionRef.current = sel;
                 }}
                 placeholder="Start writing in markdown..."
-                isPreview={isPreview}
+                isPreview={true}
+                searchQuery={searchQuery}
+                activeMatchIndex={activeMatchIndex}
                 onSave={handleSave}
               />
-            </ScrollView>
+            ) : (
+              <ScrollView
+                className="flex-1"
+                contentContainerStyle={{ flexGrow: 1, minHeight: "100%" }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={true}
+              >
+                <MarkdownEditor
+                  ref={editorRef}
+                  value={content}
+                  onChangeText={setContent}
+                  onSelectionChange={(sel) => {
+                    lastSelectionRef.current = sel;
+                  }}
+                  placeholder="Start writing in markdown..."
+                  isPreview={false}
+                />
+              </ScrollView>
+            )}
           </View>
         </View>
       ) : (
         <Animated.View className="flex-1" style={containerAnimatedStyle}>
           <View className="flex-1 bg-background">
             <View className="flex-1 px-0 w-full max-w-2xl mx-auto bg-muted">
+              {isPreview && isSearchOpen && (
+                <View className="px-4 pt-2 pb-2 border-b border-border bg-muted/80">
+                  <View className="flex-row items-center gap-2">
+                    <View className="flex-1 flex-row items-center rounded-md border border-border bg-background px-2 h-9">
+                      <Search color={colors.mutedForeground} size={16} />
+                      <Input
+                        value={searchQuery}
+                        onChangeText={(text) => {
+                          setSearchQuery(text);
+                          setActiveMatchIndex(0);
+                        }}
+                        placeholder="Search in note..."
+                        className="flex-1 h-9 text-sm border-0 bg-transparent px-2"
+                      />
+                      {searchQuery.length > 0 && (
+                        <Pressable
+                          onPress={() => setSearchQuery("")}
+                          hitSlop={8}
+                          style={{ paddingHorizontal: 4, paddingVertical: 4 }}
+                        >
+                          <X color={colors.mutedForeground} size={16} />
+                        </Pressable>
+                      )}
+                    </View>
+                    <View className="flex-row items-center gap-1">
+                      <Pressable
+                        onPress={handlePrevMatch}
+                        disabled={matchCount === 0}
+                        style={{ paddingHorizontal: 4, paddingVertical: 4 }}
+                      >
+                        <ChevronUp
+                          size={16}
+                          color={matchCount === 0 ? colors.mutedForeground : colors.foreground}
+                        />
+                      </Pressable>
+                      <Pressable
+                        onPress={handleNextMatch}
+                        disabled={matchCount === 0}
+                        style={{ paddingHorizontal: 4, paddingVertical: 4 }}
+                      >
+                        <ChevronDown
+                          size={16}
+                          color={matchCount === 0 ? colors.mutedForeground : colors.foreground}
+                        />
+                      </Pressable>
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground, marginLeft: 4 }}>
+                        {matchCount === 0 ? "0/0" : `${activeMatchIndex + 1}/${matchCount}`}
+                      </Text>
+                    </View>
+                    <Pressable onPress={handleCloseSearch} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
+                      <Text style={{ fontSize: 14, color: colors.foreground }}>Close</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
               {!isPreview && (
                 <MarkdownToolbar
                   onInsertText={(text, cursorOffset) => {
@@ -586,13 +774,7 @@ export default function NoteEditorScreen() {
                   isPreview={isPreview}
                 />
               )}
-              <ScrollView
-                className="flex-1"
-                contentContainerStyle={{ flexGrow: 1 }}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={true}
-                keyboardDismissMode="interactive"
-              >
+              {isPreview ? (
                 <MarkdownEditor
                   ref={editorRef}
                   value={content}
@@ -601,9 +783,30 @@ export default function NoteEditorScreen() {
                     lastSelectionRef.current = sel;
                   }}
                   placeholder="Start writing in markdown..."
-                  isPreview={isPreview}
+                  isPreview={true}
+                  searchQuery={searchQuery}
+                  activeMatchIndex={activeMatchIndex}
                 />
-              </ScrollView>
+              ) : (
+                <ScrollView
+                  className="flex-1"
+                  contentContainerStyle={{ flexGrow: 1 }}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={true}
+                  keyboardDismissMode="interactive"
+                >
+                  <MarkdownEditor
+                    ref={editorRef}
+                    value={content}
+                    onChangeText={setContent}
+                    onSelectionChange={(sel) => {
+                      lastSelectionRef.current = sel;
+                    }}
+                    placeholder="Start writing in markdown..."
+                    isPreview={false}
+                  />
+                </ScrollView>
+              )}
             </View>
           </View>
         </Animated.View>
