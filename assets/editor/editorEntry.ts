@@ -2,11 +2,11 @@
  * WebView editor entry — bundled and injected (no CDN).
  * Must only import from @codemirror/* so it runs in the WebView.
  */
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { redo, undo } from "@codemirror/history";
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { undo, redo } from "@codemirror/history";
 
 declare global {
   interface Window {
@@ -178,6 +178,7 @@ window.EditorBridge = {
     const themeOpts = opts?.theme;
     themeExtension = themeFromOptions(themeOpts);
     const extensions = [
+      EditorView.lineWrapping,
       history(),
       keymap.of([...defaultKeymap, ...historyKeymap]),
       markdown({ base: markdownLanguage, codeLanguages: [] }),

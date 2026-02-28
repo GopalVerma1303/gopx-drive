@@ -17,6 +17,7 @@ export const createEditor = (parent: HTMLElement, options: EditorInitOptions): E
   const highlightStyle = isDark ? darkMarkdownHighlightStyle : defaultHighlightStyle;
 
   const extensions: Extension[] = [
+    EditorView.lineWrapping,
     highlightSpecialChars(),
     history(),
     drawSelection(),

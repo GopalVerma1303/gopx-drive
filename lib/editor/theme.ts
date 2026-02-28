@@ -1,5 +1,5 @@
-import { EditorTheme } from "./types";
 import { EditorView } from "@codemirror/view";
+import { EditorTheme } from "./types";
 
 const defaultTheme: EditorTheme = {
   background: "#ffffff",

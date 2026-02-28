@@ -1,17 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Editor</title>
   <style>
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
-    #root { height: 100%; width: 100%; }
-    .cm-editor { height: 100%; }
-    .cm-scroller { overflow: auto; }
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #root {
+      height: 100%;
+      width: 100%;
+    }
+
+    .cm-editor {
+      height: 100%;
+    }
+
+    .cm-scroller {
+      overflow: auto;
+    }
   </style>
 </head>
+
 <body>
   <div id="root"></div>
   <script type="module">
@@ -136,6 +157,7 @@
           const themeOpts = opts?.theme;
           themeExtension = themeFromOptions(themeOpts);
           const extensions = [
+            EditorView.lineWrapping,
             history(),
             keymap.of([...defaultKeymap, ...historyKeymap]),
             markdown({ base: markdownLanguage, codeLanguages: [] }),
@@ -162,11 +184,11 @@
         },
       };
 
-      window.EditorBridge.replaceRange = function(start, end, text) {
+      window.EditorBridge.replaceRange = function (start, end, text) {
         if (!view) return;
         view.dispatch({ changes: { from: start, to: end, insert: text }, selection: { anchor: start + text.length, head: start + text.length } });
       };
-      window.EditorBridge.insertText = function(args) {
+      window.EditorBridge.insertText = function (args) {
         if (!view || !args) return;
         const { from, to, text, cursorPos } = args;
         const f = from ?? view.state.selection.main.from;
@@ -174,7 +196,7 @@
         const pos = cursorPos ?? f + (text?.length ?? 0);
         view.dispatch({ changes: { from: f, to: t, insert: text || '' }, selection: { anchor: pos, head: pos } });
       };
-      window.EditorBridge.wrapSelection = function(args) {
+      window.EditorBridge.wrapSelection = function (args) {
         if (!view || !args) return;
         const { before, after, cursorOffset } = args;
         const r = view.state.selection.main;
@@ -197,11 +219,12 @@
             else if (cmd === 'WrapSelection' && args) window.EditorBridge.wrapSelection(args);
             else window.EditorBridge.execCommand(cmd, args);
           }
-        } catch (err) {}
+        } catch (err) { }
       });
 
       post({ type: 'bridgeReady' });
     })();
   </script>
 </body>
+
 </html>
