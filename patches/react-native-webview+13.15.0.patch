@@ -1,0 +1,40 @@
+diff --git a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebView.java b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebView.java
+index 0000000..1111111 100644
+--- a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebView.java
++++ b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebView.java
+@@ -3,6 +3,7 @@ import android.graphics.Rect;
+ import android.net.Uri;
++import android.text.InputType;
+ import android.text.TextUtils;
+ import android.view.ActionMode;
+ import android.view.Menu;
+ import android.view.MenuItem;
+ import android.view.MotionEvent;
+ import android.view.View;
++import android.view.inputmethod.EditorInfo;
++import android.view.inputmethod.InputConnection;
+ import android.webkit.JavascriptInterface;
+ import android.webkit.ValueCallback;
+ import android.webkit.WebChromeClient;
+@@ -432,6 +436,19 @@ public class RNCWebView extends WebView implements LifecycleEventListener {
+   public ReactApplicationContext getReactApplicationContext() {
+       return this.getThemedReactContext().getReactApplicationContext();
+   }
++
++  /**
++   * Override input connection so the soft keyboard emulates keypresses (TYPE_NULL) instead of
++   * using standard IME. Prevents keyboard from closing immediately when focusing contenteditable
++   * in WebView on Android. See: https://github.com/react-native-webview/react-native-webview/issues/1783
++   */
++  @Override
++  public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
++    InputConnection connection = super.onCreateInputConnection(outAttrs);
++    if (outAttrs != null) {
++      outAttrs.imeOptions = EditorInfo.IME_ACTION_DONE;
++      outAttrs.inputType = InputType.TYPE_NULL;
++    }
++    return connection;
++  }
+ 
+   protected class RNCWebViewBridge {
+         private String TAG = "RNCWebViewBridge";

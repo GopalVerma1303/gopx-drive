@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-visual" />
   <title>Editor</title>
   <style>
     * {
@@ -16,6 +16,7 @@
       padding: 0;
       height: 100%;
       overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
     }
 
     #root {
@@ -29,6 +30,11 @@
 
     .cm-scroller {
       overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .cm-content {
+      -webkit-user-select: text;
+      user-select: text;
     }
   </style>
 </head>

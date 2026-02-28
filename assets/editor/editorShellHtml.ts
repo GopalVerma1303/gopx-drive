@@ -8,14 +8,15 @@ export const EDITOR_SHELL_HTML = `
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-visual" />
   <title>Editor</title>
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; -webkit-tap-highlight-color: transparent; }
     #root { height: 100%; width: 100%; }
     .cm-editor { height: 100%; }
-    .cm-scroller { overflow: auto; }
+    .cm-scroller { overflow: auto; -webkit-overflow-scrolling: touch; }
+    .cm-content { -webkit-user-select: text; user-select: text; }
   </style>
 </head>
 <body>

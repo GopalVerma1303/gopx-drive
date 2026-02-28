@@ -3,6 +3,7 @@
 import type { MarkdownEditorRef } from "@/components/markdown-editor/types";
 import { EDITOR_SHELL_HTML } from "@/assets/editor/editorShellHtml";
 import { EDITOR_BUNDLE } from "@/assets/editor/editorBundle.generated";
+import * as FileSystem from "expo-file-system";
 import React, { forwardRef, useCallback, useImperativeHandle, useRef, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 
@@ -11,8 +12,11 @@ const WebView =
     ? null
     : require("react-native-webview").WebView;
 
-// Inline HTML + injected bundle. We do NOT use file:// because on Android
-// injectedJavaScript often does not run when the WebView source is a file URI.
+// RCA: Android keyboard/cursor dismiss is caused by (1) WebView source switching after first
+// paint (inline html → file URI) which triggers reload and focus loss; (2) injectedJavaScript
+// with file:// can run before DOM is ready. Fix: Android uses a single stable source (file://
+// only, rendered after file is ready) and we inject the editor bundle in onLoadEnd so it runs
+// once after DOM is ready; we never change source after the WebView is shown.
 
 export interface EditorWebViewProps {
   value: string;
@@ -35,8 +39,14 @@ export const EditorWebView = forwardRef<MarkdownEditorRef, EditorWebViewProps>(
   function EditorWebView({ value, onChangeText, onSelectionChange, theme = {} }, ref) {
     const webViewRef = useRef<any>(null);
     const [bridgeReady, setBridgeReady] = useState(false);
+    const [fileSourceUri, setFileSourceUri] = useState<string | null>(null);
+    const [readAccessUrl, setReadAccessUrl] = useState<string | null>(null);
+    const [androidUseInlineFallback, setAndroidUseInlineFallback] = useState(false);
+    const [reloadCounter, setReloadCounter] = useState(0);
     const lastSelectionRef = useRef({ start: 0, end: 0 });
     const lastValueRef = useRef<string>(value);
+    /** Last value we pushed to the WebView (init or setValue). Stops us re-sending stale content when parent re-renders without updating (e.g. Android ref-based typing). */
+    const lastSentValueRef = useRef<string>(value);
     const initSentRef = useRef(false);
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const pendingChangeRef = useRef<string | null>(null);
@@ -46,6 +56,7 @@ export const EditorWebView = forwardRef<MarkdownEditorRef, EditorWebViewProps>(
     const sendInit = useCallback(() => {
       if (!bridgeReady || initSentRef.current) return;
       initSentRef.current = true;
+      lastSentValueRef.current = value;
       postMessage(webViewRef, {
         type: "init",
         text: value,
@@ -65,10 +76,41 @@ export const EditorWebView = forwardRef<MarkdownEditorRef, EditorWebViewProps>(
       }
     }, [bridgeReady, sendInit]);
 
-    // Sync external value changes (e.g. note loaded, switch note) into the WebView
+    // Android: write shell HTML to file once; we only ever render WebView with this URI (no source switch).
+    React.useEffect(() => {
+      if (Platform.OS !== "android") return;
+      let cancelled = false;
+
+      async function ensureHtmlFile() {
+        try {
+          const baseDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
+          if (!baseDir) {
+            if (!cancelled) setAndroidUseInlineFallback(true);
+            return;
+          }
+          const htmlPath = `${baseDir}editor-webview-shell.html`;
+          await FileSystem.writeAsStringAsync(htmlPath, EDITOR_SHELL_HTML, {
+            encoding: FileSystem.EncodingType.UTF8,
+          });
+          if (cancelled) return;
+          setReadAccessUrl(baseDir);
+          setFileSourceUri(`${htmlPath}?r=${Math.round(Math.random() * 100000000)}`);
+        } catch (_) {
+          if (!cancelled) setAndroidUseInlineFallback(true);
+        }
+      }
+
+      void ensureHtmlFile();
+      return () => {
+        cancelled = true;
+      };
+    }, []);
+
+    // Sync external value changes (e.g. note loaded, switch note) into the WebView. Only push when parent actually gave us new content (value !== lastSentValueRef), not when re-rendering with stale content (e.g. Android ref-based typing).
     React.useEffect(() => {
       if (!bridgeReady || initSentRef.current !== true) return;
-      if (value === lastValueRef.current) return;
+      if (value === lastSentValueRef.current) return;
+      lastSentValueRef.current = value;
       lastValueRef.current = value;
       postMessage(webViewRef, { type: "setValue", text: value });
     }, [bridgeReady, value]);
@@ -169,18 +211,40 @@ export const EditorWebView = forwardRef<MarkdownEditorRef, EditorWebViewProps>(
       return <View style={styles.placeholder} />;
     }
 
-    const injectedJavaScript =
+    const isAndroid = Platform.OS === "android";
+    const androidUsingFile = isAndroid && fileSourceUri !== null;
+    const androidReady = !isAndroid || fileSourceUri !== null || androidUseInlineFallback;
+
+    const source =
+      androidUsingFile
+        ? { uri: fileSourceUri! }
+        : { html: EDITOR_SHELL_HTML, baseUrl: "about:blank" as const };
+
+    const bundleScript =
       "try { " +
       EDITOR_BUNDLE +
       " } catch (e) { typeof window !== 'undefined' && window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'bridgeError', message: (e && (e.message || String(e))) || 'Unknown' })); } true;";
 
+    const injectEditorOnLoadEnd = useCallback(() => {
+      if (!webViewRef.current?.injectJavaScript) return;
+      webViewRef.current.injectJavaScript(bundleScript);
+    }, []);
+
+    if (isAndroid && !androidReady) {
+      return <View style={styles.container} collapsable={false} />;
+    }
+
     return (
-      <View style={styles.container}>
+      <View style={styles.container} collapsable={false}>
         <WebView
           ref={webViewRef}
-          source={{ html: EDITOR_SHELL_HTML, baseUrl: "about:blank" }}
-          injectedJavaScript={injectedJavaScript}
+          key={`editor-webview-${reloadCounter}`}
+          source={source}
+          injectedJavaScript={androidUsingFile ? "" : bundleScript}
+          onLoadEnd={androidUsingFile ? injectEditorOnLoadEnd : undefined}
           onMessage={handleMessage}
+          onRenderProcessGone={() => setReloadCounter((c: number) => c + 1)}
+          onContentProcessDidTerminate={() => setReloadCounter((c: number) => c + 1)}
           onError={(e) => {
             if (__DEV__) {
               console.warn("[EditorWebView] onError", e.nativeEvent?.description);
@@ -193,8 +257,14 @@ export const EditorWebView = forwardRef<MarkdownEditorRef, EditorWebViewProps>(
           }}
           style={styles.webview}
           scrollEnabled={true}
+          useWebKit={true}
+          setSupportMultipleWindows={true}
+          hideKeyboardAccessoryView={true}
           keyboardDisplayRequiresUserAction={false}
-          originWhitelist={["*"]}
+          originWhitelist={["file://*", "about:srcdoc", "http://*", "https://*", "*"]}
+          allowingReadAccessToURL={readAccessUrl ?? undefined}
+          allowFileAccess={true}
+          allowFileAccessFromFileURLs={true}
           javaScriptEnabled={true}
           domStorageEnabled={true}
           mixedContentMode="always"

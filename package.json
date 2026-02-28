@@ -10,7 +10,8 @@
     "web": "expo start --web",
     "build:web": "expo export --platform web",
     "build:editor": "node scripts/buildEditorBundle.js",
-    "eas": "eas build"
+    "eas": "eas build",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.2",
@@ -83,6 +84,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "patch-package": "^8.0.0",
     "@babel/core": "^7.25.2",
     "@expo/metro-config": "^54.0.13",
     "@expo/ngrok": "^4.1.0",

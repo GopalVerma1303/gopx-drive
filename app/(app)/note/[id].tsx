@@ -24,7 +24,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   BackHandler,
@@ -72,6 +72,12 @@ export default function NoteEditorScreen() {
   const editorRef = useRef<MarkdownEditorRef>(null);
   /** Guards against double submission (e.g. double-tap save) before isPending updates. */
   const saveInProgressRef = useRef(false);
+  /** On Android: hold latest editor body to avoid setState-on-typing (prevents WebView keyboard collapse). */
+  const contentRef = useRef("");
+  /** Timer for debounced editorDirty so Save button can show without re-rendering every keystroke. */
+  const editorDirtyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** On Android: true after user has typed (set 2s after last keystroke) so isDirty can show. */
+  const [editorDirty, setEditorDirty] = useState(false);
 
   const isPreviewShared = useSharedValue(isPreview);
   useEffect(() => {
@@ -155,9 +161,12 @@ export default function NoteEditorScreen() {
   useEffect(() => {
     if (note) {
       setTitle(note.title);
-      setContent(note.content);
+      const c = note.content ?? "";
+      setContent(c);
+      contentRef.current = c;
       setLastSavedTitle(note.title);
-      setLastSavedContent(note.content);
+      setLastSavedContent(c);
+      if (Platform.OS === "android") setEditorDirty(false);
     }
   }, [note]);
 
@@ -166,12 +175,14 @@ export default function NoteEditorScreen() {
     if (id === "new") {
       setTitle("");
       setContent("");
+      contentRef.current = "";
       setLastSavedTitle("");
       setLastSavedContent("");
       setIsPreview(false); // open new note in edit mode
       setAiReplaceRange(null);
       setSelectedText("");
       setImageModalOpen(false);
+      if (Platform.OS === "android") setEditorDirty(false);
     }
   }, [id]);
 
@@ -201,26 +212,32 @@ export default function NoteEditorScreen() {
     return () => subscription.remove();
   }, [router]);
 
-  const isDirty = title !== lastSavedTitle || content !== lastSavedContent;
+  const currentContent = Platform.OS === "android" ? contentRef.current : content;
+  const isDirty =
+    title !== lastSavedTitle ||
+    (Platform.OS === "android"
+      ? editorDirty && currentContent !== lastSavedContent
+      : content !== lastSavedContent);
 
   type SaveVariables = { openInEditAfterSave?: boolean };
 
   const saveMutation = useMutation({
     mutationFn: async (_variables?: SaveVariables) => {
       const userId = user?.id ?? "demo-user";
+      const body = Platform.OS === "android" ? contentRef.current : content;
 
       if (isNewNote) {
         const created = await createNote({
           user_id: userId,
           title: title || "Untitled",
-          content,
+          content: body,
           folder_id: initialFolderId,
         });
         return created;
       } else {
         const updated = await updateNote(id, {
           title: title || "Untitled",
-          content,
+          content: body,
         });
         if (!updated) {
           throw new Error("Note not found");
@@ -234,8 +251,10 @@ export default function NoteEditorScreen() {
 
       setTitle(updatedTitle);
       setContent(updatedContent);
+      contentRef.current = updatedContent;
       setLastSavedTitle(updatedTitle);
       setLastSavedContent(updatedContent);
+      if (Platform.OS === "android") setEditorDirty(false);
 
       // Optimistically update cache instead of invalidating
       // For new notes, id is "new" but savedNote.id is the actual ID, so update both
@@ -364,8 +383,29 @@ export default function NoteEditorScreen() {
     });
   };
 
+  // On Android: update only ref + debounced dirty flag so we never setState while typing (prevents WebView keyboard collapse).
+  const handleEditorChange = useCallback((text: string) => {
+    if (Platform.OS !== "android") {
+      setContent(text);
+      return;
+    }
+    contentRef.current = text;
+    if (editorDirtyTimerRef.current) clearTimeout(editorDirtyTimerRef.current);
+    editorDirtyTimerRef.current = setTimeout(() => {
+      editorDirtyTimerRef.current = null;
+      setEditorDirty(true);
+    }, 2000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (editorDirtyTimerRef.current) clearTimeout(editorDirtyTimerRef.current);
+    };
+  }, []);
+
   const handleSave = () => {
-    if (!title.trim() && !content.trim()) {
+    const body = Platform.OS === "android" ? contentRef.current : content;
+    if (!title.trim() && !body.trim()) {
       alert("Empty Note", "Please add a title or content");
       return;
     }
@@ -392,9 +432,12 @@ export default function NoteEditorScreen() {
       const { data } = await refetch();
       if (data) {
         setTitle(data.title);
-        setContent(data.content);
+        const c = data.content ?? "";
+        setContent(c);
+        contentRef.current = c;
         setLastSavedTitle(data.title);
-        setLastSavedContent(data.content);
+        setLastSavedContent(c);
+        if (Platform.OS === "android") setEditorDirty(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (error: any) {
@@ -412,8 +455,9 @@ export default function NoteEditorScreen() {
   const handleOpenAIModal = () => {
     // Use last known selection (from onSelectionChange); getSelection() is already collapsed once the toolbar button takes focus.
     const { start, end } = lastSelectionRef.current;
+    const body = Platform.OS === "android" ? contentRef.current : content;
     if (start !== end) {
-      const selected = content.substring(start, end);
+      const selected = body.substring(start, end);
       setSelectedText(selected);
       setAiReplaceRange({ start, end });
     } else {
@@ -432,7 +476,8 @@ export default function NoteEditorScreen() {
 
       // Use stored range from when modal was opened (selection is lost after focus moved to toolbar/modal)
       const range = aiReplaceRange;
-      const contextText = range ? content.substring(range.start, range.end) : "";
+      const body = Platform.OS === "android" ? contentRef.current : content;
+      const contextText = range ? body.substring(range.start, range.end) : "";
 
       const generatedText = await generateAIContent({
         prompt,
@@ -617,18 +662,13 @@ export default function NoteEditorScreen() {
                   />
                 </ScrollView>
               ) : (
-                <ScrollView
-                  className="flex-1"
-                  contentContainerStyle={{ flexGrow: 1 }}
-                  keyboardShouldPersistTaps="always"
-                  keyboardDismissMode="none"
-                  showsVerticalScrollIndicator={false}
-                  nestedScrollEnabled={true}
-                >
+                // On Android, wrapping a WebView editor in a ScrollView often causes focus loss
+                // (keyboard opens then immediately dismisses). Let the WebView handle scrolling.
+                <View className="flex-1">
                   <MarkdownEditor
                     ref={editorRef}
                     value={content}
-                    onChangeText={setContent}
+                    onChangeText={handleEditorChange}
                     onSelectionChange={(sel) => {
                       lastSelectionRef.current = sel;
                     }}
@@ -636,7 +676,7 @@ export default function NoteEditorScreen() {
                     isPreview={false}
                     onSave={handleSave}
                   />
-                </ScrollView>
+                </View>
               )}
             </View>
           </View>
