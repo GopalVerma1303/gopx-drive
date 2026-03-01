@@ -148,7 +148,7 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
 .markdown-preview pre code { padding: 0; margin: 0; font-size: inherit; background: none; }
 ${getHighlightCss(colors)}
 /* Blockquote: match editor quote highlight */
-.markdown-preview blockquote { opacity: 0.85; border-left: 3px solid ${quoteBorder}; padding-left: 0.5em; margin: 0 0 1em 0; color: ${colors.foreground}; }
+.markdown-preview blockquote { opacity: 0.58; border-left: 3px solid ${quoteBorder}; padding-left: 0.5em; margin: 0 0 1em 0; color: ${colors.foreground}; font-style: italic; }
 /* Lists: restore bullets/numbers (Tailwind preflight removes them). Task lists get list-style: none below. */
 .markdown-preview ul { margin: 0 0 1em 0; padding-left: 1.5em; list-style-position: outside; list-style-type: disc; }
 .markdown-preview ol { margin: 0 0 1em 0; padding-left: 1.5em; list-style-position: outside; list-style-type: decimal; }
@@ -242,11 +242,12 @@ export function getMarkdownHighlightStyleConfig(colors: MarkdownThemeColors) {
       padding: "0.12em 0.3em",
       borderRadius: "4px",
     },
+    /* Quote: no per-line border here; single block border is applied via theme to first line only */
     {
       tag: tags.quote,
-      opacity: "0.85",
-      borderLeft: `3px solid ${quoteBorder}`,
+      opacity: "0.58",
       paddingLeft: "0.5em",
+      fontStyle: "italic",
     },
     { tag: tags.list, opacity: "0.95" },
     { tag: tags.contentSeparator, opacity: "0.6" },
@@ -302,6 +303,7 @@ export function getCodeMirrorThemeConfig(
   const bg = colors.muted ?? colors.background;
   const fg = colors.foreground;
   const codeBg = colors.codeBackground ?? DEFAULT_CODE_BG;
+  const quoteBorder = colors.blockquoteBorder ?? DEFAULT_QUOTE_BORDER;
   return {
     "&.cm-editor": {
       backgroundColor: bg,
@@ -348,6 +350,17 @@ export function getCodeMirrorThemeConfig(
       borderRadius: "0",
       backgroundColor: "transparent",
     },
+    /* Blockquote: one wrapper div with left border (same as preview); only first line shows ">" via blockquote-hide-quote-marks */
+    ".blockquote-wrapper": {
+      borderLeft: `3px solid ${quoteBorder}`,
+      paddingLeft: "0.5em",
+      opacity: "0.58",
+      marginBottom: "1em",
+      fontStyle: "italic",
+    },
+    ".blockquote-wrapper .cm-quote": {
+      borderLeft: "none",
+    },
   };
 }
 
@@ -370,6 +383,7 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
     `.cm-monospace { background: ${codeBg} !important; } ` +
     `.code-block-wrapper { background: transparent !important; padding: 12px 16px !important; margin-bottom: 1em !important; border: 1px solid ${ring} !important; border-radius: 8px !important; overflow: auto !important; font-size: ${codeBlockFontSize}px !important; line-height: 1.45 !important; font-family: ${MARKDOWN_FONT_FAMILY_CODE} !important; } ` +
     `.code-block-wrapper .cm-monospace { padding: 0 !important; border-radius: 0 !important; background: transparent !important; } ` +
-    `.cm-quote { border-left-color: ${quoteBorder} !important; }`
+    `.blockquote-wrapper { border-left: 3px solid ${quoteBorder} !important; padding-left: 0.5em !important; opacity: 0.58 !important; margin-bottom: 1em !important; font-style: italic !important; } ` +
+    `.blockquote-wrapper .cm-quote { border-left: none !important; } `
   );
 }

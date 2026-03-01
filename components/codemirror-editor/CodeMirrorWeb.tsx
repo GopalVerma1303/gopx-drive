@@ -53,37 +53,98 @@ if (typeof document !== "undefined") {
   const tsSupport = cmLangJs.javascript({ typescript: true });
   getMarkdownCodeLanguages = () => ({ jsSupport, tsSupport });
 
-  // Inline code-block wrapper plugin (same logic as code-block-line-plugin.ts) using this module's CodeMirror instances
+  // Inline code-block + blockquote wrapper plugin (same logic as code-block-line-plugin.ts) using this module's CodeMirror instances
+  const Decoration = cmView.Decoration;
+  const WidgetType = cmView.WidgetType;
   const CODE_BLOCK_NODES = new Set(["FencedCode", "CodeBlock"]);
   const WRAPPER_CLASS = "code-block-wrapper";
-  const wrapper = BlockWrapper.create({
+  const codeBlockWrapper = BlockWrapper.create({
     tagName: "div",
     attributes: { class: WRAPPER_CLASS },
   });
-  function getCodeBlockWrappers(state: any) {
+  const BLOCKQUOTE_WRAPPER_CLASS = "blockquote-wrapper";
+  const blockquoteWrapper = BlockWrapper.create({
+    tagName: "div",
+    attributes: { class: BLOCKQUOTE_WRAPPER_CLASS },
+  });
+  function getBlockWrappers(state: any) {
     const tree = syntaxTree(state);
     const ranges: Array<{ from: number; to: number; value: any }> = [];
     tree.iterate({
       enter: (node: any) => {
-        if (!CODE_BLOCK_NODES.has(node.name)) return;
-        ranges.push({ from: node.from, to: node.to, value: wrapper });
+        if (CODE_BLOCK_NODES.has(node.name)) {
+          ranges.push({ from: node.from, to: node.to, value: codeBlockWrapper });
+        } else if (node.name === "Blockquote") {
+          ranges.push({ from: node.from, to: node.to, value: blockquoteWrapper });
+        }
       },
     });
     if (ranges.length === 0) return BlockWrapper.set([]);
     return BlockWrapper.set(ranges, true);
   }
-  const codeBlockWrapperField = StateField.define({
+  const blockWrapperField = StateField.define({
     create(state: any) {
-      return getCodeBlockWrappers(state);
+      return getBlockWrappers(state);
     },
     update(value: any, tr: any) {
-      if (tr.docChanged) return getCodeBlockWrappers(tr.state);
+      if (tr.docChanged) return getBlockWrappers(tr.state);
       return value;
     },
   });
+  // Hide ">" on blockquote continuation lines (only first line shows ">")
+  class HiddenQuoteMarkWidget extends WidgetType {
+    toDOM() {
+      const span = document.createElement("span");
+      span.style.display = "inline-block";
+      span.style.width = "0";
+      span.style.overflow = "hidden";
+      span.setAttribute("aria-hidden", "true");
+      return span;
+    }
+  }
+  const hiddenQuoteWidget = new HiddenQuoteMarkWidget();
+  function getBlockquoteHideQuoteDecorations(state: any) {
+    const tree = syntaxTree(state);
+    const decos: Array<{ from: number; to: number; decoration: any }> = [];
+    tree.iterate({
+      enter: (node: any) => {
+        if (node.name !== "Blockquote") return;
+        const firstLine = state.doc.lineAt(node.from);
+        tree.iterate({
+          from: node.from,
+          to: node.to,
+          enter: (n: any) => {
+            if (n.name === "QuoteMark" && n.from >= firstLine.to) {
+              decos.push({
+                from: n.from,
+                to: n.to,
+                decoration: Decoration.replace({ widget: hiddenQuoteWidget, side: 1 }),
+              });
+            }
+          },
+        });
+      },
+    });
+    if (decos.length === 0) return Decoration.none;
+    return Decoration.set(
+      decos.map((d: any) => ({ from: d.from, to: d.to, value: d.decoration })),
+      true
+    );
+  }
+  const blockquoteHideQuoteMarkField = StateField.define({
+    create(state: any) {
+      return getBlockquoteHideQuoteDecorations(state);
+    },
+    update(value: any, tr: any) {
+      if (tr.docChanged) return getBlockquoteHideQuoteDecorations(tr.state);
+      return value.map(tr.changes);
+    },
+    provide: (f: any) => EditorView.decorations.from(f),
+  });
   getCodeBlockLinePlugin = () => [
-    codeBlockWrapperField,
-    EditorView.blockWrappers.of((view: any) => view.state.field(codeBlockWrapperField)),
+    blockWrapperField,
+    EditorView.blockWrappers.of((view: any) => view.state.field(blockWrapperField)),
+    blockquoteHideQuoteMarkField,
   ];
 }
 

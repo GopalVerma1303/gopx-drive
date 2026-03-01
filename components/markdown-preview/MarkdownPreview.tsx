@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import { Platform } from "react-native";
 import { linkifyMarkdown } from "@/components/markdown-editor/utils/text-helpers";
 import { markdownToHtml } from "@/lib/markdown-to-html";
+import React, { useEffect, useRef, useState } from "react";
+import { Platform } from "react-native";
 import { MarkdownPreviewWeb } from "./MarkdownPreviewWeb";
 import { MarkdownPreviewWebView } from "./MarkdownPreviewWebView";
 

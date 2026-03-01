@@ -21,6 +21,7 @@ import { markdown } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
+import { blockquoteHideQuoteMarks } from "./blockquote-hide-quote-marks";
 import { codeBlockLinePlugin } from "./code-block-line-plugin";
 import { useDOMImperativeHandle, type DOMImperativeFactory } from "expo/dom";
 import React, { useEffect, useRef, type Ref } from "react";
@@ -137,6 +138,7 @@ export default function CodeMirrorDOM({
         markdown(markdownConfig),
         syntaxHighlighting(highlightStyle),
         ...codeBlockLinePlugin,
+        ...blockquoteHideQuoteMarks,
         history(),
         keymap.of([...defaultKeymap, indentWithTab]),
         EditorView.lineWrapping,
