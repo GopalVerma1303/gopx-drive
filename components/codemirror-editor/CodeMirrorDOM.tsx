@@ -46,6 +46,8 @@ export default function CodeMirrorDOM({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const initialValueRef = useRef(value);
+  /** Last value we received from props. Used to detect external vs user-typed changes. */
+  const prevValueRef = useRef(value);
   const onContentChangeRef = useRef(onContentChange);
   const onSelectionChangeRef = useRef(onSelectionChange);
   onContentChangeRef.current = onContentChange;
@@ -63,6 +65,7 @@ export default function CodeMirrorDOM({
         markdown(),
         history(),
         keymap.of([...defaultKeymap, indentWithTab]),
+        EditorView.lineWrapping,
         EditorView.updateListener.of((update) => {
           if (update.docChanged && onContentChangeRef.current) {
             const v = update.state.doc.toString();
@@ -79,6 +82,7 @@ export default function CodeMirrorDOM({
             fontSize: 16,
             fontFamily: "ui-monospace, monospace",
           },
+          "&.cm-editor.cm-focused": { outline: "none" },
           ".cm-content": { padding: 0 },
           ".cm-line": { lineHeight: "24px" },
         }),
@@ -94,11 +98,16 @@ export default function CodeMirrorDOM({
     };
   }, []);
 
-  // Sync value from native when it changes (e.g. undo, toolbar, setValue)
+  // Sync value from native only when the change is external (toolbar, undo, paste).
+  // When the user types fast, value prop can lag behind editor content due to async bridge.
+  // Only overwrite editor when editor content still matches the previous value we had
+  // (i.e. no typing happened in the meantime).
   useEffect(() => {
     if (!viewRef.current) return;
     const current = viewRef.current.state.doc.toString();
-    if (value !== current) {
+    const prevValue = prevValueRef.current;
+    prevValueRef.current = value;
+    if (value !== current && current === prevValue) {
       viewRef.current.dispatch({
         changes: { from: 0, to: current.length, insert: value || "" },
       });

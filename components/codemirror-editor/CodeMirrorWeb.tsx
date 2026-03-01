@@ -83,6 +83,7 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
           EditorView.theme({
             "&": { height: "100%" },
             "&.cm-editor": { fontSize: 16, fontFamily: "Iosevka, ui-monospace, monospace" },
+            "&.cm-editor.cm-focused": { outline: "none" },
             ".cm-content": { padding: 0 },
             ".cm-line": { lineHeight: "24px" },
           }),

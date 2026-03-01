@@ -82,7 +82,7 @@ export default function NoteEditorScreen() {
   // On native, give the editor ScrollView content a min height so the WebView gets a real height.
   // Otherwise flex:1 inside ScrollView can resolve to 0 and the editor is invisible.
   const windowHeight = Dimensions.get("window").height;
-  const nativeEditorContentMinHeight = Platform.OS !== "web" ? Math.max(400, Math.round(windowHeight * 0.55)) : undefined;
+  const nativeEditorContentMinHeight = Platform.OS !== "web" ? windowHeight : undefined;
 
   const containerAnimatedStyle = useAnimatedStyle(() => {
     // Only apply keyboard avoidance on native platforms
@@ -609,9 +609,10 @@ export default function NoteEditorScreen() {
               className="flex-1 w-full"
               style={{
                 flex: 1,
-                backgroundColor: colors.muted,
+                width: "100%",
                 maxWidth: isPreview ? undefined : 672,
                 alignSelf: "center",
+                backgroundColor: colors.muted,
               }}
             >
               {isPreview ? (
@@ -650,26 +651,34 @@ export default function NoteEditorScreen() {
                   />
                   <ScrollView
                     className="flex-1"
+                    style={{ flex: 1, width: "100%" }}
                     contentContainerStyle={{
                       flexGrow: 1,
                       minHeight: nativeEditorContentMinHeight,
+                      width: "100%",
                     }}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator
+                    showsHorizontalScrollIndicator={false}
                     keyboardDismissMode="interactive"
                   >
-                    <MarkdownEditor
-                      key={`note-editor-${id}`}
-                      ref={editorRef}
-                      value={content}
-                      onChangeText={setContent}
-                      onContentSync={setContent}
-                      onSelectionChange={(sel) => {
-                        lastSelectionRef.current = sel;
-                      }}
-                      placeholder="Start writing in markdown..."
-                      isPreview={false}
-                    />
+                    <Pressable
+                      style={{ flex: 1, minHeight: nativeEditorContentMinHeight }}
+                      onPress={() => editorRef.current?.focus()}
+                    >
+                      <MarkdownEditor
+                        key={`note-editor-${id}`}
+                        ref={editorRef}
+                        value={content}
+                        onChangeText={setContent}
+                        onContentSync={setContent}
+                        onSelectionChange={(sel) => {
+                          lastSelectionRef.current = sel;
+                        }}
+                        placeholder="Start writing in markdown..."
+                        isPreview={false}
+                      />
+                    </Pressable>
                   </ScrollView>
                 </>
               )}
