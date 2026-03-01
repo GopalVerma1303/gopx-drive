@@ -13,8 +13,30 @@ import { EditorView, keymap } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { defaultKeymap, indentWithTab, history } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
+import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
+import { tags } from "@lezer/highlight";
 import React, { useEffect, useRef, type Ref } from "react";
 import { useDOMImperativeHandle, type DOMImperativeFactory } from "expo/dom";
+
+/** Markdown syntax highlighting: headings, emphasis, strong, links, inline code, etc. */
+const markdownHighlightStyle = HighlightStyle.define([
+  { tag: tags.heading1, fontWeight: "700", fontSize: "1.5em" },
+  { tag: tags.heading2, fontWeight: "700", fontSize: "1.35em" },
+  { tag: tags.heading3, fontWeight: "600", fontSize: "1.2em" },
+  { tag: tags.heading4, fontWeight: "600", fontSize: "1.1em" },
+  { tag: tags.heading5, fontWeight: "600" },
+  { tag: tags.heading6, fontWeight: "600", opacity: "0.9" },
+  { tag: tags.strong, fontWeight: "700" },
+  { tag: tags.emphasis, fontStyle: "italic" },
+  { tag: tags.link, color: "#0969da", textDecoration: "underline" },
+  { tag: tags.url, color: "#0550ae" },
+  { tag: tags.monospace, fontFamily: "ui-monospace, monospace", backgroundColor: "rgba(128,128,128,0.15)", padding: "0.12em 0.3em", borderRadius: "4px" },
+  { tag: tags.quote, opacity: "0.85", borderLeft: "3px solid rgba(128,128,128,0.5)", paddingLeft: "0.5em" },
+  { tag: tags.list, opacity: "0.95" },
+  { tag: tags.contentSeparator, opacity: "0.6" },
+  { tag: tags.processingInstruction, opacity: "0.65" },
+  { tag: tags.comment, opacity: "0.6", fontStyle: "italic" },
+]);
 
 export interface CodeMirrorDOMRef extends DOMImperativeFactory {
   focus: () => void;
@@ -63,6 +85,7 @@ export default function CodeMirrorDOM({
       doc: initial,
       extensions: [
         markdown(),
+        syntaxHighlighting(markdownHighlightStyle),
         history(),
         keymap.of([...defaultKeymap, indentWithTab]),
         EditorView.lineWrapping,

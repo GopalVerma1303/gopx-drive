@@ -12,12 +12,17 @@ let keymap: any;
 let defaultKeymap: any;
 let indentWithTab: any;
 let history: any;
+let syntaxHighlighting: any;
+let HighlightStyle: any;
+let tags: any;
 
 if (typeof document !== "undefined") {
   const cmView = require("@codemirror/view");
   const cmState = require("@codemirror/state");
   const cmCommands = require("@codemirror/commands");
   const cmLangMarkdown = require("@codemirror/lang-markdown");
+  const cmLanguage = require("@codemirror/language");
+  const lezerHighlight = require("@lezer/highlight");
   EditorView = cmView.EditorView;
   EditorState = cmState.EditorState;
   markdown = cmLangMarkdown.markdown;
@@ -25,6 +30,9 @@ if (typeof document !== "undefined") {
   defaultKeymap = cmCommands.defaultKeymap;
   indentWithTab = cmCommands.indentWithTab;
   history = cmCommands.history;
+  syntaxHighlighting = cmLanguage.syntaxHighlighting;
+  HighlightStyle = cmLanguage.HighlightStyle;
+  tags = lezerHighlight.tags;
 }
 
 export interface CodeMirrorEditorHandle {
@@ -64,10 +72,29 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       if (!node || !(node instanceof HTMLElement)) return;
 
       const initial = initialValueRef.current;
+      const markdownHighlightStyle = HighlightStyle.define([
+        { tag: tags.heading1, fontWeight: "700", fontSize: "1.5em" },
+        { tag: tags.heading2, fontWeight: "700", fontSize: "1.35em" },
+        { tag: tags.heading3, fontWeight: "600", fontSize: "1.2em" },
+        { tag: tags.heading4, fontWeight: "600", fontSize: "1.1em" },
+        { tag: tags.heading5, fontWeight: "600" },
+        { tag: tags.heading6, fontWeight: "600", opacity: "0.9" },
+        { tag: tags.strong, fontWeight: "700" },
+        { tag: tags.emphasis, fontStyle: "italic" },
+        { tag: tags.link, color: "#0969da", textDecoration: "underline" },
+        { tag: tags.url, color: "#0550ae" },
+        { tag: tags.monospace, fontFamily: "Iosevka, ui-monospace, monospace", backgroundColor: "rgba(128,128,128,0.15)", padding: "0.12em 0.3em", borderRadius: "4px" },
+        { tag: tags.quote, opacity: "0.85", borderLeft: "3px solid rgba(128,128,128,0.5)", paddingLeft: "0.5em" },
+        { tag: tags.list, opacity: "0.95" },
+        { tag: tags.contentSeparator, opacity: "0.6" },
+        { tag: tags.processingInstruction, opacity: "0.65" },
+        { tag: tags.comment, opacity: "0.6", fontStyle: "italic" },
+      ]);
       const state = EditorState.create({
         doc: initial,
         extensions: [
           markdown(),
+          syntaxHighlighting(markdownHighlightStyle),
           history(),
           keymap.of([...defaultKeymap, indentWithTab]),
           EditorView.updateListener.of((update: any) => {
