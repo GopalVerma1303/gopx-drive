@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  getCodeMirrorWebViewInjectCss,
+  getMarkdownThemeFromPalette,
+} from "@/lib/markdown-theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Dimensions, Platform, StyleSheet, View } from "react-native";
@@ -84,17 +88,13 @@ export const CodeMirrorWebView = React.forwardRef<CodeMirrorEditorHandle, CodeMi
       [sendToEditor, getValueAsync]
     );
 
+    const theme = getMarkdownThemeFromPalette(colors);
     const injectTheme = useCallback(() => {
-      const bg = colors.muted ?? colors.background;
-      const fg = colors.foreground;
-      const link = colors.link ?? "#0969da";
-      const codeBg = colors.codeBackground ?? "rgba(128,128,128,0.15)";
-      const quoteBorder = colors.blockquoteBorder ?? "rgba(128,128,128,0.5)";
-      const styleContent = `body, #codemirror-root, .cm-editor, .cm-scroller { background: ${bg} !important; } .cm-content, .cm-line { color: ${fg} !important; } .cm-cursor { border-left-color: ${fg} !important; } .cm-scroller { -webkit-overflow-scrolling: touch !important; overflow-y: scroll !important; height: 100% !important; max-height: 100% !important; touch-action: pan-y !important; } .cm-url, .cm-link { color: ${link} !important; } .cm-monospace { background: ${codeBg} !important; } .cm-quote { border-left-color: ${quoteBorder} !important; }`;
+      const styleContent = getCodeMirrorWebViewInjectCss(theme);
       inject(
         `(function(){ var s = document.getElementById('rn-cm-theme'); if (!s) { s = document.createElement('style'); s.id = 'rn-cm-theme'; document.documentElement.appendChild(s); } s.textContent = ${JSON.stringify(styleContent)}; })(); true;`
       );
-    }, [inject, colors.muted, colors.background, colors.foreground, colors.link, colors.codeBackground, colors.blockquoteBorder]);
+    }, [inject, theme.foreground, theme.background, theme.muted, theme.link, theme.codeBackground, theme.blockquoteBorder]);
 
     // Init editor when WebView loads. Use a short delay so the WebView's script has run, then set initial value, theme, and mark loaded.
     const onLoadEnd = useCallback(() => {
@@ -161,7 +161,7 @@ export const CodeMirrorWebView = React.forwardRef<CodeMirrorEditorHandle, CodeMi
         <WebView
           ref={webViewRef}
           source={{ html: CODEMIRROR_EDITOR_HTML }}
-          style={[styles.webview, { minHeight: minEditorHeight, backgroundColor: colors.muted ?? colors.background }]}
+          style={[styles.webview, { minHeight: minEditorHeight, backgroundColor: theme.muted ?? theme.background }]}
           scrollEnabled={true}
           nestedScrollEnabled={true}
           keyboardDisplayRequiresUserAction={false}

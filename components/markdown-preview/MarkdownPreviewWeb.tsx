@@ -2,9 +2,8 @@
 
 import React from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
+import { getMarkdownThemeFromPalette, getPreviewCss } from "@/lib/markdown-theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
-import type { PreviewThemeColors } from "./preview-styles";
-import { getPreviewCss } from "./preview-styles";
 
 interface MarkdownPreviewWebProps {
   html: string;
@@ -18,17 +17,7 @@ export function MarkdownPreviewWeb({
   className,
 }: MarkdownPreviewWebProps) {
   const { colors } = useThemeColors();
-  const theme: PreviewThemeColors = {
-    foreground: colors.foreground,
-    muted: colors.muted,
-    mutedForeground: colors.mutedForeground,
-    ring: colors.ring,
-    background: colors.background,
-    link: colors.link,
-    linkUrl: colors.linkUrl,
-    codeBackground: colors.codeBackground,
-    blockquoteBorder: colors.blockquoteBorder,
-  };
+  const theme = getMarkdownThemeFromPalette(colors);
   const css = getPreviewCss(theme);
 
   if (!html) {

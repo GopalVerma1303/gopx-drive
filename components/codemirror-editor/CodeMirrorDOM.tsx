@@ -9,56 +9,39 @@
  * @see https://docs.expo.dev/guides/dom-components
  */
 
+import { MARKDOWN_CONTENT_PADDING_PX, MARKDOWN_FONT_SIZE } from "@/lib/markdown-content-layout";
 import {
-  MARKDOWN_CODE_FONT_SIZE_EM,
-  MARKDOWN_CONTENT_PADDING_PX,
-  MARKDOWN_FONT_SIZE,
-  MARKDOWN_FONT_SIZE_EM,
-  MARKDOWN_HEADING1_EM,
-  MARKDOWN_HEADING2_EM,
-  MARKDOWN_HEADING3_EM,
-  MARKDOWN_HEADING4_EM,
-  MARKDOWN_HEADING5_EM,
-  MARKDOWN_HEADING6_EM,
-  MARKDOWN_LINE_HEIGHT_CSS,
-} from "@/lib/markdown-content-layout";
+  getCodeMirrorThemeConfig,
+  getMarkdownHighlightStyleConfig,
+  type MarkdownThemeColors,
+} from "@/lib/markdown-theme";
 import { defaultKeymap, history, indentWithTab } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
-import { tags } from "@lezer/highlight";
 import { useDOMImperativeHandle, type DOMImperativeFactory } from "expo/dom";
 import React, { useEffect, useRef, type Ref } from "react";
 
-function buildMarkdownHighlightStyle(theme: {
-  link?: string;
-  linkUrl?: string;
+function buildThemeFromProps(props: {
+  backgroundColor: string;
+  color: string;
+  linkColor?: string;
+  linkUrlColor?: string;
   codeBackground?: string;
   blockquoteBorder?: string;
-}) {
-  const link = theme.link ?? "#0969da";
-  const linkUrl = theme.linkUrl ?? "#0550ae";
-  const codeBg = theme.codeBackground ?? "rgba(128,128,128,0.15)";
-  const quoteBorder = theme.blockquoteBorder ?? "rgba(128,128,128,0.5)";
-  return HighlightStyle.define([
-    { tag: tags.heading1, fontWeight: "700", fontSize: MARKDOWN_HEADING1_EM },
-    { tag: tags.heading2, fontWeight: "700", fontSize: MARKDOWN_HEADING2_EM },
-    { tag: tags.heading3, fontWeight: "600", fontSize: MARKDOWN_HEADING3_EM },
-    { tag: tags.heading4, fontWeight: "600", fontSize: MARKDOWN_HEADING4_EM },
-    { tag: tags.heading5, fontWeight: "600", fontSize: MARKDOWN_HEADING5_EM },
-    { tag: tags.heading6, fontWeight: "600", fontSize: MARKDOWN_HEADING6_EM, opacity: "0.9" },
-    { tag: tags.strong, fontWeight: "700" },
-    { tag: tags.emphasis, fontStyle: "italic" },
-    { tag: tags.link, color: link, textDecoration: "underline" },
-    { tag: tags.url, color: linkUrl },
-    { tag: tags.monospace, fontFamily: "ui-monospace, monospace", fontSize: MARKDOWN_CODE_FONT_SIZE_EM, backgroundColor: codeBg, padding: "0.12em 0.3em", borderRadius: "4px" },
-    { tag: tags.quote, opacity: "0.85", borderLeft: `3px solid ${quoteBorder}`, paddingLeft: "0.5em" },
-    { tag: tags.list, opacity: "0.95" },
-    { tag: tags.contentSeparator, opacity: "0.6" },
-    { tag: tags.processingInstruction, opacity: "0.65" },
-    { tag: tags.comment, opacity: "0.6", fontStyle: "italic" },
-  ]);
+}): MarkdownThemeColors {
+  return {
+    foreground: props.color,
+    background: props.backgroundColor,
+    muted: props.backgroundColor,
+    mutedForeground: "#737373",
+    ring: "#a3a3a3",
+    link: props.linkColor,
+    linkUrl: props.linkUrlColor,
+    codeBackground: props.codeBackground,
+    blockquoteBorder: props.blockquoteBorder,
+  };
 }
 
 export interface CodeMirrorDOMRef extends DOMImperativeFactory {
@@ -113,12 +96,18 @@ export default function CodeMirrorDOM({
     if (!node || !(node instanceof HTMLElement)) return;
 
     const initial = initialValueRef.current;
-    const highlightStyle = buildMarkdownHighlightStyle({
-      link: linkColor,
-      linkUrl: linkUrlColor,
+    const theme = buildThemeFromProps({
+      backgroundColor,
+      color,
+      linkColor,
+      linkUrlColor,
       codeBackground,
       blockquoteBorder,
     });
+    const highlightStyle = HighlightStyle.define(
+      getMarkdownHighlightStyleConfig(theme) as Parameters<typeof HighlightStyle.define>[0]
+    );
+    const baseTheme = getCodeMirrorThemeConfig(theme);
     const state = EditorState.create({
       doc: initial,
       extensions: [
@@ -139,13 +128,7 @@ export default function CodeMirrorDOM({
         }),
         EditorView.theme({
           "&": { height: "100%", minHeight: 0, maxHeight: "100%" },
-          "&.cm-editor": {
-            fontSize: MARKDOWN_FONT_SIZE_EM,
-            fontFamily: "ui-monospace, monospace",
-            backgroundColor,
-            color,
-          },
-          "&.cm-editor.cm-focused": { outline: "none" },
+          ...baseTheme,
           ".cm-scroller": {
             overflow: "auto",
             overflowY: "scroll",
@@ -154,8 +137,6 @@ export default function CodeMirrorDOM({
             WebkitOverflowScrolling: "touch",
             touchAction: "pan-y",
           },
-          ".cm-content": { padding: 0, paddingBottom: `${MARKDOWN_CONTENT_PADDING_PX.paddingBottom}px` },
-          ".cm-line": { lineHeight: MARKDOWN_LINE_HEIGHT_CSS },
         }),
       ],
     });

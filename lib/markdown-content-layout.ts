@@ -38,3 +38,10 @@ export const MARKDOWN_FONT_SIZE_EM = "0.875em";
 
 /** Inline code and code blocks (slightly smaller than body). */
 export const MARKDOWN_CODE_FONT_SIZE_EM = "0.875em";
+
+/** Font family for body text – shared by preview and editor so they look identical. */
+export const MARKDOWN_FONT_FAMILY_BODY =
+  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+/** Font family for inline code and code blocks. */
+export const MARKDOWN_FONT_FAMILY_CODE = "ui-monospace, monospace";
