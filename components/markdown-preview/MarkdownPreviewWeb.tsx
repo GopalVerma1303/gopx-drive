@@ -75,29 +75,38 @@ export function MarkdownPreviewWeb({
   const css = getPreviewCss(theme);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Replace native checkboxes whenever container content changes (avoids race where DOM isn't ready yet)
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !html) return;
 
-    let cancelled = false;
+    let rafId: number | null = null;
     const run = () => {
-      if (cancelled) return;
+      rafId = null;
       const el = containerRef.current;
       if (el) replaceCheckboxesWithDom(el);
     };
+    const scheduleRun = () => {
+      if (rafId != null) return;
+      rafId = requestAnimationFrame(run);
+    };
 
-    // Run after paint so dangerouslySetInnerHTML has been applied
-    const raf1 = requestAnimationFrame(() => {
-      if (cancelled) return;
-      requestAnimationFrame(run);
+    // Run once after mount/update (double rAF so React has committed innerHTML)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(scheduleRun);
     });
-    // Fallback: run again after a short delay in case DOM wasn't ready (e.g. async layout)
-    const t = setTimeout(run, 150);
+    const t1 = setTimeout(scheduleRun, 50);
+    const t2 = setTimeout(scheduleRun, 200);
+
+    // Observe future DOM changes (e.g. late innerHTML, or container reused) so checkboxes are always replaced
+    const observer = new MutationObserver(scheduleRun);
+    observer.observe(container, { childList: true, subtree: true });
 
     return () => {
-      cancelled = true;
-      cancelAnimationFrame(raf1);
-      clearTimeout(t);
+      if (rafId != null) cancelAnimationFrame(rafId);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      observer.disconnect();
     };
   }, [html]);
 

@@ -85,12 +85,17 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle }: Markdown
     (bodyHtml: string) => {
       if (Platform.OS === "web") return;
       const escaped = JSON.stringify(bodyHtml || "");
-      // Set content then replace checkboxes after a short delay so DOM is ready (same custom checkbox as web)
+      // Set content then replace checkboxes at staggered delays so DOM is ready (WebView can be slow)
       const script = `(function(){
         var html = ${escaped};
         var el = document.getElementById('content');
-        if(el) el.innerHTML = html;
-        setTimeout(function() { ${REPLACE_CHECKBOXES_SCRIPT} }, 50);
+        if(el) {
+          el.innerHTML = html;
+          var run = function() { ${REPLACE_CHECKBOXES_SCRIPT} };
+          setTimeout(run, 0);
+          setTimeout(run, 80);
+          setTimeout(run, 250);
+        }
       })(); true;`;
       webViewRef.current?.injectJavaScript(script);
     },
