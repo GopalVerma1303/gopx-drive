@@ -142,7 +142,9 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
 ${getHighlightCss(colors)}
 /* Blockquote: match editor quote highlight */
 .markdown-preview blockquote { opacity: 0.85; border-left: 3px solid ${quoteBorder}; padding-left: 0.5em; margin: 0 0 1em 0; color: ${colors.foreground}; }
-.markdown-preview ul, .markdown-preview ol { margin: 0 0 1em 0; padding-left: 1.5em; list-style-position: outside; }
+/* Lists: restore bullets/numbers (Tailwind preflight removes them). Task lists get list-style: none below. */
+.markdown-preview ul { margin: 0 0 1em 0; padding-left: 1.5em; list-style-position: outside; list-style-type: disc; }
+.markdown-preview ol { margin: 0 0 1em 0; padding-left: 1.5em; list-style-position: outside; list-style-type: decimal; }
 .markdown-preview li { margin: 0.25em 0; color: ${colors.foreground}; }
 .markdown-preview li > p { margin: 0; }
 /* Links: GFM-style, match editor link highlight */

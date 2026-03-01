@@ -1,6 +1,5 @@
 "use client";
 
-import { codeBlockLinePlugin } from "@/components/codemirror-editor/code-block-line-plugin";
 import { MARKDOWN_CONTENT_PADDING_PX } from "@/lib/markdown-content-layout";
 import {
   getCodeMirrorThemeConfig,
@@ -11,10 +10,14 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import React, { useEffect, useImperativeHandle, useRef } from "react";
 import { Platform } from "react-native";
 
-// Only import CodeMirror on web to avoid pulling it into native bundle
+// Only import CodeMirror on web to avoid pulling it into native bundle.
+// All CodeMirror packages must be required here in one place so a single instance
+// of @codemirror/state is used (required to avoid "Unrecognized extension value" errors).
+// The code-block plugin is inlined here so it uses the same instances (no separate module imports).
 let EditorView: any;
 let EditorState: any;
 let Compartment: any;
+let StateField: any;
 let markdown: any;
 let keymap: any;
 let defaultKeymap: any;
@@ -22,6 +25,10 @@ let indentWithTab: any;
 let history: any;
 let syntaxHighlighting: any;
 let HighlightStyle: any;
+let syntaxTree: any;
+let BlockWrapper: any;
+let getMarkdownCodeLanguages: (() => { jsSupport: any; tsSupport: any }) | null = null;
+let getCodeBlockLinePlugin: (() => any[]) | null = null;
 
 if (typeof document !== "undefined") {
   const cmView = require("@codemirror/view");
@@ -29,9 +36,12 @@ if (typeof document !== "undefined") {
   const cmCommands = require("@codemirror/commands");
   const cmLangMarkdown = require("@codemirror/lang-markdown");
   const cmLanguage = require("@codemirror/language");
+  const cmLangJs = require("@codemirror/lang-javascript");
   EditorView = cmView.EditorView;
   EditorState = cmState.EditorState;
   Compartment = cmState.Compartment;
+  StateField = cmState.StateField;
+  BlockWrapper = cmView.BlockWrapper;
   markdown = cmLangMarkdown.markdown;
   keymap = cmView.keymap;
   defaultKeymap = cmCommands.defaultKeymap;
@@ -39,6 +49,43 @@ if (typeof document !== "undefined") {
   history = cmCommands.history;
   syntaxHighlighting = cmLanguage.syntaxHighlighting;
   HighlightStyle = cmLanguage.HighlightStyle;
+  syntaxTree = cmLanguage.syntaxTree;
+  const jsSupport = cmLangJs.javascript();
+  const tsSupport = cmLangJs.javascript({ typescript: true });
+  getMarkdownCodeLanguages = () => ({ jsSupport, tsSupport });
+
+  // Inline code-block wrapper plugin (same logic as code-block-line-plugin.ts) using this module's CodeMirror instances
+  const CODE_BLOCK_NODES = new Set(["FencedCode", "CodeBlock"]);
+  const WRAPPER_CLASS = "code-block-wrapper";
+  const wrapper = BlockWrapper.create({
+    tagName: "div",
+    attributes: { class: WRAPPER_CLASS },
+  });
+  function getCodeBlockWrappers(state: any) {
+    const tree = syntaxTree(state);
+    const ranges: Array<{ from: number; to: number; value: any }> = [];
+    tree.iterate({
+      enter: (node: any) => {
+        if (!CODE_BLOCK_NODES.has(node.name)) return;
+        ranges.push({ from: node.from, to: node.to, value: wrapper });
+      },
+    });
+    if (ranges.length === 0) return BlockWrapper.set([]);
+    return BlockWrapper.set(ranges, true);
+  }
+  const codeBlockWrapperField = StateField.define({
+    create(state: any) {
+      return getCodeBlockWrappers(state);
+    },
+    update(value: any, tr: any) {
+      if (tr.docChanged) return getCodeBlockWrappers(tr.state);
+      return value;
+    },
+  });
+  getCodeBlockLinePlugin = () => [
+    codeBlockWrapperField,
+    EditorView.blockWrappers.of((view: any) => view.state.field(codeBlockWrapperField)),
+  ];
 }
 
 export interface CodeMirrorEditorHandle {
@@ -86,18 +133,18 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       const initial = initialValueRef.current;
       const markdownHighlightStyle = HighlightStyle.define(getMarkdownHighlightStyleConfig(theme));
 
-      const cmLangJs = require("@codemirror/lang-javascript");
-      const jsSupport = cmLangJs.javascript();
-      const tsSupport = cmLangJs.javascript({ typescript: true });
-      const markdownConfig = {
-        defaultCodeLanguage: jsSupport.language,
-        codeLanguages: (info: string) => {
-          const n = (info || "").trim().toLowerCase();
-          if (n === "ts" || n === "typescript") return tsSupport.language;
-          if (n === "tsx") return tsSupport.language;
-          return jsSupport.language;
-        },
-      };
+      const { jsSupport, tsSupport } = getMarkdownCodeLanguages?.() ?? { jsSupport: null, tsSupport: null };
+      const markdownConfig = jsSupport && tsSupport
+        ? {
+            defaultCodeLanguage: jsSupport.language,
+            codeLanguages: (info: string) => {
+              const n = (info || "").trim().toLowerCase();
+              if (n === "ts" || n === "typescript") return tsSupport.language;
+              if (n === "tsx") return tsSupport.language;
+              return jsSupport.language;
+            },
+          }
+        : undefined;
 
       const heightCompartment = new Compartment();
       const themeColorsCompartment = new Compartment();
@@ -109,9 +156,9 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       const state = EditorState.create({
         doc: initial,
         extensions: [
-          markdown(markdownConfig),
+          markdown(markdownConfig ?? {}),
           highlightCompartment.of(syntaxHighlighting(markdownHighlightStyle)),
-          ...codeBlockLinePlugin,
+          ...(getCodeBlockLinePlugin?.() ?? []),
           history(),
           keymap.of([...defaultKeymap, indentWithTab]),
           EditorView.lineWrapping,
