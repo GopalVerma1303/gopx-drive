@@ -58,7 +58,8 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle }: Markdown
         source={{ html: sourceHtml }}
         onLoadEnd={onLoadEnd}
         style={[styles.webview, { backgroundColor: "transparent" }]}
-        scrollEnabled
+        scrollEnabled={true}
+        nestedScrollEnabled={true}
         showsVerticalScrollIndicator
         originWhitelist={["*"]}
         javaScriptEnabled

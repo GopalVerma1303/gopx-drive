@@ -96,7 +96,7 @@ export const CodeMirrorWebView = React.forwardRef<CodeMirrorEditorHandle, CodeMi
         // Inject theme colors so WebView editor matches app (light/dark)
         const bg = colors.muted ?? colors.background;
         const fg = colors.foreground;
-        const styleContent = `body, #codemirror-root, .cm-editor, .cm-scroller { background: ${bg} !important; } .cm-content, .cm-line { color: ${fg} !important; } .cm-cursor { border-left-color: ${fg} !important; }`;
+        const styleContent = `body, #codemirror-root, .cm-editor, .cm-scroller { background: ${bg} !important; } .cm-content, .cm-line { color: ${fg} !important; } .cm-cursor { border-left-color: ${fg} !important; } .cm-scroller { -webkit-overflow-scrolling: touch !important; overflow-y: scroll !important; height: 100% !important; max-height: 100% !important; touch-action: pan-y !important; }`;
         inject(
           `(function(){ var s = document.createElement('style'); s.textContent = ${JSON.stringify(styleContent)}; document.documentElement.appendChild(s); })(); true;`
         );
@@ -135,7 +135,7 @@ export const CodeMirrorWebView = React.forwardRef<CodeMirrorEditorHandle, CodeMi
           } else if (msg.type === "selectionChange" && msg.payload && onSelectionChange) {
             onSelectionChange(msg.payload);
           }
-        } catch (_) {}
+        } catch (_) { }
       },
       [onSelectionChange]
     );
@@ -152,6 +152,7 @@ export const CodeMirrorWebView = React.forwardRef<CodeMirrorEditorHandle, CodeMi
           source={{ html: CODEMIRROR_EDITOR_HTML }}
           style={[styles.webview, { minHeight: minEditorHeight, backgroundColor: colors.muted ?? colors.background }]}
           scrollEnabled={true}
+          nestedScrollEnabled={true}
           keyboardDisplayRequiresUserAction={false}
           onMessage={onMessage}
           onLoadEnd={onLoadEnd}

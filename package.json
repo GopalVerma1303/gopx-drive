@@ -1,6 +1,6 @@
 {
   "name": "gopx-drive",
-  "main": "expo-router/entry",
+  "main": "index.js",
   "version": "1.0.0",
   "scripts": {
     "build:codemirror-editor": "node scripts/build-codemirror-editor.js",

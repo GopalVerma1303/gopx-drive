@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { generateAIContent } from "@/lib/ai-providers";
 import { listFolders } from "@/lib/folders";
 import { createNote, getNoteById, syncNotesFromSupabase, updateNote } from "@/lib/notes";
+import { MARKDOWN_CONTENT_PADDING } from "@/lib/markdown-content-layout";
 import { invalidateFoldersQueries, invalidateNotesListQueries } from "@/lib/query-utils";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -67,6 +68,8 @@ export default function NoteEditorScreen() {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [dropdownTriggerWidth, setDropdownTriggerWidth] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  /** Measured height (px) of the editor area below the toolbar. Used so CodeMirror gets a definite viewport height and can scroll to the last line. */
+  const [editorAreaHeightPx, setEditorAreaHeightPx] = useState(0);
   /** Last selection from editor (updated on every selection change). Preserved when AI button steals focus. */
   const lastSelectionRef = useRef({ start: 0, end: 0 });
   /** Range to replace with AI output when modal was opened with a selection (so we don't rely on getSelection() after focus is lost). */
@@ -492,6 +495,32 @@ export default function NoteEditorScreen() {
     }
   };
 
+  const styles = StyleSheet.create({
+    screenRoot: {
+      flex: 1,
+      flexDirection: "column",
+      minHeight: 0,
+    },
+    screenContentWeb: {
+      flex: 1,
+      minHeight: 0,
+      backgroundColor: colors.background,
+    },
+    editorColumnWeb: {
+      flex: 1,
+      minHeight: 0,
+      width: "100%",
+      maxWidth: 672,
+      alignSelf: "center" as const,
+      backgroundColor: colors.muted,
+      position: "relative" as const,
+    },
+    screenContentNative: {
+      flex: 1,
+      minHeight: 0,
+    },
+  });
+
   if (isLoading && !isNewNote) {
     return (
       <View
@@ -510,44 +539,60 @@ export default function NoteEditorScreen() {
           headerShown: false,
         }}
       />
-      <NoteDetailHeader
-        title={title}
-        onTitleChange={setTitle}
-        isNewNote={isNewNote}
-        isDirty={isDirty}
-        canSave={canSave}
-        isSaving={saveMutation.isPending}
-        onSave={handleSave}
-        isPreview={isPreview}
-        onPreviewToggle={() => {
-          if (!isPreview && Platform.OS !== "web") {
-            // Flush WebView content to React state before switching to preview (DOM editor syncs on every change, so content is usually current)
-            (editorRef.current?.getContentAsync?.() ?? Promise.resolve(content))
-              .then((flushed) => {
-                if (typeof flushed === "string") setContent(flushed);
-                setIsPreview(true);
-              })
-              .catch(() => setIsPreview(true));
-          } else {
-            setIsPreview(!isPreview);
+      {/* Single flex column root so header + content get correct height; content area can scroll to bottom */}
+      <View style={styles.screenRoot}>
+        <NoteDetailHeader
+          title={title}
+          onTitleChange={setTitle}
+          isNewNote={isNewNote}
+          isDirty={isDirty}
+          canSave={canSave}
+          isSaving={saveMutation.isPending}
+          onSave={handleSave}
+          isPreview={isPreview}
+          onPreviewToggle={() => {
+            if (!isPreview && Platform.OS !== "web") {
+              // Flush WebView content to React state before switching to preview (DOM editor syncs on every change, so content is usually current)
+              (editorRef.current?.getContentAsync?.() ?? Promise.resolve(content))
+                .then((flushed) => {
+                  if (typeof flushed === "string") setContent(flushed);
+                  setIsPreview(true);
+                })
+                .catch(() => setIsPreview(true));
+            } else {
+              setIsPreview(!isPreview);
+            }
+          }}
+          isFetching={isFetching || isRefreshing}
+          onRefresh={!isNewNote ? handleRefresh : undefined}
+          onOpenShareModal={!isNewNote ? () => setShareModalOpen(true) : undefined}
+          folderName={
+            !isNewNote && note
+              ? note.folder_id != null
+                ? folders.find((f) => f.id === note.folder_id)?.name ?? "Folder"
+                : "No folder"
+              : undefined
           }
-        }}
-        isFetching={isFetching || isRefreshing}
-        onRefresh={!isNewNote ? handleRefresh : undefined}
-        onOpenShareModal={!isNewNote ? () => setShareModalOpen(true) : undefined}
-        folderName={
-          !isNewNote && note
-            ? note.folder_id != null
-              ? folders.find((f) => f.id === note.folder_id)?.name ?? "Folder"
-              : "No folder"
-            : undefined
-        }
-        onOpenMoveModal={!isNewNote && note ? openMoveModal : undefined}
-      />
-      {Platform.OS === "web" ? (
-        <View className="flex-1 bg-background" style={{ flex: 1, height: "100%" }}>
-          <View className="flex-1 w-full max-w-2xl mx-auto bg-muted" style={{ minHeight: "100%" }}>
-            {isPreview ? (
+          onOpenMoveModal={!isNewNote && note ? openMoveModal : undefined}
+        />
+        {Platform.OS === "web" ? (
+          <View style={styles.screenContentWeb}>
+            <View style={styles.editorColumnWeb}>
+            {/* Preview: always mounted, hidden when editing for instant switch */}
+            <View
+              style={[
+                { flex: 1, minHeight: "100%" },
+                !isPreview && {
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  opacity: 0,
+                  pointerEvents: "none",
+                },
+              ]}
+            >
               <ScrollView
                 className="flex-1"
                 contentContainerStyle={{ flexGrow: 1, minHeight: "100%" }}
@@ -556,15 +601,122 @@ export default function NoteEditorScreen() {
                 <MarkdownPreview
                   content={content}
                   placeholder="Start writing in markdown..."
-                  contentContainerStyle={{
-                    paddingHorizontal: 32,
-                    paddingTop: 16,
-                    paddingBottom: 40,
-                  }}
                 />
               </ScrollView>
-            ) : (
-              <>
+            </View>
+            {/* Editor: always mounted, hidden when previewing for instant switch */}
+            <View
+              style={[
+                { flex: 1, minHeight: 0, flexDirection: "column" },
+                isPreview && {
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  opacity: 0,
+                  pointerEvents: "none",
+                },
+              ]}
+            >
+              <MarkdownToolbar
+                onInsertText={(text, cursorOffset) => {
+                  editorRef.current?.insertText(text, cursorOffset);
+                }}
+                onWrapSelection={(before, after, cursorOffset) => {
+                  editorRef.current?.wrapSelection(before, after, cursorOffset);
+                }}
+                onIndent={() => editorRef.current?.indent()}
+                onOutdent={() => editorRef.current?.outdent()}
+                onUndo={() => editorRef.current?.undo()}
+                onRedo={() => editorRef.current?.redo()}
+                onAIAssistant={handleOpenAIModal}
+                onImageInsert={() => setImageModalOpen(true)}
+                isPreview={false}
+              />
+              {/* Web: measure this area so we can give CodeMirror an explicit pixel height (first-principles: scroll needs a definite viewport size). */}
+              <View
+                style={{
+                  flex: 1,
+                  minHeight: 0,
+                }}
+                onLayout={(e) => {
+                  const h = e.nativeEvent.layout.height;
+                  if (typeof h === "number" && h > 0) setEditorAreaHeightPx(h);
+                }}
+              >
+                <MarkdownEditor
+                  ref={editorRef}
+                  value={content}
+                  onChangeText={setContent}
+                  onSelectionChange={(sel) => {
+                    lastSelectionRef.current = sel;
+                  }}
+                  placeholder="Start writing in markdown..."
+                  isPreview={false}
+                  onSave={handleSave}
+                  editorAreaHeight={editorAreaHeightPx}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+        ) : (
+        <Animated.View className="flex-1" style={[containerAnimatedStyle, styles.screenContentNative]}>
+          <View className="flex-1" style={{ backgroundColor: colors.background }}>
+            <View
+              className="flex-1 w-full"
+              style={{
+                flex: 1,
+                width: "100%",
+                maxWidth: isPreview ? undefined : 672,
+                alignSelf: "center",
+                backgroundColor: colors.muted,
+                position: "relative",
+              }}
+            >
+              {/* Preview: always mounted, hidden when editing for instant switch */}
+              <View
+                style={[
+                  { flex: 1, width: "100%", height: "100%" },
+                  !isPreview && {
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    opacity: 0,
+                    pointerEvents: "none",
+                  },
+                ]}
+              >
+                <ScrollView
+                  style={{ flex: 1, width: "100%", height: "100%" }}
+                  contentContainerStyle={{ flexGrow: 1 }}
+                  showsVerticalScrollIndicator
+                >
+                  <MarkdownPreview
+                    content={content}
+                    placeholder="Start writing in markdown..."
+                    contentContainerStyle={{ flex: 1, width: "100%", height: "100%" }}
+                  />
+                </ScrollView>
+              </View>
+              {/* Editor: always mounted, hidden when previewing for instant switch */}
+              <View
+                style={[
+                  { flex: 1, width: "100%", flexDirection: "column" },
+                  isPreview && {
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    opacity: 0,
+                    pointerEvents: "none",
+                  },
+                ]}
+              >
                 <MarkdownToolbar
                   onInsertText={(text, cursorOffset) => {
                     editorRef.current?.insertText(text, cursorOffset);
@@ -580,112 +732,33 @@ export default function NoteEditorScreen() {
                   onImageInsert={() => setImageModalOpen(true)}
                   isPreview={false}
                 />
-                <ScrollView
-                  className="flex-1"
-                  contentContainerStyle={{ flexGrow: 1, minHeight: "100%" }}
-                  keyboardShouldPersistTaps="handled"
-                  showsVerticalScrollIndicator
+                {/* No ScrollView: WebView/DOM editor handles its own scroll. No Pressable wrapper: Pressable intercepts touch and blocks finger-scroll in WebView (see react-native-webview#2226). */}
+                <View
+                  style={{
+                    flex: 1,
+                    width: "100%",
+                    minHeight: nativeEditorContentMinHeight,
+                  }}
                 >
                   <MarkdownEditor
+                    key={`note-editor-${id}`}
                     ref={editorRef}
                     value={content}
                     onChangeText={setContent}
+                    onContentSync={setContent}
                     onSelectionChange={(sel) => {
                       lastSelectionRef.current = sel;
                     }}
                     placeholder="Start writing in markdown..."
                     isPreview={false}
-                    onSave={handleSave}
                   />
-                </ScrollView>
-              </>
-            )}
-          </View>
-        </View>
-      ) : (
-        <Animated.View className="flex-1" style={containerAnimatedStyle}>
-          <View className="flex-1" style={{ backgroundColor: colors.background }}>
-            <View
-              className="flex-1 w-full"
-              style={{
-                flex: 1,
-                width: "100%",
-                maxWidth: isPreview ? undefined : 672,
-                alignSelf: "center",
-                backgroundColor: colors.muted,
-              }}
-            >
-              {isPreview ? (
-                <ScrollView
-                  style={{ flex: 1, width: "100%", height: "100%" }}
-                  contentContainerStyle={{ flexGrow: 1, }}
-                  showsVerticalScrollIndicator
-                >
-                  <MarkdownPreview
-                    content={content}
-                    placeholder="Start writing in markdown..."
-                    contentContainerStyle={{
-                      flex: 1,
-                      width: "100%",
-                      height: "100%",
-                      paddingVertical: 16,
-                    }}
-                  />
-                </ScrollView>
-              ) : (
-                <>
-                  <MarkdownToolbar
-                    onInsertText={(text, cursorOffset) => {
-                      editorRef.current?.insertText(text, cursorOffset);
-                    }}
-                    onWrapSelection={(before, after, cursorOffset) => {
-                      editorRef.current?.wrapSelection(before, after, cursorOffset);
-                    }}
-                    onIndent={() => editorRef.current?.indent()}
-                    onOutdent={() => editorRef.current?.outdent()}
-                    onUndo={() => editorRef.current?.undo()}
-                    onRedo={() => editorRef.current?.redo()}
-                    onAIAssistant={handleOpenAIModal}
-                    onImageInsert={() => setImageModalOpen(true)}
-                    isPreview={false}
-                  />
-                  <ScrollView
-                    className="flex-1"
-                    style={{ flex: 1, width: "100%" }}
-                    contentContainerStyle={{
-                      flexGrow: 1,
-                      minHeight: nativeEditorContentMinHeight,
-                      width: "100%",
-                    }}
-                    keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator
-                    showsHorizontalScrollIndicator={false}
-                    keyboardDismissMode="interactive"
-                  >
-                    <Pressable
-                      style={{ flex: 1, minHeight: nativeEditorContentMinHeight }}
-                      onPress={() => editorRef.current?.focus()}
-                    >
-                      <MarkdownEditor
-                        key={`note-editor-${id}`}
-                        ref={editorRef}
-                        value={content}
-                        onChangeText={setContent}
-                        onContentSync={setContent}
-                        onSelectionChange={(sel) => {
-                          lastSelectionRef.current = sel;
-                        }}
-                        placeholder="Start writing in markdown..."
-                        isPreview={false}
-                      />
-                    </Pressable>
-                  </ScrollView>
-                </>
-              )}
+                </View>
+              </View>
             </View>
           </View>
         </Animated.View>
-      )}
+        )}
+      </View>
       <AIPromptModal
         visible={aiModalOpen}
         onClose={() => {

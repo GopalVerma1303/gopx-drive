@@ -9,28 +9,40 @@
  * @see https://docs.expo.dev/guides/dom-components
  */
 
-import { EditorView, keymap } from "@codemirror/view";
-import { EditorState } from "@codemirror/state";
-import { defaultKeymap, indentWithTab, history } from "@codemirror/commands";
+import {
+  MARKDOWN_CODE_FONT_SIZE_EM,
+  MARKDOWN_CONTENT_PADDING_PX,
+  MARKDOWN_FONT_SIZE,
+  MARKDOWN_HEADING1_EM,
+  MARKDOWN_HEADING2_EM,
+  MARKDOWN_HEADING3_EM,
+  MARKDOWN_HEADING4_EM,
+  MARKDOWN_HEADING5_EM,
+  MARKDOWN_HEADING6_EM,
+  MARKDOWN_LINE_HEIGHT_CSS,
+} from "@/lib/markdown-content-layout";
+import { defaultKeymap, history, indentWithTab } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
-import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { EditorState } from "@codemirror/state";
+import { EditorView, keymap } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
-import React, { useEffect, useRef, type Ref } from "react";
 import { useDOMImperativeHandle, type DOMImperativeFactory } from "expo/dom";
+import React, { useEffect, useRef, type Ref } from "react";
 
-/** Markdown syntax highlighting: headings, emphasis, strong, links, inline code, etc. */
+/** Markdown syntax highlighting: same font sizes as preview for WYSIWYG. */
 const markdownHighlightStyle = HighlightStyle.define([
-  { tag: tags.heading1, fontWeight: "700", fontSize: "1.5em" },
-  { tag: tags.heading2, fontWeight: "700", fontSize: "1.35em" },
-  { tag: tags.heading3, fontWeight: "600", fontSize: "1.2em" },
-  { tag: tags.heading4, fontWeight: "600", fontSize: "1.1em" },
-  { tag: tags.heading5, fontWeight: "600" },
-  { tag: tags.heading6, fontWeight: "600", opacity: "0.9" },
+  { tag: tags.heading1, fontWeight: "700", fontSize: MARKDOWN_HEADING1_EM },
+  { tag: tags.heading2, fontWeight: "700", fontSize: MARKDOWN_HEADING2_EM },
+  { tag: tags.heading3, fontWeight: "600", fontSize: MARKDOWN_HEADING3_EM },
+  { tag: tags.heading4, fontWeight: "600", fontSize: MARKDOWN_HEADING4_EM },
+  { tag: tags.heading5, fontWeight: "600", fontSize: MARKDOWN_HEADING5_EM },
+  { tag: tags.heading6, fontWeight: "600", fontSize: MARKDOWN_HEADING6_EM, opacity: "0.9" },
   { tag: tags.strong, fontWeight: "700" },
   { tag: tags.emphasis, fontStyle: "italic" },
   { tag: tags.link, color: "#0969da", textDecoration: "underline" },
   { tag: tags.url, color: "#0550ae" },
-  { tag: tags.monospace, fontFamily: "ui-monospace, monospace", backgroundColor: "rgba(128,128,128,0.15)", padding: "0.12em 0.3em", borderRadius: "4px" },
+  { tag: tags.monospace, fontFamily: "ui-monospace, monospace", fontSize: MARKDOWN_CODE_FONT_SIZE_EM, backgroundColor: "rgba(128,128,128,0.15)", padding: "0.12em 0.3em", borderRadius: "4px" },
   { tag: tags.quote, opacity: "0.85", borderLeft: "3px solid rgba(128,128,128,0.5)", paddingLeft: "0.5em" },
   { tag: tags.list, opacity: "0.95" },
   { tag: tags.contentSeparator, opacity: "0.6" },
@@ -100,14 +112,22 @@ export default function CodeMirrorDOM({
           }
         }),
         EditorView.theme({
-          "&": { height: "100%" },
+          "&": { height: "100%", minHeight: 0, maxHeight: "100%" },
           "&.cm-editor": {
-            fontSize: 16,
+            fontSize: MARKDOWN_FONT_SIZE,
             fontFamily: "ui-monospace, monospace",
           },
           "&.cm-editor.cm-focused": { outline: "none" },
-          ".cm-content": { padding: 0 },
-          ".cm-line": { lineHeight: "24px" },
+          ".cm-scroller": {
+            overflow: "auto",
+            overflowY: "scroll",
+            height: "100%",
+            maxHeight: "100%",
+            WebkitOverflowScrolling: "touch",
+            touchAction: "pan-y",
+          },
+          ".cm-content": { padding: 0, paddingBottom: `${MARKDOWN_CONTENT_PADDING_PX.paddingBottom}px` },
+          ".cm-line": { lineHeight: MARKDOWN_LINE_HEIGHT_CSS },
         }),
       ],
     });
@@ -163,10 +183,9 @@ export default function CodeMirrorDOM({
         flex: 1,
         minHeight: 200,
         height: "100%",
-        paddingLeft: 32,
-        paddingRight: 32,
-        paddingTop: 24,
-        paddingBottom: 65,
+        maxHeight: "100%",
+        overflow: "hidden",
+        ...MARKDOWN_CONTENT_PADDING_PX,
         backgroundColor,
         color,
         boxSizing: "border-box",

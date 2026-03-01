@@ -60,6 +60,7 @@ function AppLayoutContent() {
             screenOptions={{
               headerShown: false,
               contentStyle: {
+                flex: 1,
                 backgroundColor: colors.background,
               },
             }}
@@ -79,6 +80,7 @@ function AppLayoutContent() {
           screenOptions={{
             headerShown: false,
             contentStyle: {
+              flex: 1,
               backgroundColor: colors.background,
             },
           }}
@@ -96,6 +98,7 @@ function AppLayoutContent() {
           screenOptions={{
             headerShown: false,
             contentStyle: {
+              flex: 1,
               backgroundColor: colors.background,
             },
           }}

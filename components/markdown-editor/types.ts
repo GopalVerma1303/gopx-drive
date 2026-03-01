@@ -13,6 +13,8 @@ export interface MarkdownEditorProps {
   noScrollView?: boolean;
   /** On mobile WebView: called with raw content when editor sends a change. Use to keep note state in sync (e.g. pass setContent). */
   onContentSync?: (text: string) => void;
+  /** (Web only) Measured height in px for the editor area. When set, CodeMirror wrapper uses this so the scroll viewport has a definite size. */
+  editorAreaHeight?: number;
 }
 
 export interface MarkdownEditorRef {

@@ -31,17 +31,18 @@ export function MarkdownPreviewWeb({
     return (
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, contentContainerStyle]}
+        contentContainerStyle={[styles.contentBase, contentContainerStyle]}
       >
         <View className={className} />
       </ScrollView>
     );
   }
 
+  /* contentContainerStyle has no horizontal padding so scrollbar sits at edge; padding is on .markdown-preview in CSS */
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={[styles.content, contentContainerStyle]}
+      contentContainerStyle={[styles.contentBase, contentContainerStyle]}
       removeClippedSubviews={false}
       nestedScrollEnabled
     >
@@ -56,10 +57,8 @@ export function MarkdownPreviewWeb({
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  content: {
+  contentBase: {
     flexGrow: 1,
-    paddingHorizontal: 32,
-    paddingTop: 16,
-    paddingBottom: 40,
+    minHeight: "100%",
   },
 });

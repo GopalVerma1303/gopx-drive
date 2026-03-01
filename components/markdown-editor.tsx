@@ -136,6 +136,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       previewOnly = false,
       noScrollView = false,
       onContentSync,
+      editorAreaHeight,
     },
     ref
   ) {
@@ -2807,7 +2808,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     }
 
     return (
-      <View className={cn("flex-1", className)}>
+      <View className={cn("flex-1", className)} style={!showPreview && Platform.OS === "web" ? { flex: 1, minHeight: 0, position: "relative" } : undefined}>
         {/* Editor or Preview */}
         {showPreview ? (
           <MarkdownPreview
@@ -2834,6 +2835,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               onSelectionChange?.(sel);
             }}
             placeholder={placeholder}
+            containerHeight={editorAreaHeight}
           />
         ) : (
           <CodeMirrorNativeErrorBoundary>

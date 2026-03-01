@@ -14,7 +14,15 @@ export const CODEMIRROR_EDITOR_HTML = `<!DOCTYPE html>
       line-height: 24px;
     }
     .cm-editor { height: 100%; }
-    .cm-scroller { overflow: auto; font-family: ui-monospace, monospace; }
+    .cm-scroller {
+      overflow: auto;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      font-family: ui-monospace, monospace;
+      height: 100%;
+      max-height: 100%;
+    }
     .cm-content { padding: 0; }
   </style>
 </head>
@@ -53,7 +61,15 @@ export const CODEMIRROR_EDITOR_HTML = `<!DOCTYPE html>
       line-height: 24px;
     }
     .cm-editor { height: 100%; }
-    .cm-scroller { overflow: auto; font-family: ui-monospace, monospace; }
+    .cm-scroller {
+      overflow: auto;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      font-family: ui-monospace, monospace;
+      height: 100%;
+      max-height: 100%;
+    }
     .cm-content { padding: 0; }
   </style>
 </head>
@@ -74,7 +90,15 @@ export const CODEMIRROR_EDITOR_HTML = `<!DOCTYPE html>
       line-height: 24px;
     }
     .cm-editor { height: 100%; }
-    .cm-scroller { overflow: auto; font-family: ui-monospace, monospace; }
+    .cm-scroller {
+      overflow: auto;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      font-family: ui-monospace, monospace;
+      height: 100%;
+      max-height: 100%;
+    }
     .cm-content { padding: 0; }
   </style>
 </head>
@@ -95,7 +119,15 @@ export const CODEMIRROR_EDITOR_HTML = `<!DOCTYPE html>
       line-height: 24px;
     }
     .cm-editor { height: 100%; }
-    .cm-scroller { overflow: auto; font-family: ui-monospace, monospace; }
+    .cm-scroller {
+      overflow: auto;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      font-family: ui-monospace, monospace;
+      height: 100%;
+      max-height: 100%;
+    }
     .cm-content { padding: 0; }
   </style>
 </head>
@@ -116,7 +148,15 @@ export const CODEMIRROR_EDITOR_HTML = `<!DOCTYPE html>
       line-height: 24px;
     }
     .cm-editor { height: 100%; }
-    .cm-scroller { overflow: auto; font-family: ui-monospace, monospace; }
+    .cm-scroller {
+      overflow: auto;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      font-family: ui-monospace, monospace;
+      height: 100%;
+      max-height: 100%;
+    }
     .cm-content { padding: 0; }
   </style>
 </head>
@@ -146,7 +186,15 @@ vQ\`O,5@UO\$(OQ\`O,59aOOQ!0Lh,59i,59iO\$(TQ\`O,5@VO\$)TQ\$IYO,59uOOQ!0Lh'#Jp'#Jp
       line-height: 24px;
     }
     .cm-editor { height: 100%; }
-    .cm-scroller { overflow: auto; font-family: ui-monospace, monospace; }
+    .cm-scroller {
+      overflow: auto;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      font-family: ui-monospace, monospace;
+      height: 100%;
+      max-height: 100%;
+    }
     .cm-content { padding: 0; }
   </style>
 </head>
@@ -167,7 +215,15 @@ vQ\`O,5@UO\$(OQ\`O,59aOOQ!0Lh,59i,59iO\$(TQ\`O,5@VO\$)TQ\$IYO,59uOOQ!0Lh'#Jp'#Jp
       line-height: 24px;
     }
     .cm-editor { height: 100%; }
-    .cm-scroller { overflow: auto; font-family: ui-monospace, monospace; }
+    .cm-scroller {
+      overflow: auto;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      font-family: ui-monospace, monospace;
+      height: 100%;
+      max-height: 100%;
+    }
     .cm-content { padding: 0; }
   </style>
 </head>
@@ -188,7 +244,15 @@ vQ\`O,5@UO\$(OQ\`O,59aOOQ!0Lh,59i,59iO\$(TQ\`O,5@VO\$)TQ\$IYO,59uOOQ!0Lh'#Jp'#Jp
       line-height: 24px;
     }
     .cm-editor { height: 100%; }
-    .cm-scroller { overflow: auto; font-family: ui-monospace, monospace; }
+    .cm-scroller {
+      overflow: auto;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      font-family: ui-monospace, monospace;
+      height: 100%;
+      max-height: 100%;
+    }
     .cm-content { padding: 0; }
   </style>
 </head>
@@ -209,7 +273,15 @@ vQ\`O,5@UO\$(OQ\`O,59aOOQ!0Lh,59i,59iO\$(TQ\`O,5@VO\$)TQ\$IYO,59uOOQ!0Lh'#Jp'#Jp
       line-height: 24px;
     }
     .cm-editor { height: 100%; }
-    .cm-scroller { overflow: auto; font-family: ui-monospace, monospace; }
+    .cm-scroller {
+      overflow: auto;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      font-family: ui-monospace, monospace;
+      height: 100%;
+      max-height: 100%;
+    }
     .cm-content { padding: 0; }
   </style>
 </head>
@@ -236,7 +308,15 @@ f\$*_\$0x\$0{\$1O\$1}\$2Q\$2X\$2aP\$2g\$2jP\$3W\$3[\$4S\$5b\$5g\$5}PP\$6S\$6Y\$6
       line-height: 24px;
     }
     .cm-editor { height: 100%; }
-    .cm-scroller { overflow: auto; font-family: ui-monospace, monospace; }
+    .cm-scroller {
+      overflow: auto;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      font-family: ui-monospace, monospace;
+      height: 100%;
+      max-height: 100%;
+    }
     .cm-content { padding: 0; }
   </style>
 </head>
@@ -257,7 +337,15 @@ f\$*_\$0x\$0{\$1O\$1}\$2Q\$2X\$2aP\$2g\$2jP\$3W\$3[\$4S\$5b\$5g\$5}PP\$6S\$6Y\$6
       line-height: 24px;
     }
     .cm-editor { height: 100%; }
-    .cm-scroller { overflow: auto; font-family: ui-monospace, monospace; }
+    .cm-scroller {
+      overflow: auto;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      font-family: ui-monospace, monospace;
+      height: 100%;
+      max-height: 100%;
+    }
     .cm-content { padding: 0; }
   </style>
 </head>
