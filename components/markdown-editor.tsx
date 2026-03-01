@@ -1,3 +1,6 @@
+import CodeMirrorDOM from "@/components/codemirror-editor/CodeMirrorDOM";
+import { CodeMirrorWeb } from "@/components/codemirror-editor";
+import { MarkdownPreview } from "@/components/markdown-preview";
 import { detectCheckboxInLine, toggleCheckboxInMarkdown } from "@/components/markdown-toolbar";
 import { SyntaxHighlighter } from "@/components/syntax-highlighter";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -94,6 +97,32 @@ function CodeBlockCopyButton({
 // Re-export types for backward compatibility
 export type { MarkdownEditorProps, MarkdownEditorRef };
 
+/** Catches when CodeMirror DOM/WebView fails on native and shows a clear message instead of a blank or crash. */
+class CodeMirrorNativeErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch() {
+    // Error caught; state already set
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 24 }}>
+          <RNText style={{ color: "#666", textAlign: "center" }}>
+            codemirror+webview is not working
+          </RNText>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>(
   function MarkdownEditor(
     {
@@ -106,12 +135,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       onSelectionChange,
       previewOnly = false,
       noScrollView = false,
+      onContentSync,
     },
     ref
   ) {
     const { colors } = useThemeColors();
     const { width: windowWidth } = useWindowDimensions();
-    const inputRef = useRef<TextInput>(null);
+    const inputRef = useRef<import("@/components/codemirror-editor").CodeMirrorEditorHandle | import("@/components/codemirror-editor/CodeMirrorDOM").CodeMirrorDOMRef | null>(null);
     const previousValueRef = useRef<string>(value);
     const isProcessingListRef = useRef<boolean>(false);
     const pendingInternalValueRef = useRef<string | null>(null);
@@ -603,8 +633,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       inputRef.current?.focus();
 
       const setCursorPosition = () => {
-        if (Platform.OS === "web") {
-          const input = inputRef.current as any;
+        const input = inputRef.current as any;
+        if (input && typeof input.setSelection === "function") {
+          input.setSelection(nextSelection.start, nextSelection.end);
+        } else if (Platform.OS === "web") {
           if (input && input.setSelectionRange) {
             input.setSelectionRange(nextSelection.start, nextSelection.end);
           } else if (input && input.selectionStart !== undefined) {
@@ -612,7 +644,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             input.selectionEnd = nextSelection.end;
           }
         } else {
-          const input = inputRef.current as any;
           if (input && typeof input.setNativeProps === "function") {
             input.setNativeProps({
               selection: { start: nextSelection.start, end: nextSelection.end },
@@ -1109,6 +1140,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       const refAny = inputRef.current as any;
       if (!refAny) return null;
 
+      // CodeMirror web editor exposes getDomNode()
+      if (typeof refAny.getDomNode === "function") return refAny.getDomNode();
+
       // In some react-native-web setups, the ref is the DOM element already.
       if (typeof refAny.addEventListener === "function") return refAny;
 
@@ -1341,6 +1375,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         redoStackRef.current = [];
         applyTextAndSelection(nextText, { start: newCursorPosition, end: newCursorPosition });
       },
+      getContentAsync:
+        Platform.OS !== "web"
+          ? () => (inputRef.current as any)?.getValueAsync?.() ?? Promise.resolve(value)
+          : undefined,
     }));
 
     const markdownStyles = {
@@ -2772,59 +2810,52 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       <View className={cn("flex-1", className)}>
         {/* Editor or Preview */}
         {showPreview ? (
-          <ScrollView
-            className="flex-1"
+          <MarkdownPreview
+            content={value}
+            placeholder={placeholder}
             contentContainerStyle={{
               paddingHorizontal: 32,
               paddingTop: 16,
               paddingBottom: 40,
             }}
-            removeClippedSubviews={false}
-            nestedScrollEnabled={true}
-          >
-            {markdownContent}
-          </ScrollView>
-        ) : (
-          <Input
+            className={className}
+          />
+        ) : Platform.OS === "web" ? (
+          <CodeMirrorWeb
             ref={inputRef}
-            className="flex-1 border-0 shadow-none bg-transparent text-base leading-6 font-mono px-8"
-            placeholder={placeholder}
-            placeholderTextColor={colors.mutedForeground}
             value={value}
             onChangeText={handleTextChange}
-            selection={selection}
-            {...(Platform.OS === "web" ? ({ onKeyDown: handleWebKeyDown } as any) : {})}
-            onSelectionChange={(e) => {
-              const next = e.nativeEvent.selection;
+            onSelectionChange={(sel) => {
               const pending = pendingSelectionRef.current;
-
-              // During programmatic updates, ignore transient selection events (often {0,0} on Android)
               if (isProcessingListRef.current || suppressSelectionUpdatesRef.current > 0) {
-                if (!pending || pending.start !== next.start || pending.end !== next.end) {
-                  return;
-                }
+                if (!pending || pending.start !== sel.start || pending.end !== sel.end) return;
               }
-
-              const sel = { start: next.start, end: next.end };
               setSelectionBoth(sel);
               onSelectionChange?.(sel);
             }}
-            multiline
-            blurOnSubmit={false}
-            textAlignVertical="top"
-            style={{
-              paddingHorizontal: 32,
-              paddingTop: 24,
-              paddingBottom: 65,
-              fontSize: 16,
-              lineHeight: 24,
-              fontFamily: Platform.select({
-                web: "Iosevka, monospace",
-                default: "Iosevka",
-              }),
-              flex: 1,
-            }}
+            placeholder={placeholder}
           />
+        ) : (
+          <CodeMirrorNativeErrorBoundary>
+            <CodeMirrorDOM
+              ref={inputRef as React.Ref<import("@/components/codemirror-editor/CodeMirrorDOM").CodeMirrorDOMRef>}
+              value={value}
+              placeholder={placeholder}
+              onContentChange={async (text) => {
+                handleTextChange(text);
+              }}
+              onSelectionChange={async (sel) => {
+                const pending = pendingSelectionRef.current;
+                if (isProcessingListRef.current || suppressSelectionUpdatesRef.current > 0) {
+                  if (!pending || pending.start !== sel.start || pending.end !== sel.end) return;
+                }
+                setSelectionBoth(sel);
+                onSelectionChange?.(sel);
+              }}
+              backgroundColor={colors.muted ?? colors.background}
+              color={colors.foreground}
+            />
+          </CodeMirrorNativeErrorBoundary>
         )}
       </View>
     );
