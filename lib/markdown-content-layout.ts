@@ -33,5 +33,8 @@ export const MARKDOWN_HEADING3_EM = "1.2em";
 export const MARKDOWN_HEADING4_EM = "1.1em";
 export const MARKDOWN_HEADING5_EM = "1em";
 export const MARKDOWN_HEADING6_EM = "0.9375em";
+/** Body text in editor (1em = inherit root size from MARKDOWN_FONT_SIZE). Use in native/WebView so one constant controls actual px. */
+export const MARKDOWN_FONT_SIZE_EM = "0.875em";
+
 /** Inline code and code blocks (slightly smaller than body). */
 export const MARKDOWN_CODE_FONT_SIZE_EM = "0.875em";

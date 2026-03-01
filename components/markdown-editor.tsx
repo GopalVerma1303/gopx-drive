@@ -6,7 +6,7 @@ import { SyntaxHighlighter } from "@/components/syntax-highlighter";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
-import { useThemeColors } from "@/lib/use-theme-colors";
+import { useThemeColors, type ThemePalette } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
 import * as Clipboard from "expo-clipboard";
 import { Check, Copy } from "lucide-react-native";
@@ -140,7 +140,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     },
     ref
   ) {
-    const { colors } = useThemeColors();
+    const { colors, isDark } = useThemeColors() as { colors: ThemePalette; isDark: boolean };
     const { width: windowWidth } = useWindowDimensions();
     const inputRef = useRef<import("@/components/codemirror-editor").CodeMirrorEditorHandle | import("@/components/codemirror-editor/CodeMirrorDOM").CodeMirrorDOMRef | null>(null);
     const previousValueRef = useRef<string>(value);
@@ -2814,11 +2814,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           <MarkdownPreview
             content={value}
             placeholder={placeholder}
-            contentContainerStyle={{
-              paddingHorizontal: 32,
-              paddingTop: 16,
-              paddingBottom: 40,
-            }}
             className={className}
           />
         ) : Platform.OS === "web" ? (
@@ -2840,6 +2835,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         ) : (
           <CodeMirrorNativeErrorBoundary>
             <CodeMirrorDOM
+              key={isDark ? "editor-dark" : "editor-light"}
               ref={inputRef as React.Ref<import("@/components/codemirror-editor/CodeMirrorDOM").CodeMirrorDOMRef>}
               value={value}
               placeholder={placeholder}
@@ -2856,6 +2852,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               }}
               backgroundColor={colors.muted ?? colors.background}
               color={colors.foreground}
+              linkColor={colors.link}
+              linkUrlColor={colors.linkUrl}
+              codeBackground={colors.codeBackground}
+              blockquoteBorder={colors.blockquoteBorder}
             />
           </CodeMirrorNativeErrorBoundary>
         )}

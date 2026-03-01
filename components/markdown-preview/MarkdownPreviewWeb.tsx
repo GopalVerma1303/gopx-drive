@@ -17,13 +17,17 @@ export function MarkdownPreviewWeb({
   contentContainerStyle,
   className,
 }: MarkdownPreviewWebProps) {
-  const colors = useThemeColors();
+  const { colors } = useThemeColors();
   const theme: PreviewThemeColors = {
     foreground: colors.foreground,
     muted: colors.muted,
     mutedForeground: colors.mutedForeground,
     ring: colors.ring,
     background: colors.background,
+    link: colors.link,
+    linkUrl: colors.linkUrl,
+    codeBackground: colors.codeBackground,
+    blockquoteBorder: colors.blockquoteBorder,
   };
   const css = getPreviewCss(theme);
 

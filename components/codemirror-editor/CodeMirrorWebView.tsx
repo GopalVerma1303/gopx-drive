@@ -84,6 +84,18 @@ export const CodeMirrorWebView = React.forwardRef<CodeMirrorEditorHandle, CodeMi
       [sendToEditor, getValueAsync]
     );
 
+    const injectTheme = useCallback(() => {
+      const bg = colors.muted ?? colors.background;
+      const fg = colors.foreground;
+      const link = colors.link ?? "#0969da";
+      const codeBg = colors.codeBackground ?? "rgba(128,128,128,0.15)";
+      const quoteBorder = colors.blockquoteBorder ?? "rgba(128,128,128,0.5)";
+      const styleContent = `body, #codemirror-root, .cm-editor, .cm-scroller { background: ${bg} !important; } .cm-content, .cm-line { color: ${fg} !important; } .cm-cursor { border-left-color: ${fg} !important; } .cm-scroller { -webkit-overflow-scrolling: touch !important; overflow-y: scroll !important; height: 100% !important; max-height: 100% !important; touch-action: pan-y !important; } .cm-url, .cm-link { color: ${link} !important; } .cm-monospace { background: ${codeBg} !important; } .cm-quote { border-left-color: ${quoteBorder} !important; }`;
+      inject(
+        `(function(){ var s = document.getElementById('rn-cm-theme'); if (!s) { s = document.createElement('style'); s.id = 'rn-cm-theme'; document.documentElement.appendChild(s); } s.textContent = ${JSON.stringify(styleContent)}; })(); true;`
+      );
+    }, [inject, colors.muted, colors.background, colors.foreground, colors.link, colors.codeBackground, colors.blockquoteBorder]);
+
     // Init editor when WebView loads. Use a short delay so the WebView's script has run, then set initial value, theme, and mark loaded.
     const onLoadEnd = useCallback(() => {
       const initDelay = 50;
@@ -93,16 +105,15 @@ export const CodeMirrorWebView = React.forwardRef<CodeMirrorEditorHandle, CodeMi
         inject(
           `window.__initCodeMirror && window.__initCodeMirror(${JSON.stringify(initialValue)}, ${JSON.stringify(placeholder || "")}); true;`
         );
-        // Inject theme colors so WebView editor matches app (light/dark)
-        const bg = colors.muted ?? colors.background;
-        const fg = colors.foreground;
-        const styleContent = `body, #codemirror-root, .cm-editor, .cm-scroller { background: ${bg} !important; } .cm-content, .cm-line { color: ${fg} !important; } .cm-cursor { border-left-color: ${fg} !important; } .cm-scroller { -webkit-overflow-scrolling: touch !important; overflow-y: scroll !important; height: 100% !important; max-height: 100% !important; touch-action: pan-y !important; }`;
-        inject(
-          `(function(){ var s = document.createElement('style'); s.textContent = ${JSON.stringify(styleContent)}; document.documentElement.appendChild(s); })(); true;`
-        );
+        injectTheme();
         setLoaded(true);
       }, initDelay);
-    }, [placeholder, inject, colors.muted, colors.background, colors.foreground]);
+    }, [placeholder, inject, injectTheme]);
+
+    // Re-inject theme when light/dark changes
+    useEffect(() => {
+      if (loaded) injectTheme();
+    }, [loaded, injectTheme]);
 
     // Sync value from parent → WebView when it changed externally (note load, refresh, undo, toolbar). Skip when value matches what we last synced.
     useEffect(() => {

@@ -12,7 +12,7 @@ import {
   MARKDOWN_HEADING6_EM,
   MARKDOWN_LINE_HEIGHT_CSS,
 } from "@/lib/markdown-content-layout";
-import { useThemeColors } from "@/lib/use-theme-colors";
+import { useThemeColors, type ThemePalette } from "@/lib/use-theme-colors";
 import React, { useEffect, useImperativeHandle, useRef } from "react";
 import { Platform } from "react-native";
 
@@ -76,7 +76,9 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
     const initialValueRef = useRef(value);
     const viewRef = useRef<any>(null);
     const heightThemeCompartmentRef = useRef<any>(null);
-    const { colors } = useThemeColors();
+    const themeColorsCompartmentRef = useRef<any>(null);
+    const highlightCompartmentRef = useRef<any>(null);
+    const { colors } = useThemeColors() as { colors: ThemePalette; isDark: boolean };
     const onChangeRef = useRef(onChangeText);
     const onSelectionRef = useRef(onSelectionChange);
     onChangeRef.current = onChangeText;
@@ -89,6 +91,13 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       if (!node || !(node instanceof HTMLElement)) return;
 
       const initial = initialValueRef.current;
+      const bg = colors.muted ?? colors.background;
+      const fg = colors.foreground;
+      const link = colors.link ?? "#0969da";
+      const linkUrl = colors.linkUrl ?? "#0550ae";
+      const codeBg = colors.codeBackground ?? "rgba(128,128,128,0.15)";
+      const quoteBorder = colors.blockquoteBorder ?? "rgba(128,128,128,0.5)";
+
       const markdownHighlightStyle = HighlightStyle.define([
         { tag: tags.heading1, fontWeight: "700", fontSize: MARKDOWN_HEADING1_EM },
         { tag: tags.heading2, fontWeight: "700", fontSize: MARKDOWN_HEADING2_EM },
@@ -98,25 +107,28 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
         { tag: tags.heading6, fontWeight: "600", fontSize: MARKDOWN_HEADING6_EM, opacity: "0.9" },
         { tag: tags.strong, fontWeight: "700" },
         { tag: tags.emphasis, fontStyle: "italic" },
-        { tag: tags.link, color: "#0969da", textDecoration: "underline" },
-        { tag: tags.url, color: "#0550ae" },
-        { tag: tags.monospace, fontFamily: "Iosevka, ui-monospace, monospace", fontSize: MARKDOWN_CODE_FONT_SIZE_EM, backgroundColor: "rgba(128,128,128,0.15)", padding: "0.12em 0.3em", borderRadius: "4px" },
-        { tag: tags.quote, opacity: "0.85", borderLeft: "3px solid rgba(128,128,128,0.5)", paddingLeft: "0.5em" },
+        { tag: tags.link, color: link, textDecoration: "underline" },
+        { tag: tags.url, color: linkUrl },
+        { tag: tags.monospace, fontFamily: "Iosevka, ui-monospace, monospace", fontSize: MARKDOWN_CODE_FONT_SIZE_EM, backgroundColor: codeBg, padding: "0.12em 0.3em", borderRadius: "4px" },
+        { tag: tags.quote, opacity: "0.85", borderLeft: `3px solid ${quoteBorder}`, paddingLeft: "0.5em" },
         { tag: tags.list, opacity: "0.95" },
         { tag: tags.contentSeparator, opacity: "0.6" },
         { tag: tags.processingInstruction, opacity: "0.65" },
         { tag: tags.comment, opacity: "0.6", fontStyle: "italic" },
       ]);
 
-      // Height in a compartment so we can set .cm-editor to explicit px (required for scroll to work per CodeMirror docs)
       const heightCompartment = new Compartment();
+      const themeColorsCompartment = new Compartment();
+      const highlightCompartment = new Compartment();
       heightThemeCompartmentRef.current = heightCompartment;
+      themeColorsCompartmentRef.current = themeColorsCompartment;
+      highlightCompartmentRef.current = highlightCompartment;
 
       const state = EditorState.create({
         doc: initial,
         extensions: [
           markdown(),
-          syntaxHighlighting(markdownHighlightStyle),
+          highlightCompartment.of(syntaxHighlighting(markdownHighlightStyle)),
           history(),
           keymap.of([...defaultKeymap, indentWithTab]),
           EditorView.lineWrapping,
@@ -135,12 +147,16 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
               "&": { height: "100%", maxHeight: "100%", minHeight: 0 },
             })
           ),
+          themeColorsCompartment.of(
+            EditorView.theme({
+              "&.cm-editor": { backgroundColor: bg, color: fg, fontSize: MARKDOWN_FONT_SIZE, fontFamily: "Iosevka, ui-monospace, monospace", minHeight: 0 },
+              "&.cm-editor.cm-focused": { outline: "none" },
+              ".cm-content": { padding: 0, paddingBottom: `${MARKDOWN_CONTENT_PADDING_PX.paddingBottom}px`, color: fg },
+              ".cm-line": { lineHeight: MARKDOWN_LINE_HEIGHT_CSS },
+            })
+          ),
           EditorView.theme({
-            "&.cm-editor": { fontSize: MARKDOWN_FONT_SIZE, fontFamily: "Iosevka, ui-monospace, monospace", minHeight: 0 },
-            "&.cm-editor.cm-focused": { outline: "none" },
             ".cm-scroller": { minHeight: 0, overflow: "auto", overflowY: "scroll", height: "100%", maxHeight: "100%" },
-            ".cm-content": { padding: 0, paddingBottom: `${MARKDOWN_CONTENT_PADDING_PX.paddingBottom}px` },
-            ".cm-line": { lineHeight: MARKDOWN_LINE_HEIGHT_CSS },
           }),
         ],
       });
@@ -161,8 +177,59 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
         view.destroy();
         viewRef.current = null;
         heightThemeCompartmentRef.current = null;
+        themeColorsCompartmentRef.current = null;
+        highlightCompartmentRef.current = null;
       };
     }, []);
+
+    // Reconfigure theme and syntax colors when light/dark theme changes
+    useEffect(() => {
+      if (Platform.OS !== "web" || !EditorView || !viewRef.current) return;
+      const view = viewRef.current;
+      const themeComp = themeColorsCompartmentRef.current;
+      const highlightComp = highlightCompartmentRef.current;
+      if (!themeComp || !highlightComp) return;
+
+      const bg = colors.muted ?? colors.background;
+      const fg = colors.foreground;
+      const link = colors.link ?? "#0969da";
+      const linkUrl = colors.linkUrl ?? "#0550ae";
+      const codeBg = colors.codeBackground ?? "rgba(128,128,128,0.15)";
+      const quoteBorder = colors.blockquoteBorder ?? "rgba(128,128,128,0.5)";
+
+      const markdownHighlightStyle = HighlightStyle.define([
+        { tag: tags.heading1, fontWeight: "700", fontSize: MARKDOWN_HEADING1_EM },
+        { tag: tags.heading2, fontWeight: "700", fontSize: MARKDOWN_HEADING2_EM },
+        { tag: tags.heading3, fontWeight: "600", fontSize: MARKDOWN_HEADING3_EM },
+        { tag: tags.heading4, fontWeight: "600", fontSize: MARKDOWN_HEADING4_EM },
+        { tag: tags.heading5, fontWeight: "600", fontSize: MARKDOWN_HEADING5_EM },
+        { tag: tags.heading6, fontWeight: "600", fontSize: MARKDOWN_HEADING6_EM, opacity: "0.9" },
+        { tag: tags.strong, fontWeight: "700" },
+        { tag: tags.emphasis, fontStyle: "italic" },
+        { tag: tags.link, color: link, textDecoration: "underline" },
+        { tag: tags.url, color: linkUrl },
+        { tag: tags.monospace, fontFamily: "Iosevka, ui-monospace, monospace", fontSize: MARKDOWN_CODE_FONT_SIZE_EM, backgroundColor: codeBg, padding: "0.12em 0.3em", borderRadius: "4px" },
+        { tag: tags.quote, opacity: "0.85", borderLeft: `3px solid ${quoteBorder}`, paddingLeft: "0.5em" },
+        { tag: tags.list, opacity: "0.95" },
+        { tag: tags.contentSeparator, opacity: "0.6" },
+        { tag: tags.processingInstruction, opacity: "0.65" },
+        { tag: tags.comment, opacity: "0.6", fontStyle: "italic" },
+      ]);
+
+      view.dispatch({
+        effects: [
+          themeComp.reconfigure(
+            EditorView.theme({
+              "&.cm-editor": { backgroundColor: bg, color: fg, fontSize: MARKDOWN_FONT_SIZE, fontFamily: "Iosevka, ui-monospace, monospace", minHeight: 0 },
+              "&.cm-editor.cm-focused": { outline: "none" },
+              ".cm-content": { padding: 0, paddingBottom: `${MARKDOWN_CONTENT_PADDING_PX.paddingBottom}px`, color: fg },
+              ".cm-line": { lineHeight: MARKDOWN_LINE_HEIGHT_CSS },
+            })
+          ),
+          highlightComp.reconfigure(syntaxHighlighting(markdownHighlightStyle)),
+        ],
+      });
+    }, [colors.background, colors.foreground, colors.muted, colors.link, colors.linkUrl, colors.codeBackground, colors.blockquoteBorder]);
 
     // Sync value from parent (e.g. after undo/redo or list logic)
     useEffect(() => {
@@ -229,6 +296,9 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
     const heightPx =
       containerHeight != null && containerHeight > 0 ? containerHeight : fallbackPx;
 
+    const bg = colors.muted ?? colors.background;
+    const fg = colors.foreground;
+
     return (
       <div
         ref={containerRef}
@@ -239,6 +309,8 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
           height: `${heightPx}px`,
           maxHeight: `${heightPx}px`,
           minHeight: 0,
+          backgroundColor: bg,
+          color: fg,
           ...MARKDOWN_CONTENT_PADDING_PX,
         }}
       />

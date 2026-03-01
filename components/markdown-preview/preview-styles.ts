@@ -22,15 +22,24 @@ export interface PreviewThemeColors {
   mutedForeground: string;
   ring: string;
   background: string;
+  /** Theme-aware (light/dark) - optional, fallback to GFM defaults */
+  link?: string;
+  linkUrl?: string;
+  codeBackground?: string;
+  blockquoteBorder?: string;
 }
 
-/** GFM-style colors aligned with editor syntax highlighting */
+/** Fallbacks when theme colors not provided */
 const GFM_LINK = "#0969da";
 const GFM_LINK_URL = "#0550ae";
 const GFM_INLINE_CODE_BG = "rgba(128,128,128,0.15)";
 const GFM_BLOCKQUOTE_BORDER = "rgba(128,128,128,0.5)";
 
 export function getPreviewCss(colors: PreviewThemeColors): string {
+  const link = colors.link ?? GFM_LINK;
+  const linkUrl = colors.linkUrl ?? GFM_LINK_URL;
+  const codeBg = colors.codeBackground ?? GFM_INLINE_CODE_BG;
+  const quoteBorder = colors.blockquoteBorder ?? GFM_BLOCKQUOTE_BORDER;
   return `
 /* Padding on content only so scrollbar can sit at edge of device */
 .markdown-preview {
@@ -56,18 +65,18 @@ export function getPreviewCss(colors: PreviewThemeColors): string {
 .markdown-preview strong { font-weight: 700; color: ${colors.foreground}; }
 .markdown-preview em { font-style: italic; color: ${colors.foreground}; }
 /* Inline code: same size as editor (shared constant) */
-.markdown-preview code { font-family: ui-monospace, monospace; font-size: ${MARKDOWN_CODE_FONT_SIZE_EM}; background: ${GFM_INLINE_CODE_BG}; padding: 0.12em 0.3em; border-radius: 4px; color: ${colors.foreground}; margin: 0; }
+.markdown-preview code { font-family: ui-monospace, monospace; font-size: ${MARKDOWN_CODE_FONT_SIZE_EM}; background: ${codeBg}; padding: 0.12em 0.3em; border-radius: 4px; color: ${colors.foreground}; margin: 0; }
 /* Fenced blocks (GFM): slightly smaller than body to match editor code block feel */
 .markdown-preview pre { background: ${colors.muted}; color: ${colors.foreground}; font-size: ${Math.round(MARKDOWN_FONT_SIZE * 0.875)}px; line-height: 1.45; margin: 0 0 1em 0; padding: 12px 16px; border-radius: 8px; font-family: ui-monospace, monospace; border: 1px solid ${colors.ring}; overflow-x: auto; }
 .markdown-preview pre code { color: inherit; background: none; padding: 0; margin: 0; font-size: inherit; }
 /* Blockquote: match editor quote highlight */
-.markdown-preview blockquote { opacity: 0.85; border-left: 3px solid ${GFM_BLOCKQUOTE_BORDER}; padding-left: 0.5em; margin: 0 0 1em 0; color: ${colors.foreground}; }
+.markdown-preview blockquote { opacity: 0.85; border-left: 3px solid ${quoteBorder}; padding-left: 0.5em; margin: 0 0 1em 0; color: ${colors.foreground}; }
 .markdown-preview ul, .markdown-preview ol { margin: 0 0 1em 0; padding-left: 1.5em; list-style-position: outside; }
 .markdown-preview li { margin: 0.25em 0; color: ${colors.foreground}; }
 .markdown-preview li > p { margin: 0; }
 /* Links: GFM-style, match editor link highlight */
-.markdown-preview a { color: ${GFM_LINK}; text-decoration: underline; }
-.markdown-preview a:visited { color: ${GFM_LINK_URL}; }
+.markdown-preview a { color: ${link}; text-decoration: underline; }
+.markdown-preview a:visited { color: ${linkUrl}; }
 /* Tables (GFM) */
 .markdown-preview table { border-collapse: collapse; width: 100%; margin: 0 0 1em 0; border: 1px solid ${colors.ring}; border-radius: 6px; background: ${colors.background}; overflow: hidden; }
 .markdown-preview th, .markdown-preview td { border: 1px solid ${colors.ring}; padding: 8px 12px; text-align: left; color: ${colors.foreground}; }

@@ -17,7 +17,7 @@ export function getPreviewFullHtml(bodyHtml: string, colors: PreviewThemeColors)
   </style>
 </head>
 <body>
-  <div id="content" class="markdown-preview" style="width:100%;height:100%;margin:0;padding:0;">${bodyHtml}</div>
+  <div id="content" class="markdown-preview" style="width:100%;min-height:100%;margin:0;">${bodyHtml}</div>
 </body>
 </html>`;
 }
