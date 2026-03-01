@@ -147,8 +147,9 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
 .markdown-preview pre { background: ${colors.muted}; font-size: ${Math.round(MARKDOWN_FONT_SIZE * 0.875)}px; line-height: 1.45; margin: 0 0 1em 0; padding: 12px 16px; border-radius: 8px; font-family: ${MARKDOWN_FONT_FAMILY_CODE}; border: 1px solid ${colors.ring}; overflow-x: auto; }
 .markdown-preview pre code { padding: 0; margin: 0; font-size: inherit; background: none; }
 ${getHighlightCss(colors)}
-/* Blockquote: match editor quote highlight */
-.markdown-preview blockquote { opacity: 0.58; border-left: 3px solid ${quoteBorder}; padding-left: 0.5em; margin: 0 0 1em 0; color: ${colors.foreground}; font-style: italic; }
+/* Blockquote: border at full opacity; text content slightly faded */
+.markdown-preview blockquote { border-left: 3px solid ${quoteBorder}; padding-left: 0.5em; margin: 0 0 1em 0; color: ${colors.foreground}; font-style: italic; }
+.markdown-preview blockquote > * { opacity: 0.58; }
 /* Lists: restore bullets/numbers (Tailwind preflight removes them). Task lists get list-style: none below. */
 .markdown-preview ul { margin: 0 0 1em 0; padding-left: 1.5em; list-style-position: outside; list-style-type: disc; }
 .markdown-preview ol { margin: 0 0 1em 0; padding-left: 1.5em; list-style-position: outside; list-style-type: decimal; }
@@ -167,8 +168,12 @@ ${getHighlightCss(colors)}
 .markdown-preview .preview-placeholder { color: ${colors.mutedForeground}; font-style: italic; margin: 0; padding: 0; }
 /* Task lists (GFM): same left padding as bullet lists; bullet is hidden but its space was still reserved – cancel it so checkbox aligns with bullet position */
 .markdown-preview ul.contains-task-list { list-style: none; padding-left: 1.5em; }
-.markdown-preview li.task-list-item { list-style: none; margin-left: -1em; padding-left: 0; padding-inline-start: 0; margin-inline-start: -1em; display: flex; align-items: center; gap: 0.5em; }
+.markdown-preview li.task-list-item { list-style: none; margin-left: -1em; padding-left: 0; padding-inline-start: 0; margin-inline-start: -1em; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em; }
 .markdown-preview li.task-list-item::marker { content: none; width: 0; display: none; }
+/* Keep checkbox and text on same horizontal line; prevent p from forcing a break */
+.markdown-preview li.task-list-item > p { margin: 0; flex: 1 1 auto; min-width: 0; }
+/* Nested task list: force ul to wrap to next line and preserve indentation */
+.markdown-preview li.task-list-item > ul { flex-basis: 100%; width: 100%; min-width: 100%; margin-top: 0.25em; margin-bottom: 0; align-self: flex-start; }
 .markdown-preview li.task-list-item .markdown-preview-checkbox-wrapper { display: inline-flex; flex-shrink: 0; margin-right: 0.25em; align-items: center; justify-content: center; height: 16px; }
 /* Web-only custom checkbox (matches UI checkbox: green when checked, red when unchecked); click toggles completed/not completed */
 .markdown-preview .md-preview-checkbox { appearance: none; margin: 0; font: inherit; line-height: 1; width: 16px; height: 16px; min-width: 16px; min-height: 16px; border-radius: 4px; border: 2px solid #ef4444; background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: background-color 0.15s, border-color 0.15s; -webkit-tap-highlight-color: transparent; user-select: none; vertical-align: middle; }
@@ -242,10 +247,9 @@ export function getMarkdownHighlightStyleConfig(colors: MarkdownThemeColors) {
       padding: "0.12em 0.3em",
       borderRadius: "4px",
     },
-    /* Quote: no per-line border here; single block border is applied via theme to first line only */
+    /* Quote: no per-line border here; single block border is applied via theme; text opacity on .blockquote-wrapper .cm-line */
     {
       tag: tags.quote,
-      opacity: "0.58",
       paddingLeft: "0.5em",
       fontStyle: "italic",
     },
@@ -350,13 +354,15 @@ export function getCodeMirrorThemeConfig(
       borderRadius: "0",
       backgroundColor: "transparent",
     },
-    /* Blockquote: one wrapper div with left border (same as preview); only first line shows ">" via blockquote-hide-quote-marks */
+    /* Blockquote: border at full opacity; text content slightly faded */
     ".blockquote-wrapper": {
       borderLeft: `3px solid ${quoteBorder}`,
       paddingLeft: "0.5em",
-      opacity: "0.58",
       marginBottom: "1em",
       fontStyle: "italic",
+    },
+    ".blockquote-wrapper .cm-line": {
+      opacity: "0.58",
     },
     ".blockquote-wrapper .cm-quote": {
       borderLeft: "none",
@@ -383,7 +389,8 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
     `.cm-monospace { background: ${codeBg} !important; } ` +
     `.code-block-wrapper { background: transparent !important; padding: 12px 16px !important; margin-bottom: 1em !important; border: 1px solid ${ring} !important; border-radius: 8px !important; overflow: auto !important; font-size: ${codeBlockFontSize}px !important; line-height: 1.45 !important; font-family: ${MARKDOWN_FONT_FAMILY_CODE} !important; } ` +
     `.code-block-wrapper .cm-monospace { padding: 0 !important; border-radius: 0 !important; background: transparent !important; } ` +
-    `.blockquote-wrapper { border-left: 3px solid ${quoteBorder} !important; padding-left: 0.5em !important; opacity: 0.58 !important; margin-bottom: 1em !important; font-style: italic !important; } ` +
+    `.blockquote-wrapper { border-left: 3px solid ${quoteBorder} !important; padding-left: 0.5em !important; margin-bottom: 1em !important; font-style: italic !important; } ` +
+    `.blockquote-wrapper .cm-line { opacity: 0.58 !important; } ` +
     `.blockquote-wrapper .cm-quote { border-left: none !important; } `
   );
 }
