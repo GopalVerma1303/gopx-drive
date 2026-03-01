@@ -43,6 +43,46 @@ const REPLACE_CHECKBOXES_SCRIPT = `
 })(); true;
 `;
 
+/** Injected into WebView: add copy button; wrap code in scroll div so button stays fixed and does not scroll with code. */
+const ADD_CODE_COPY_BUTTONS_SCRIPT = `
+(function(){
+  var container = document.getElementById('content');
+  if(!container) return;
+  var COPY_CLASS = 'code-copy-btn';
+  var SCROLL_CLASS = 'code-block-scroll';
+  var COPY_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
+  var CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  var pres = container.querySelectorAll('pre');
+  for(var i=0;i<pres.length;i++){
+    var pre = pres[i];
+    if(pre.querySelector('.'+COPY_CLASS)) continue;
+    var codeEl = pre.querySelector('code');
+    var text = (codeEl ? codeEl.innerText : pre.innerText || '').trim();
+    var scrollWrap = document.createElement('div');
+    scrollWrap.className = SCROLL_CLASS;
+    while(pre.firstChild){ scrollWrap.appendChild(pre.firstChild); }
+    pre.appendChild(scrollWrap);
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = COPY_CLASS;
+    btn.setAttribute('aria-label','Copy code');
+    btn.innerHTML = COPY_SVG;
+    btn.onclick = (function(txt, b){
+      return function(){
+        if(typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(txt).then(function(){
+            b.classList.add('copied');
+            b.innerHTML = CHECK_SVG;
+            setTimeout(function(){ b.classList.remove('copied'); b.innerHTML = COPY_SVG; }, 2000);
+          });
+        }
+      };
+    })(text, btn);
+    pre.insertBefore(btn, scrollWrap);
+  }
+})(); true;
+`;
+
 interface MarkdownPreviewWebViewProps {
   html: string;
   contentContainerStyle?: object;
@@ -91,7 +131,7 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle }: Markdown
         var el = document.getElementById('content');
         if(el) {
           el.innerHTML = html;
-          var run = function() { ${REPLACE_CHECKBOXES_SCRIPT} };
+          var run = function() { ${REPLACE_CHECKBOXES_SCRIPT} ${ADD_CODE_COPY_BUTTONS_SCRIPT} };
           setTimeout(run, 0);
           setTimeout(run, 80);
           setTimeout(run, 250);

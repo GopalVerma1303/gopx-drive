@@ -143,9 +143,14 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
 .markdown-preview em { font-style: italic; color: ${colors.foreground}; }
 /* Inline code: same size as editor (shared constant) */
 .markdown-preview code { font-family: ${MARKDOWN_FONT_FAMILY_CODE}; font-size: ${MARKDOWN_CODE_FONT_SIZE_EM}; background: ${codeBg}; padding: 0.12em 0.3em; border-radius: 4px; color: ${colors.foreground}; margin: 0; }
-/* Fenced blocks (GFM): syntax highlighting via rehype-highlight (highlight.js) */
-.markdown-preview pre { background: ${colors.muted}; font-size: ${Math.round(MARKDOWN_FONT_SIZE * 0.875)}px; line-height: 1.45; margin: 0 0 1em 0; padding: 12px 16px; border-radius: 8px; font-family: ${MARKDOWN_FONT_FAMILY_CODE}; border: 1px solid ${colors.ring}; overflow-x: auto; }
+/* Fenced blocks (GFM): syntax highlighting via rehype-highlight (highlight.js); copy button in pre, scroll only on code wrapper */
+.markdown-preview pre { position: relative; z-index: 0; background: ${colors.muted}; font-size: ${Math.round(MARKDOWN_FONT_SIZE * 0.875)}px; line-height: 1.45; margin: 0 0 1em 0; padding: 12px 16px; border-radius: 8px; font-family: ${MARKDOWN_FONT_FAMILY_CODE}; border: 1px solid ${colors.ring}; overflow: visible; }
+.markdown-preview pre .code-block-scroll { overflow-x: auto; overflow-y: hidden; }
 .markdown-preview pre code { padding: 0; margin: 0; font-size: inherit; background: none; }
+.markdown-preview pre .code-copy-btn { position: absolute !important; top: 8px !important; right: 8px !important; left: auto !important; bottom: auto !important; width: 24px !important; min-width: 24px !important; max-width: 24px !important; height: 24px !important; margin: 0 !important; padding: 0 !important; border: none !important; border-radius: 0; background: transparent !important; color: ${colors.ring}; cursor: pointer; display: inline-flex !important; flex-shrink: 0; align-items: center; justify-content: center; opacity: 0.85; transition: opacity 0.15s; z-index: 9999 !important; box-sizing: border-box; pointer-events: auto !important; }
+.markdown-preview .code-copy-btn:hover { opacity: 1; }
+.markdown-preview .code-copy-btn.copied { color: ${colors.ring}; }
+.markdown-preview .code-copy-btn svg { width: 18px; height: 18px; pointer-events: none; flex-shrink: 0; display: block; }
 ${getHighlightCss(colors)}
 /* Blockquote: border at full opacity; text content slightly faded */
 .markdown-preview blockquote { border-left: 3px solid ${quoteBorder}; padding-left: 0.5em; margin: 0 0 1em 0; color: ${colors.foreground}; font-style: italic; }
