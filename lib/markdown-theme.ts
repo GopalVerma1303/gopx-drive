@@ -158,11 +158,17 @@ ${getHighlightCss(colors)}
 /* Links: GFM-style, match editor link highlight */
 .markdown-preview a { color: ${link}; text-decoration: underline; }
 .markdown-preview a:visited { color: ${linkUrl}; }
-/* Tables (GFM) */
-.markdown-preview table { border-collapse: collapse; width: 100%; margin: 0 0 1em 0; border: 1px solid ${colors.ring}; border-radius: 6px; background: ${colors.background}; overflow: hidden; }
-.markdown-preview th, .markdown-preview td { border: 1px solid ${colors.ring}; padding: 8px 12px; text-align: left; color: ${colors.foreground}; }
-.markdown-preview th { font-weight: 600; font-size: ${Math.round(MARKDOWN_FONT_SIZE * 0.875)}px; background: ${colors.muted}; }
-.markdown-preview td { font-size: ${Math.round(MARKDOWN_FONT_SIZE * 0.875)}px; line-height: 1.4; }
+/* Tables (GFM): match old react-native-markdown-display table styles */
+.markdown-preview table { border-collapse: collapse; width: 100%; margin: 16px 0; border: 1px solid ${colors.ring}; border-radius: 0; background: ${colors.background}; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.markdown-preview thead { background: color-mix(in srgb, ${colors.foreground} 10%, transparent); }
+.markdown-preview tbody { background: ${colors.muted}; }
+.markdown-preview th, .markdown-preview td { border: 1px solid ${colors.ring}; text-align: left; color: ${colors.foreground}; }
+.markdown-preview th { padding: 14px 12px; font-weight: 600; font-size: 14px; letter-spacing: 0.3px; background: color-mix(in srgb, ${colors.foreground} 10%, transparent); }
+.markdown-preview td { padding: 12px; font-size: 14px; line-height: 20px; }
+/* Table alignment from markdown alignment row ( :--- left, :---: center, ---: right ) */
+.markdown-preview th[align="left"], .markdown-preview td[align="left"] { text-align: left; }
+.markdown-preview th[align="center"], .markdown-preview td[align="center"] { text-align: center; }
+.markdown-preview th[align="right"], .markdown-preview td[align="right"] { text-align: right; }
 .markdown-preview hr { border: none; height: 1px; background: ${colors.ring}; margin: 1em 0; }
 .markdown-preview img { max-width: 100%; height: auto; border-radius: 4px; }
 .markdown-preview .preview-placeholder { color: ${colors.mutedForeground}; font-style: italic; margin: 0; padding: 0; }
