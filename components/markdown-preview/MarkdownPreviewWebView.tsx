@@ -15,8 +15,8 @@ interface MarkdownPreviewWebViewProps {
 export function MarkdownPreviewWebView({ html, contentContainerStyle }: MarkdownPreviewWebViewProps) {
   const webViewRef = useRef<WebView>(null);
   const [loaded, setLoaded] = useState(false);
-  const { colors } = useThemeColors();
-  const theme = getMarkdownThemeFromPalette(colors);
+  const { colors, isDark } = useThemeColors();
+  const theme = getMarkdownThemeFromPalette(colors, isDark);
 
   // Use stable empty shell so WebView doesn't reload when html changes; we update content via inject only.
   const initialHtml = useRef<string | null>(null);
@@ -42,6 +42,7 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle }: Markdown
     theme.linkUrl,
     theme.codeBackground,
     theme.blockquoteBorder,
+    theme.isDark,
   ]);
 
   const injectContent = useCallback(

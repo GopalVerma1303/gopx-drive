@@ -33,6 +33,8 @@ export interface MarkdownThemeColors {
   linkUrl?: string;
   codeBackground?: string;
   blockquoteBorder?: string;
+  /** When true, use dark variant for code block syntax highlighting (e.g. Solarized dark). */
+  isDark?: boolean;
 }
 
 const DEFAULT_LINK = "#0969da";
@@ -40,8 +42,11 @@ const DEFAULT_LINK_URL = "#0550ae";
 const DEFAULT_CODE_BG = "rgba(128,128,128,0.15)";
 const DEFAULT_QUOTE_BORDER = "rgba(128,128,128,0.5)";
 
-/** Build theme colors from app palette (useThemeColors). */
-export function getMarkdownThemeFromPalette(palette: ThemePalette): MarkdownThemeColors {
+/** Build theme colors from app palette (useThemeColors). Pass isDark for code block syntax theme (e.g. Solarized). */
+export function getMarkdownThemeFromPalette(
+  palette: ThemePalette,
+  isDark?: boolean
+): MarkdownThemeColors {
   return {
     foreground: palette.foreground,
     background: palette.background,
@@ -52,6 +57,7 @@ export function getMarkdownThemeFromPalette(palette: ThemePalette): MarkdownThem
     linkUrl: palette.linkUrl ?? DEFAULT_LINK_URL,
     codeBackground: palette.codeBackground ?? DEFAULT_CODE_BG,
     blockquoteBorder: palette.blockquoteBorder ?? DEFAULT_QUOTE_BORDER,
+    isDark,
   };
 }
 
@@ -68,6 +74,39 @@ function resolveColors(colors: MarkdownThemeColors) {
 // ---------------------------------------------------------------------------
 // Preview CSS (MarkdownPreviewWeb, MarkdownPreviewWebView, getPreviewFullHtml)
 // ---------------------------------------------------------------------------
+
+/** highlight.js Solarized light/dark theme for code blocks (rehype-highlight). Scoped under .markdown-preview. */
+function getHighlightCss(colors: MarkdownThemeColors): string {
+  const dark = colors.isDark === true;
+  if (dark) {
+    return `
+.markdown-preview .hljs { display: block; overflow-x: auto; padding: 0.5em; background: transparent; color: #839496; }
+.markdown-preview .hljs-comment, .markdown-preview .hljs-quote { color: #586e75; }
+.markdown-preview .hljs-keyword, .markdown-preview .hljs-selector-tag, .markdown-preview .hljs-addition { color: #859900; }
+.markdown-preview .hljs-number, .markdown-preview .hljs-string, .markdown-preview .hljs-meta .hljs-meta-string, .markdown-preview .hljs-literal, .markdown-preview .hljs-doctag, .markdown-preview .hljs-regexp { color: #2aa198; }
+.markdown-preview .hljs-title, .markdown-preview .hljs-section, .markdown-preview .hljs-name, .markdown-preview .hljs-selector-id, .markdown-preview .hljs-selector-class { color: #268bd2; }
+.markdown-preview .hljs-attribute, .markdown-preview .hljs-attr, .markdown-preview .hljs-variable, .markdown-preview .hljs-template-variable, .markdown-preview .hljs-class .hljs-title, .markdown-preview .hljs-type { color: #b58900; }
+.markdown-preview .hljs-symbol, .markdown-preview .hljs-bullet, .markdown-preview .hljs-subst, .markdown-preview .hljs-meta, .markdown-preview .hljs-meta .hljs-keyword, .markdown-preview .hljs-selector-attr, .markdown-preview .hljs-selector-pseudo, .markdown-preview .hljs-link { color: #cb4b16; }
+.markdown-preview .hljs-built_in, .markdown-preview .hljs-deletion { color: #dc322f; }
+.markdown-preview .hljs-formula { background: #073642; }
+.markdown-preview .hljs-emphasis { font-style: italic; }
+.markdown-preview .hljs-strong { font-weight: bold; }
+`.trim();
+  }
+  return `
+.markdown-preview .hljs { display: block; overflow-x: auto; padding: 0.5em; background: transparent; color: #657b83; }
+.markdown-preview .hljs-comment, .markdown-preview .hljs-quote { color: #93a1a1; }
+.markdown-preview .hljs-keyword, .markdown-preview .hljs-selector-tag, .markdown-preview .hljs-addition { color: #859900; }
+.markdown-preview .hljs-number, .markdown-preview .hljs-string, .markdown-preview .hljs-meta .hljs-meta-string, .markdown-preview .hljs-literal, .markdown-preview .hljs-doctag, .markdown-preview .hljs-regexp { color: #2aa198; }
+.markdown-preview .hljs-title, .markdown-preview .hljs-section, .markdown-preview .hljs-name, .markdown-preview .hljs-selector-id, .markdown-preview .hljs-selector-class { color: #268bd2; }
+.markdown-preview .hljs-attribute, .markdown-preview .hljs-attr, .markdown-preview .hljs-variable, .markdown-preview .hljs-template-variable, .markdown-preview .hljs-class .hljs-title, .markdown-preview .hljs-type { color: #b58900; }
+.markdown-preview .hljs-symbol, .markdown-preview .hljs-bullet, .markdown-preview .hljs-subst, .markdown-preview .hljs-meta, .markdown-preview .hljs-meta .hljs-keyword, .markdown-preview .hljs-selector-attr, .markdown-preview .hljs-selector-pseudo, .markdown-preview .hljs-link { color: #cb4b16; }
+.markdown-preview .hljs-built_in, .markdown-preview .hljs-deletion { color: #dc322f; }
+.markdown-preview .hljs-formula { background: #eee8d5; }
+.markdown-preview .hljs-emphasis { font-style: italic; }
+.markdown-preview .hljs-strong { font-weight: bold; }
+`.trim();
+}
 
 export function getPreviewCss(colors: MarkdownThemeColors): string {
   const { link, linkUrl, codeBg, quoteBorder } = resolveColors(colors);
@@ -97,9 +136,10 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
 .markdown-preview em { font-style: italic; color: ${colors.foreground}; }
 /* Inline code: same size as editor (shared constant) */
 .markdown-preview code { font-family: ${MARKDOWN_FONT_FAMILY_CODE}; font-size: ${MARKDOWN_CODE_FONT_SIZE_EM}; background: ${codeBg}; padding: 0.12em 0.3em; border-radius: 4px; color: ${colors.foreground}; margin: 0; }
-/* Fenced blocks (GFM): slightly smaller than body to match editor code block feel */
-.markdown-preview pre { background: ${colors.muted}; color: ${colors.foreground}; font-size: ${Math.round(MARKDOWN_FONT_SIZE * 0.875)}px; line-height: 1.45; margin: 0 0 1em 0; padding: 12px 16px; border-radius: 8px; font-family: ${MARKDOWN_FONT_FAMILY_CODE}; border: 1px solid ${colors.ring}; overflow-x: auto; }
-.markdown-preview pre code { color: inherit; background: none; padding: 0; margin: 0; font-size: inherit; }
+/* Fenced blocks (GFM): syntax highlighting via rehype-highlight (highlight.js) */
+.markdown-preview pre { background: ${colors.muted}; font-size: ${Math.round(MARKDOWN_FONT_SIZE * 0.875)}px; line-height: 1.45; margin: 0 0 1em 0; padding: 12px 16px; border-radius: 8px; font-family: ${MARKDOWN_FONT_FAMILY_CODE}; border: 1px solid ${colors.ring}; overflow-x: auto; }
+.markdown-preview pre code { padding: 0; margin: 0; font-size: inherit; background: none; }
+${getHighlightCss(colors)}
 /* Blockquote: match editor quote highlight */
 .markdown-preview blockquote { opacity: 0.85; border-left: 3px solid ${quoteBorder}; padding-left: 0.5em; margin: 0 0 1em 0; color: ${colors.foreground}; }
 .markdown-preview ul, .markdown-preview ol { margin: 0 0 1em 0; padding-left: 1.5em; list-style-position: outside; }
@@ -125,10 +165,48 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
 // CodeMirror editor (CodeMirrorWeb, CodeMirrorDOM) – highlight + base theme
 // ---------------------------------------------------------------------------
 
-/** Config array for HighlightStyle.define([...]) – same look as preview. */
+/** Solarized palette for code-block syntax (editor); matches preview getHighlightCss. */
+function getSolarizedCodeColors(isDark: boolean) {
+  if (isDark) {
+    return {
+      base: "#839496",
+      comment: "#586e75",
+      keyword: "#859900",
+      string: "#2aa198",
+      number: "#2aa198",
+      name: "#268bd2",
+      typeName: "#268bd2",
+      propertyName: "#b58900",
+      variableName: "#839496",
+      operator: "#839496",
+      meta: "#cb4b16",
+      punctuation: "#839496",
+      invalid: "#dc322f",
+    };
+  }
+  return {
+    base: "#657b83",
+    comment: "#93a1a1",
+    keyword: "#859900",
+    string: "#2aa198",
+    number: "#2aa198",
+    name: "#268bd2",
+    typeName: "#268bd2",
+    propertyName: "#b58900",
+    variableName: "#657b83",
+    operator: "#657b83",
+    meta: "#cb4b16",
+    punctuation: "#657b83",
+    invalid: "#dc322f",
+  };
+}
+
+/** Config array for HighlightStyle.define([...]) – markdown + Solarized for code blocks (same as preview). */
 export function getMarkdownHighlightStyleConfig(colors: MarkdownThemeColors) {
   const { link, linkUrl, codeBg, quoteBorder } = resolveColors(colors);
+  const solarized = getSolarizedCodeColors(colors.isDark === true);
   return [
+    // Markdown
     { tag: tags.heading1, fontWeight: "700", fontSize: MARKDOWN_HEADING1_EM },
     { tag: tags.heading2, fontWeight: "700", fontSize: MARKDOWN_HEADING2_EM },
     { tag: tags.heading3, fontWeight: "600", fontSize: MARKDOWN_HEADING3_EM },
@@ -157,6 +235,38 @@ export function getMarkdownHighlightStyleConfig(colors: MarkdownThemeColors) {
     { tag: tags.contentSeparator, opacity: "0.6" },
     { tag: tags.processingInstruction, opacity: "0.65" },
     { tag: tags.comment, opacity: "0.6", fontStyle: "italic" },
+    // Code block content (Solarized – same as preview)
+    { tag: tags.lineComment, color: solarized.comment },
+    { tag: tags.blockComment, color: solarized.comment },
+    { tag: tags.docComment, color: solarized.comment },
+    { tag: tags.keyword, color: solarized.keyword },
+    { tag: tags.controlKeyword, color: solarized.keyword },
+    { tag: tags.definitionKeyword, color: solarized.keyword },
+    { tag: tags.moduleKeyword, color: solarized.keyword },
+    { tag: tags.operatorKeyword, color: solarized.keyword },
+    { tag: tags.string, color: solarized.string },
+    { tag: tags.docString, color: solarized.string },
+    { tag: tags.character, color: solarized.string },
+    { tag: tags.number, color: solarized.number },
+    { tag: tags.integer, color: solarized.number },
+    { tag: tags.float, color: solarized.number },
+    { tag: tags.literal, color: solarized.string },
+    { tag: tags.regexp, color: solarized.string },
+    { tag: tags.bool, color: solarized.keyword },
+    { tag: tags.name, color: solarized.name },
+    { tag: tags.typeName, color: solarized.typeName },
+    { tag: tags.tagName, color: solarized.typeName },
+    { tag: tags.propertyName, color: solarized.propertyName },
+    { tag: tags.attributeName, color: solarized.propertyName },
+    { tag: tags.variableName, color: solarized.variableName },
+    { tag: tags.labelName, color: solarized.name },
+    { tag: tags.className, color: solarized.typeName },
+    { tag: tags.namespace, color: solarized.typeName },
+    { tag: tags.operator, color: solarized.operator },
+    { tag: tags.punctuation, color: solarized.punctuation },
+    { tag: tags.bracket, color: solarized.punctuation },
+    { tag: tags.meta, color: solarized.meta },
+    { tag: tags.invalid, color: solarized.invalid },
   ];
 }
 
@@ -164,6 +274,7 @@ export function getMarkdownHighlightStyleConfig(colors: MarkdownThemeColors) {
 export function getCodeMirrorThemeConfig(colors: MarkdownThemeColors): Record<string, Record<string, string>> {
   const bg = colors.muted ?? colors.background;
   const fg = colors.foreground;
+  const codeBg = colors.codeBackground ?? DEFAULT_CODE_BG;
   return {
     "&.cm-editor": {
       backgroundColor: bg,
@@ -183,6 +294,24 @@ export function getCodeMirrorThemeConfig(colors: MarkdownThemeColors): Record<st
     ".cm-line": {
       lineHeight: MARKDOWN_LINE_HEIGHT_CSS,
     },
+    /* Code block: match preview – no fill, same border (ring), same size. Inline code keeps .cm-monospace pill style. */
+    ".code-block-wrapper": {
+      backgroundColor: "transparent",
+      padding: "12px 16px",
+      marginTop: "0",
+      marginBottom: "1em",
+      border: `1px solid ${colors.ring}`,
+      borderRadius: "8px",
+      overflow: "auto",
+      fontSize: `${Math.round(MARKDOWN_FONT_SIZE * 0.875)}px`,
+      lineHeight: "1.45",
+      fontFamily: MARKDOWN_FONT_FAMILY_CODE,
+    },
+    ".code-block-wrapper .cm-monospace": {
+      padding: "0",
+      borderRadius: "0",
+      backgroundColor: "transparent",
+    },
   };
 }
 
@@ -194,5 +323,17 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
   const bg = colors.muted ?? colors.background;
   const fg = colors.foreground;
   const { link, codeBg, quoteBorder } = resolveColors(colors);
-  return `body, #codemirror-root, .cm-editor, .cm-scroller { background: ${bg} !important; } .cm-content, .cm-line { color: ${fg} !important; } .cm-cursor { border-left-color: ${fg} !important; } .cm-scroller { -webkit-overflow-scrolling: touch !important; overflow-y: scroll !important; height: 100% !important; max-height: 100% !important; touch-action: pan-y !important; } .cm-url, .cm-link { color: ${link} !important; } .cm-monospace { background: ${codeBg} !important; } .cm-quote { border-left-color: ${quoteBorder} !important; }`;
+  const ring = colors.ring;
+  const codeBlockFontSize = Math.round(MARKDOWN_FONT_SIZE * 0.875);
+  return (
+    `body, #codemirror-root, .cm-editor, .cm-scroller { background: ${bg} !important; } ` +
+    `.cm-content, .cm-line { color: ${fg} !important; } ` +
+    `.cm-cursor { border-left-color: ${fg} !important; } ` +
+    `.cm-scroller { -webkit-overflow-scrolling: touch !important; overflow-y: scroll !important; height: 100% !important; max-height: 100% !important; touch-action: pan-y !important; } ` +
+    `.cm-url, .cm-link { color: ${link} !important; } ` +
+    `.cm-monospace { background: ${codeBg} !important; } ` +
+    `.code-block-wrapper { background: transparent !important; padding: 12px 16px !important; margin-bottom: 1em !important; border: 1px solid ${ring} !important; border-radius: 8px !important; overflow: auto !important; font-size: ${codeBlockFontSize}px !important; line-height: 1.45 !important; font-family: ${MARKDOWN_FONT_FAMILY_CODE} !important; } ` +
+    `.code-block-wrapper .cm-monospace { padding: 0 !important; border-radius: 0 !important; background: transparent !important; } ` +
+    `.cm-quote { border-left-color: ${quoteBorder} !important; }`
+  );
 }

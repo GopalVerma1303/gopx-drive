@@ -16,10 +16,12 @@ import {
   type MarkdownThemeColors,
 } from "@/lib/markdown-theme";
 import { defaultKeymap, history, indentWithTab } from "@codemirror/commands";
+import { javascript } from "@codemirror/lang-javascript";
 import { markdown } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
+import { codeBlockLinePlugin } from "./code-block-line-plugin";
 import { useDOMImperativeHandle, type DOMImperativeFactory } from "expo/dom";
 import React, { useEffect, useRef, type Ref } from "react";
 
@@ -30,6 +32,7 @@ function buildThemeFromProps(props: {
   linkUrlColor?: string;
   codeBackground?: string;
   blockquoteBorder?: string;
+  isDark?: boolean;
 }): MarkdownThemeColors {
   return {
     foreground: props.color,
@@ -41,6 +44,7 @@ function buildThemeFromProps(props: {
     linkUrl: props.linkUrlColor,
     codeBackground: props.codeBackground,
     blockquoteBorder: props.blockquoteBorder,
+    isDark: props.isDark,
   };
 }
 
@@ -63,6 +67,7 @@ interface CodeMirrorDOMProps {
   linkUrlColor?: string;
   codeBackground?: string;
   blockquoteBorder?: string;
+  isDark?: boolean;
   dom?: import("expo/dom").DOMProps;
   ref?: Ref<CodeMirrorDOMRef>;
 }
@@ -78,6 +83,7 @@ export default function CodeMirrorDOM({
   linkUrlColor,
   codeBackground,
   blockquoteBorder,
+  isDark,
   ref: refProp,
 }: CodeMirrorDOMProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -103,7 +109,19 @@ export default function CodeMirrorDOM({
       linkUrlColor,
       codeBackground,
       blockquoteBorder,
+      isDark,
     });
+    const jsSupport = javascript();
+    const tsSupport = javascript({ typescript: true });
+    const markdownConfig = {
+      defaultCodeLanguage: jsSupport.language,
+      codeLanguages: (info: string) => {
+        const n = (info || "").trim().toLowerCase();
+        if (n === "ts" || n === "typescript") return tsSupport.language;
+        if (n === "tsx") return tsSupport.language;
+        return jsSupport.language;
+      },
+    };
     const highlightStyle = HighlightStyle.define(
       getMarkdownHighlightStyleConfig(theme) as Parameters<typeof HighlightStyle.define>[0]
     );
@@ -111,8 +129,9 @@ export default function CodeMirrorDOM({
     const state = EditorState.create({
       doc: initial,
       extensions: [
-        markdown(),
+        markdown(markdownConfig),
         syntaxHighlighting(highlightStyle),
+        ...codeBlockLinePlugin,
         history(),
         keymap.of([...defaultKeymap, indentWithTab]),
         EditorView.lineWrapping,

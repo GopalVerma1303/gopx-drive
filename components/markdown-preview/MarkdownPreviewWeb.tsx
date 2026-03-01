@@ -16,8 +16,8 @@ export function MarkdownPreviewWeb({
   contentContainerStyle,
   className,
 }: MarkdownPreviewWebProps) {
-  const { colors } = useThemeColors();
-  const theme = getMarkdownThemeFromPalette(colors);
+  const { colors, isDark } = useThemeColors();
+  const theme = getMarkdownThemeFromPalette(colors, isDark);
   const css = getPreviewCss(theme);
 
   if (!html) {

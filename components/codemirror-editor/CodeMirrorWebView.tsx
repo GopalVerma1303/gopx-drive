@@ -35,7 +35,7 @@ export const CodeMirrorWebView = React.forwardRef<CodeMirrorEditorHandle, CodeMi
   ) {
     const webViewRef = useRef<WebView>(null);
     const [loaded, setLoaded] = useState(false);
-    const { colors } = useThemeColors();
+    const { colors, isDark } = useThemeColors();
     /** Resolve for the pending getValueAsync() call when we receive valueResponse from WebView. */
     const pendingGetValueRef = useRef<((v: string) => void) | null>(null);
     /** Last value we sent to or received from the editor. Used to only push parent→WebView when value changed externally. */
@@ -88,7 +88,7 @@ export const CodeMirrorWebView = React.forwardRef<CodeMirrorEditorHandle, CodeMi
       [sendToEditor, getValueAsync]
     );
 
-    const theme = getMarkdownThemeFromPalette(colors);
+    const theme = getMarkdownThemeFromPalette(colors, isDark);
     const injectTheme = useCallback(() => {
       const styleContent = getCodeMirrorWebViewInjectCss(theme);
       inject(

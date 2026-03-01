@@ -1,5 +1,6 @@
 "use client";
 
+import { codeBlockLinePlugin } from "@/components/codemirror-editor/code-block-line-plugin";
 import { MARKDOWN_CONTENT_PADDING_PX } from "@/lib/markdown-content-layout";
 import {
   getCodeMirrorThemeConfig,
@@ -69,8 +70,8 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
     const heightThemeCompartmentRef = useRef<any>(null);
     const themeColorsCompartmentRef = useRef<any>(null);
     const highlightCompartmentRef = useRef<any>(null);
-    const { colors } = useThemeColors();
-  const theme = getMarkdownThemeFromPalette(colors);
+    const { colors, isDark } = useThemeColors();
+  const theme = getMarkdownThemeFromPalette(colors, isDark);
     const onChangeRef = useRef(onChangeText);
     const onSelectionRef = useRef(onSelectionChange);
     onChangeRef.current = onChangeText;
@@ -85,6 +86,19 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       const initial = initialValueRef.current;
       const markdownHighlightStyle = HighlightStyle.define(getMarkdownHighlightStyleConfig(theme));
 
+      const cmLangJs = require("@codemirror/lang-javascript");
+      const jsSupport = cmLangJs.javascript();
+      const tsSupport = cmLangJs.javascript({ typescript: true });
+      const markdownConfig = {
+        defaultCodeLanguage: jsSupport.language,
+        codeLanguages: (info: string) => {
+          const n = (info || "").trim().toLowerCase();
+          if (n === "ts" || n === "typescript") return tsSupport.language;
+          if (n === "tsx") return tsSupport.language;
+          return jsSupport.language;
+        },
+      };
+
       const heightCompartment = new Compartment();
       const themeColorsCompartment = new Compartment();
       const highlightCompartment = new Compartment();
@@ -95,8 +109,9 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       const state = EditorState.create({
         doc: initial,
         extensions: [
-          markdown(),
+          markdown(markdownConfig),
           highlightCompartment.of(syntaxHighlighting(markdownHighlightStyle)),
+          ...codeBlockLinePlugin,
           history(),
           keymap.of([...defaultKeymap, indentWithTab]),
           EditorView.lineWrapping,
@@ -166,6 +181,7 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       theme.linkUrl,
       theme.codeBackground,
       theme.blockquoteBorder,
+      theme.isDark,
     ]);
 
     // Sync value from parent (e.g. after undo/redo or list logic)

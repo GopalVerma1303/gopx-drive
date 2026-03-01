@@ -2856,6 +2856,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               linkUrlColor={colors.linkUrl}
               codeBackground={colors.codeBackground}
               blockquoteBorder={colors.blockquoteBorder}
+              isDark={isDark}
             />
           </CodeMirrorNativeErrorBoundary>
         )}
