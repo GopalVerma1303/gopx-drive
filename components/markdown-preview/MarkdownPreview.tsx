@@ -1,8 +1,9 @@
 "use client";
 
+import { detectCheckboxInLine, toggleCheckboxInMarkdown } from "@/components/markdown-toolbar";
 import { linkifyMarkdown } from "@/components/markdown-editor/utils/text-helpers";
 import { markdownToHtml } from "@/lib/markdown-to-html";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useMemo, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import { MarkdownPreviewWeb } from "./MarkdownPreviewWeb";
 import { MarkdownPreviewWebView } from "./MarkdownPreviewWebView";
@@ -15,6 +16,17 @@ function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** Line indices in content that are task list items (have - [ ] or - [x] etc.). */
+function getTaskListLineIndices(content: string): number[] {
+  const lines = content.split("\n");
+  const indices: number[] = [];
+  lines.forEach((line, i) => {
+    const info = detectCheckboxInLine(line);
+    if (info?.hasCheckbox) indices.push(i);
+  });
+  return indices;
+}
+
 export interface MarkdownPreviewProps {
   /** Raw markdown string (same as editor value). Will be linkified and converted to HTML via remark/rehype. */
   content: string;
@@ -22,6 +34,8 @@ export interface MarkdownPreviewProps {
   className?: string;
   /** Placeholder when content is empty */
   placeholder?: string;
+  /** When a checkbox is toggled in the preview, called with the new markdown so the parent can update content. */
+  onToggleCheckbox?: (newMarkdown: string) => void;
 }
 
 /**
@@ -33,9 +47,11 @@ export function MarkdownPreview({
   contentContainerStyle,
   className,
   placeholder = "Nothing to preview.",
+  onToggleCheckbox,
 }: MarkdownPreviewProps) {
   const [html, setHtml] = useState("");
   const generationRef = useRef(0);
+  const taskListLineIndices = useMemo(() => getTaskListLineIndices(content), [content]);
 
   useEffect(() => {
     const gen = ++generationRef.current;
@@ -63,10 +79,18 @@ export function MarkdownPreview({
     ? placeholderHtml
     : html || "<p class=\"preview-placeholder\">Loading…</p>";
 
+  const handleCheckboxToggle = (taskIndex: number) => {
+    if (!onToggleCheckbox || taskIndex < 0 || taskIndex >= taskListLineIndices.length) return;
+    const lineIndex = taskListLineIndices[taskIndex];
+    const newMarkdown = toggleCheckboxInMarkdown(content, lineIndex);
+    onToggleCheckbox(newMarkdown);
+  };
+
   if (Platform.OS === "web") {
     return (
       <MarkdownPreviewWeb
         html={displayHtml}
+        onToggleCheckbox={onToggleCheckbox ? handleCheckboxToggle : undefined}
         contentContainerStyle={contentContainerStyle}
         className={className}
       />
@@ -77,6 +101,7 @@ export function MarkdownPreview({
     <MarkdownPreviewWebView
       html={displayHtml}
       contentContainerStyle={contentContainerStyle}
+      onCheckboxToggle={onToggleCheckbox ? handleCheckboxToggle : undefined}
     />
   );
 }

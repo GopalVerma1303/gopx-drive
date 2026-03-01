@@ -601,6 +601,7 @@ export default function NoteEditorScreen() {
                 >
                   <MarkdownPreview
                     content={content}
+                    onToggleCheckbox={setContent}
                     placeholder="Start writing in markdown..."
                   />
                 </ScrollView>
@@ -698,6 +699,7 @@ export default function NoteEditorScreen() {
                   >
                     <MarkdownPreview
                       content={content}
+                      onToggleCheckbox={setContent}
                       placeholder="Start writing in markdown..."
                       contentContainerStyle={{ flex: 1, width: "100%", height: "100%" }}
                     />

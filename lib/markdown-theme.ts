@@ -49,7 +49,7 @@ const DEFAULT_LINK_URL = "#0550ae";
 const DEFAULT_CODE_BG = "rgba(128,128,128,0.15)";
 const DEFAULT_QUOTE_BORDER = "rgba(128,128,128,0.5)";
 
-/** Build theme colors from app palette (useThemeColors). Pass isDark for code block syntax theme (e.g. Solarized). */
+/** Build theme colors from app palette (useThemeColors). Pass isDark for code block syntax theme (e.g. GitHub dark). */
 export function getMarkdownThemeFromPalette(
   palette: ThemePalette,
   isDark?: boolean
@@ -198,46 +198,46 @@ ${getHighlightCss(colors)}
 // CodeMirror editor (CodeMirrorWeb, CodeMirrorDOM) – highlight + base theme
 // ---------------------------------------------------------------------------
 
-/** Solarized palette for code-block syntax (editor); matches preview getHighlightCss. */
-function getSolarizedCodeColors(isDark: boolean) {
+/** GitHub-style palette for code-block syntax (editor); matches preview getHighlightCss. */
+function getGitHubCodeColors(isDark: boolean) {
   if (isDark) {
     return {
-      base: "#839496",
-      comment: "#586e75",
-      keyword: "#859900",
-      string: "#2aa198",
-      number: "#2aa198",
-      name: "#268bd2",
-      typeName: "#268bd2",
-      propertyName: "#b58900",
-      variableName: "#839496",
-      operator: "#839496",
-      meta: "#cb4b16",
-      punctuation: "#839496",
-      invalid: "#dc322f",
+      base: "#c9d1d9",
+      comment: "#8b949e",
+      keyword: "#ff7b72",
+      string: "#79c0ff",
+      number: "#79c0ff",
+      name: "#d2a8ff",
+      typeName: "#d2a8ff",
+      propertyName: "#ffa657",
+      variableName: "#c9d1d9",
+      operator: "#c9d1d9",
+      meta: "#79c0ff",
+      punctuation: "#c9d1d9",
+      invalid: "#ff7b72",
     };
   }
   return {
-    base: "#657b83",
-    comment: "#93a1a1",
-    keyword: "#859900",
-    string: "#2aa198",
-    number: "#2aa198",
-    name: "#268bd2",
-    typeName: "#268bd2",
-    propertyName: "#b58900",
-    variableName: "#657b83",
-    operator: "#657b83",
-    meta: "#cb4b16",
-    punctuation: "#657b83",
-    invalid: "#dc322f",
+    base: "#24292e",
+    comment: "#6a737d",
+    keyword: "#d73a49",
+    string: "#032f62",
+    number: "#032f62",
+    name: "#6f42c1",
+    typeName: "#6f42c1",
+    propertyName: "#e36209",
+    variableName: "#24292e",
+    operator: "#24292e",
+    meta: "#005cc5",
+    punctuation: "#24292e",
+    invalid: "#b31d28",
   };
 }
 
-/** Config array for HighlightStyle.define([...]) – markdown + Solarized for code blocks (same as preview). */
+/** Config array for HighlightStyle.define([...]) – markdown + GitHub-style for code blocks (same as preview). */
 export function getMarkdownHighlightStyleConfig(colors: MarkdownThemeColors) {
   const { link, linkUrl, codeBg, quoteBorder } = resolveColors(colors);
-  const solarized = getSolarizedCodeColors(colors.isDark === true);
+  const code = getGitHubCodeColors(colors.isDark === true);
   return [
     // Markdown – font-size and line-height match preview (shared constants)
     { tag: tags.heading1, fontWeight: "700", fontSize: MARKDOWN_HEADING1_EM, lineHeight: MARKDOWN_HEADING1_LINE_HEIGHT },
@@ -268,38 +268,38 @@ export function getMarkdownHighlightStyleConfig(colors: MarkdownThemeColors) {
     { tag: tags.contentSeparator, opacity: "0.6" },
     { tag: tags.processingInstruction, opacity: "0.65" },
     { tag: tags.comment, opacity: "0.6", fontStyle: "italic" },
-    // Code block content (Solarized – same as preview)
-    { tag: tags.lineComment, color: solarized.comment },
-    { tag: tags.blockComment, color: solarized.comment },
-    { tag: tags.docComment, color: solarized.comment },
-    { tag: tags.keyword, color: solarized.keyword },
-    { tag: tags.controlKeyword, color: solarized.keyword },
-    { tag: tags.definitionKeyword, color: solarized.keyword },
-    { tag: tags.moduleKeyword, color: solarized.keyword },
-    { tag: tags.operatorKeyword, color: solarized.keyword },
-    { tag: tags.string, color: solarized.string },
-    { tag: tags.docString, color: solarized.string },
-    { tag: tags.character, color: solarized.string },
-    { tag: tags.number, color: solarized.number },
-    { tag: tags.integer, color: solarized.number },
-    { tag: tags.float, color: solarized.number },
-    { tag: tags.literal, color: solarized.string },
-    { tag: tags.regexp, color: solarized.string },
-    { tag: tags.bool, color: solarized.keyword },
-    { tag: tags.name, color: solarized.name },
-    { tag: tags.typeName, color: solarized.typeName },
-    { tag: tags.tagName, color: solarized.typeName },
-    { tag: tags.propertyName, color: solarized.propertyName },
-    { tag: tags.attributeName, color: solarized.propertyName },
-    { tag: tags.variableName, color: solarized.variableName },
-    { tag: tags.labelName, color: solarized.name },
-    { tag: tags.className, color: solarized.typeName },
-    { tag: tags.namespace, color: solarized.typeName },
-    { tag: tags.operator, color: solarized.operator },
-    { tag: tags.punctuation, color: solarized.punctuation },
-    { tag: tags.bracket, color: solarized.punctuation },
-    { tag: tags.meta, color: solarized.meta },
-    { tag: tags.invalid, color: solarized.invalid },
+    // Code block content (GitHub-style – same as preview)
+    { tag: tags.lineComment, color: code.comment },
+    { tag: tags.blockComment, color: code.comment },
+    { tag: tags.docComment, color: code.comment },
+    { tag: tags.keyword, color: code.keyword },
+    { tag: tags.controlKeyword, color: code.keyword },
+    { tag: tags.definitionKeyword, color: code.keyword },
+    { tag: tags.moduleKeyword, color: code.keyword },
+    { tag: tags.operatorKeyword, color: code.keyword },
+    { tag: tags.string, color: code.string },
+    { tag: tags.docString, color: code.string },
+    { tag: tags.character, color: code.string },
+    { tag: tags.number, color: code.number },
+    { tag: tags.integer, color: code.number },
+    { tag: tags.float, color: code.number },
+    { tag: tags.literal, color: code.string },
+    { tag: tags.regexp, color: code.string },
+    { tag: tags.bool, color: code.keyword },
+    { tag: tags.name, color: code.name },
+    { tag: tags.typeName, color: code.typeName },
+    { tag: tags.tagName, color: code.typeName },
+    { tag: tags.propertyName, color: code.propertyName },
+    { tag: tags.attributeName, color: code.propertyName },
+    { tag: tags.variableName, color: code.variableName },
+    { tag: tags.labelName, color: code.name },
+    { tag: tags.className, color: code.typeName },
+    { tag: tags.namespace, color: code.typeName },
+    { tag: tags.operator, color: code.operator },
+    { tag: tags.punctuation, color: code.punctuation },
+    { tag: tags.bracket, color: code.punctuation },
+    { tag: tags.meta, color: code.meta },
+    { tag: tags.invalid, color: code.invalid },
   ];
 }
 

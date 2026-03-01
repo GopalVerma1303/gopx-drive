@@ -7,6 +7,8 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 
 interface MarkdownPreviewWebProps {
   html: string;
+  /** Called with task index (0-based DOM order) when a checkbox is toggled. Parent should update markdown. */
+  onToggleCheckbox?: (taskIndex: number) => void;
   contentContainerStyle?: object;
   className?: string;
 }
@@ -70,12 +72,17 @@ function addCodeCopyButtons(container: HTMLDivElement) {
   });
 }
 
+const TASK_INDEX_ATTR = "data-task-index";
+
 /**
- * Replace native checkbox inputs with pure-DOM custom checkboxes that toggle completed/not completed on click.
+ * Replace native checkbox inputs with pure-DOM custom checkboxes. On click toggles visual state and calls onToggleCheckbox(taskIndex) so parent can update markdown.
  */
-function replaceCheckboxesWithDom(container: HTMLDivElement) {
+function replaceCheckboxesWithDom(
+  container: HTMLDivElement,
+  onToggleCheckbox?: (taskIndex: number) => void
+) {
   const inputs = container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
-  inputs.forEach((input) => {
+  inputs.forEach((input, taskIndex) => {
     let checked = input.hasAttribute("checked");
     const parentLi = input.closest("li");
     if (parentLi && !parentLi.classList.contains(TASK_LIST_ITEM_CLASS)) {
@@ -89,6 +96,7 @@ function replaceCheckboxesWithDom(container: HTMLDivElement) {
     box.setAttribute("role", "checkbox");
     box.setAttribute("aria-checked", String(checked));
     box.setAttribute("aria-label", "Task list checkbox");
+    box.setAttribute(TASK_INDEX_ATTR, String(taskIndex));
     box.className = checked ? `${CHECKBOX_CLASS} ${CHECKBOX_CHECKED_CLASS}` : CHECKBOX_CLASS;
     box.innerHTML = checked ? CHECK_ICON_SVG : "";
 
@@ -108,6 +116,7 @@ function replaceCheckboxesWithDom(container: HTMLDivElement) {
       e.stopPropagation();
       checked = !checked;
       updateVisual();
+      onToggleCheckbox?.(taskIndex);
     });
 
     wrapper.appendChild(box);
@@ -117,6 +126,7 @@ function replaceCheckboxesWithDom(container: HTMLDivElement) {
 
 export function MarkdownPreviewWeb({
   html,
+  onToggleCheckbox,
   contentContainerStyle,
   className,
 }: MarkdownPreviewWebProps) {
@@ -124,6 +134,8 @@ export function MarkdownPreviewWeb({
   const theme = getMarkdownThemeFromPalette(colors, isDark);
   const css = getPreviewCss(theme);
   const containerRef = useRef<HTMLDivElement>(null);
+  const onToggleRef = useRef(onToggleCheckbox);
+  onToggleRef.current = onToggleCheckbox;
 
   // Replace native checkboxes whenever container content changes (avoids race where DOM isn't ready yet)
   useEffect(() => {
@@ -135,7 +147,7 @@ export function MarkdownPreviewWeb({
       rafId = null;
       const el = containerRef.current;
       if (el) {
-        replaceCheckboxesWithDom(el);
+        replaceCheckboxesWithDom(el, (taskIndex) => onToggleRef.current?.(taskIndex));
         addCodeCopyButtons(el);
       }
     };
@@ -161,7 +173,7 @@ export function MarkdownPreviewWeb({
       clearTimeout(t2);
       observer.disconnect();
     };
-  }, [html]);
+  }, [html, onToggleCheckbox]);
 
   if (!html) {
     return (

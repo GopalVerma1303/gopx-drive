@@ -7,7 +7,7 @@ import { getMarkdownThemeFromPalette, getPreviewCss } from "@/lib/markdown-theme
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { getPreviewFullHtml } from "./getPreviewHtml";
 
-/** Injected into WebView: replace native checkboxes with custom ones that toggle completed/not completed on tap. */
+/** Injected into WebView: replace native checkboxes with custom ones; on tap toggle visual and postMessage so React can update markdown. */
 const REPLACE_CHECKBOXES_SCRIPT = `
 (function(){
   var container = document.getElementById('content');
@@ -26,17 +26,23 @@ const REPLACE_CHECKBOXES_SCRIPT = `
     box.setAttribute('role','checkbox');
     box.setAttribute('aria-checked',checked);
     box.setAttribute('aria-label','Task list checkbox');
+    box.setAttribute('data-task-index',String(i));
     box.className=checked?'md-preview-checkbox checked':'md-preview-checkbox';
     box.innerHTML=checked?svg:'';
-    box.onclick=function(e){
-      e.preventDefault();
-      e.stopPropagation();
-      var c=this.getAttribute('aria-checked')==='true';
-      c=!c;
-      this.setAttribute('aria-checked',c);
-      this.classList.toggle('checked',c);
-      this.innerHTML=c?svg:'';
-    };
+    box.onclick=(function(idx){
+      return function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        var c=this.getAttribute('aria-checked')==='true';
+        c=!c;
+        this.setAttribute('aria-checked',c);
+        this.classList.toggle('checked',c);
+        this.innerHTML=c?svg:'';
+        if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage){
+          window.ReactNativeWebView.postMessage(JSON.stringify({type:'toggleCheckbox',taskIndex:idx}));
+        }
+      };
+    })(i);
     wrap.appendChild(box);
     input.parentNode.replaceChild(wrap,input);
   }
@@ -86,11 +92,15 @@ const ADD_CODE_COPY_BUTTONS_SCRIPT = `
 interface MarkdownPreviewWebViewProps {
   html: string;
   contentContainerStyle?: object;
+  /** Called with task index when user toggles a checkbox in the WebView. Parent should update markdown. */
+  onCheckboxToggle?: (taskIndex: number) => void;
 }
 
-export function MarkdownPreviewWebView({ html, contentContainerStyle }: MarkdownPreviewWebViewProps) {
+export function MarkdownPreviewWebView({ html, contentContainerStyle, onCheckboxToggle }: MarkdownPreviewWebViewProps) {
   const webViewRef = useRef<WebView>(null);
   const [loaded, setLoaded] = useState(false);
+  const onCheckboxToggleRef = useRef(onCheckboxToggle);
+  onCheckboxToggleRef.current = onCheckboxToggle;
   const { colors, isDark } = useThemeColors();
   const theme = getMarkdownThemeFromPalette(colors, isDark);
 
@@ -152,12 +162,24 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle }: Markdown
     injectContent(html || "");
   }, [html, injectContent]);
 
+  const handleMessage = useCallback((event: { nativeEvent: { data: string } }) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data) as { type?: string; taskIndex?: number };
+      if (data?.type === "toggleCheckbox" && typeof data.taskIndex === "number") {
+        onCheckboxToggleRef.current?.(data.taskIndex);
+      }
+    } catch {
+      // ignore non-JSON or invalid messages
+    }
+  }, []);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.muted }, contentContainerStyle]}>
       <WebView
         ref={webViewRef}
         source={{ html: sourceHtml }}
         onLoadEnd={onLoadEnd}
+        onMessage={handleMessage}
         style={[styles.webview, { backgroundColor: "transparent" }]}
         scrollEnabled={true}
         nestedScrollEnabled={true}
