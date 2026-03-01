@@ -290,9 +290,17 @@ export function getCodeMirrorThemeConfig(colors: MarkdownThemeColors): Record<st
       padding: "0",
       paddingBottom: `${MARKDOWN_CONTENT_PADDING_PX.paddingBottom}px`,
       color: fg,
+      caretColor: fg,
     },
     ".cm-line": {
       lineHeight: MARKDOWN_LINE_HEIGHT_CSS,
+    },
+    /* Cursor (caret) – theme responsive; override CodeMirror default (1.2px solid black) */
+    ".cm-cursor": {
+      borderLeft: `1.2px solid ${fg}`,
+    },
+    "&.cm-focused > .cm-scroller > .cm-cursorLayer .cm-cursor": {
+      borderLeftColor: fg,
     },
     /* Code block: match preview – no fill, same border (ring), same size. Inline code keeps .cm-monospace pill style. */
     ".code-block-wrapper": {
@@ -327,8 +335,8 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
   const codeBlockFontSize = Math.round(MARKDOWN_FONT_SIZE * 0.875);
   return (
     `body, #codemirror-root, .cm-editor, .cm-scroller { background: ${bg} !important; } ` +
-    `.cm-content, .cm-line { color: ${fg} !important; } ` +
-    `.cm-cursor { border-left-color: ${fg} !important; } ` +
+    `.cm-content, .cm-line { color: ${fg} !important; caret-color: ${fg} !important; } ` +
+    `.cm-cursor, .cm-cursorLayer .cm-cursor { border-left: 1.2px solid ${fg} !important; border-left-color: ${fg} !important; } ` +
     `.cm-scroller { -webkit-overflow-scrolling: touch !important; overflow-y: scroll !important; height: 100% !important; max-height: 100% !important; touch-action: pan-y !important; } ` +
     `.cm-url, .cm-link { color: ${link} !important; } ` +
     `.cm-monospace { background: ${codeBg} !important; } ` +
