@@ -178,7 +178,7 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
     const themeColorsCompartmentRef = useRef<any>(null);
     const highlightCompartmentRef = useRef<any>(null);
     const { colors, isDark } = useThemeColors();
-  const theme = getMarkdownThemeFromPalette(colors, isDark);
+    const theme = getMarkdownThemeFromPalette(colors, isDark);
     const onChangeRef = useRef(onChangeText);
     const onSelectionRef = useRef(onSelectionChange);
     onChangeRef.current = onChangeText;
@@ -196,14 +196,14 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       const { jsSupport, tsSupport } = getMarkdownCodeLanguages?.() ?? { jsSupport: null, tsSupport: null };
       const markdownConfig = jsSupport && tsSupport
         ? {
-            defaultCodeLanguage: jsSupport.language,
-            codeLanguages: (info: string) => {
-              const n = (info || "").trim().toLowerCase();
-              if (n === "ts" || n === "typescript") return tsSupport.language;
-              if (n === "tsx") return tsSupport.language;
-              return jsSupport.language;
-            },
-          }
+          defaultCodeLanguage: jsSupport.language,
+          codeLanguages: (info: string) => {
+            const n = (info || "").trim().toLowerCase();
+            if (n === "ts" || n === "typescript") return tsSupport.language;
+            if (n === "tsx") return tsSupport.language;
+            return jsSupport.language;
+          },
+        }
         : undefined;
 
       const heightCompartment = new Compartment();
