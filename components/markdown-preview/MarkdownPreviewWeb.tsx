@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { getMarkdownThemeFromPalette, getPreviewCss } from "@/lib/markdown-theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -11,6 +11,60 @@ interface MarkdownPreviewWebProps {
   className?: string;
 }
 
+const CHECKBOX_WRAPPER_CLASS = "markdown-preview-checkbox-wrapper";
+const TASK_LIST_ITEM_CLASS = "task-list-item";
+const CHECKBOX_CLASS = "md-preview-checkbox";
+const CHECKBOX_CHECKED_CLASS = "checked";
+
+/** Check icon as inline SVG string (no React, works in any DOM context). */
+const CHECK_ICON_SVG =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+
+/**
+ * Replace native checkbox inputs with pure-DOM custom checkboxes that toggle completed/not completed on click.
+ */
+function replaceCheckboxesWithDom(container: HTMLDivElement) {
+  const inputs = container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
+  inputs.forEach((input) => {
+    let checked = input.hasAttribute("checked");
+    const parentLi = input.closest("li");
+    if (parentLi && !parentLi.classList.contains(TASK_LIST_ITEM_CLASS)) {
+      parentLi.classList.add(TASK_LIST_ITEM_CLASS);
+    }
+    const wrapper = document.createElement("span");
+    wrapper.className = CHECKBOX_WRAPPER_CLASS;
+
+    const box = document.createElement("button");
+    box.type = "button";
+    box.setAttribute("role", "checkbox");
+    box.setAttribute("aria-checked", String(checked));
+    box.setAttribute("aria-label", "Task list checkbox");
+    box.className = checked ? `${CHECKBOX_CLASS} ${CHECKBOX_CHECKED_CLASS}` : CHECKBOX_CLASS;
+    box.innerHTML = checked ? CHECK_ICON_SVG : "";
+
+    const updateVisual = () => {
+      box.setAttribute("aria-checked", String(checked));
+      if (checked) {
+        box.classList.add(CHECKBOX_CHECKED_CLASS);
+        box.innerHTML = CHECK_ICON_SVG;
+      } else {
+        box.classList.remove(CHECKBOX_CHECKED_CLASS);
+        box.innerHTML = "";
+      }
+    };
+
+    box.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      checked = !checked;
+      updateVisual();
+    });
+
+    wrapper.appendChild(box);
+    input.parentNode?.replaceChild(wrapper, input);
+  });
+}
+
 export function MarkdownPreviewWeb({
   html,
   contentContainerStyle,
@@ -19,6 +73,33 @@ export function MarkdownPreviewWeb({
   const { colors, isDark } = useThemeColors();
   const theme = getMarkdownThemeFromPalette(colors, isDark);
   const css = getPreviewCss(theme);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !html) return;
+
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      const el = containerRef.current;
+      if (el) replaceCheckboxesWithDom(el);
+    };
+
+    // Run after paint so dangerouslySetInnerHTML has been applied
+    const raf1 = requestAnimationFrame(() => {
+      if (cancelled) return;
+      requestAnimationFrame(run);
+    });
+    // Fallback: run again after a short delay in case DOM wasn't ready (e.g. async layout)
+    const t = setTimeout(run, 150);
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf1);
+      clearTimeout(t);
+    };
+  }, [html]);
 
   if (!html) {
     return (
@@ -41,6 +122,7 @@ export function MarkdownPreviewWeb({
     >
       <style dangerouslySetInnerHTML={{ __html: css }} />
       <div
+        ref={containerRef}
         className={`markdown-preview ${className ?? ""}`}
         dangerouslySetInnerHTML={{ __html: html }}
       />

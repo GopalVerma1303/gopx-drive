@@ -156,7 +156,13 @@ ${getHighlightCss(colors)}
 .markdown-preview hr { border: none; height: 1px; background: ${colors.ring}; margin: 1em 0; }
 .markdown-preview img { max-width: 100%; height: auto; border-radius: 4px; }
 .markdown-preview .preview-placeholder { color: ${colors.mutedForeground}; font-style: italic; margin: 0; padding: 0; }
-/* Task lists (GFM) */
+/* Task lists (GFM): hide bullet, use custom checkbox component; align checkbox with text on same horizontal axis */
+.markdown-preview li.task-list-item { list-style: none; margin-left: 0; padding-left: 0; display: flex; align-items: center; gap: 0.5em; }
+.markdown-preview li.task-list-item .markdown-preview-checkbox-wrapper { display: inline-flex; flex-shrink: 0; margin-right: 0.25em; align-items: center; justify-content: center; height: 16px; }
+/* Web-only custom checkbox (matches UI checkbox: green when checked, red when unchecked); click toggles completed/not completed */
+.markdown-preview .md-preview-checkbox { appearance: none; margin: 0; font: inherit; line-height: 1; width: 16px; height: 16px; min-width: 16px; min-height: 16px; border-radius: 4px; border: 2px solid #ef4444; background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: background-color 0.15s, border-color 0.15s; -webkit-tap-highlight-color: transparent; user-select: none; vertical-align: middle; }
+.markdown-preview .md-preview-checkbox.checked { border-color: #22c55e; background-color: #22c55e; }
+.markdown-preview .md-preview-checkbox svg { width: 12px; height: 12px; color: white; pointer-events: none; }
 .markdown-preview input[type="checkbox"] { margin-right: 0.5em; }
 `.trim();
 }

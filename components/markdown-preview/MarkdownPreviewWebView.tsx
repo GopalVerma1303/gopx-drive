@@ -7,6 +7,42 @@ import { getMarkdownThemeFromPalette, getPreviewCss } from "@/lib/markdown-theme
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { getPreviewFullHtml } from "./getPreviewHtml";
 
+/** Injected into WebView: replace native checkboxes with custom ones that toggle completed/not completed on tap. */
+const REPLACE_CHECKBOXES_SCRIPT = `
+(function(){
+  var container = document.getElementById('content');
+  if(!container) return;
+  var inputs = container.querySelectorAll('input[type="checkbox"]');
+  var svg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  for(var i=0;i<inputs.length;i++){
+    var input=inputs[i];
+    var checked=input.hasAttribute('checked');
+    var li=input.closest('li');
+    if(li&&!li.classList.contains('task-list-item')) li.classList.add('task-list-item');
+    var wrap=document.createElement('span');
+    wrap.className='markdown-preview-checkbox-wrapper';
+    var box=document.createElement('button');
+    box.type='button';
+    box.setAttribute('role','checkbox');
+    box.setAttribute('aria-checked',checked);
+    box.setAttribute('aria-label','Task list checkbox');
+    box.className=checked?'md-preview-checkbox checked':'md-preview-checkbox';
+    box.innerHTML=checked?svg:'';
+    box.onclick=function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      var c=this.getAttribute('aria-checked')==='true';
+      c=!c;
+      this.setAttribute('aria-checked',c);
+      this.classList.toggle('checked',c);
+      this.innerHTML=c?svg:'';
+    };
+    wrap.appendChild(box);
+    input.parentNode.replaceChild(wrap,input);
+  }
+})(); true;
+`;
+
 interface MarkdownPreviewWebViewProps {
   html: string;
   contentContainerStyle?: object;
@@ -49,7 +85,13 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle }: Markdown
     (bodyHtml: string) => {
       if (Platform.OS === "web") return;
       const escaped = JSON.stringify(bodyHtml || "");
-      const script = `(function(){ var html = ${escaped}; var el = document.getElementById('content'); if(el) el.innerHTML = html; })(); true;`;
+      // Set content then replace checkboxes after a short delay so DOM is ready (same custom checkbox as web)
+      const script = `(function(){
+        var html = ${escaped};
+        var el = document.getElementById('content');
+        if(el) el.innerHTML = html;
+        setTimeout(function() { ${REPLACE_CHECKBOXES_SCRIPT} }, 50);
+      })(); true;`;
       webViewRef.current?.injectJavaScript(script);
     },
     []

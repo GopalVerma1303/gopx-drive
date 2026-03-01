@@ -1,17 +1,16 @@
-import CodeMirrorDOM from "@/components/codemirror-editor/CodeMirrorDOM";
 import { CodeMirrorWeb } from "@/components/codemirror-editor";
+import CodeMirrorDOM from "@/components/codemirror-editor/CodeMirrorDOM";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { detectCheckboxInLine, toggleCheckboxInMarkdown } from "@/components/markdown-toolbar";
 import { SyntaxHighlighter } from "@/components/syntax-highlighter";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useThemeColors, type ThemePalette } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
 import * as Clipboard from "expo-clipboard";
 import { Check, Copy } from "lucide-react-native";
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { Image, Linking, Platform, Pressable, Text as RNText, ScrollView, TextInput, useWindowDimensions, View } from "react-native";
+import { Image, Linking, Platform, Pressable, Text as RNText, useWindowDimensions, View } from "react-native";
 import Markdown, { renderRules } from "react-native-markdown-display";
 
 // Import extracted modules
