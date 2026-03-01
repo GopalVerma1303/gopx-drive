@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import WebView from "react-native-webview";
+import * as Clipboard from "expo-clipboard";
 import { getMarkdownThemeFromPalette, getPreviewCss } from "@/lib/markdown-theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { getPreviewFullHtml } from "./getPreviewHtml";
@@ -49,7 +50,7 @@ const REPLACE_CHECKBOXES_SCRIPT = `
 })(); true;
 `;
 
-/** Injected into WebView: add copy button; wrap code in scroll div so button stays fixed and does not scroll with code. */
+/** Injected into WebView: add copy button; on tap postMessage to RN so native clipboard is used (navigator.clipboard not reliable in WebView on mobile). */
 const ADD_CODE_COPY_BUTTONS_SCRIPT = `
 (function(){
   var container = document.getElementById('content');
@@ -72,18 +73,20 @@ const ADD_CODE_COPY_BUTTONS_SCRIPT = `
     btn.type = 'button';
     btn.className = COPY_CLASS;
     btn.setAttribute('aria-label','Copy code');
+    btn.setAttribute('data-copy-index', String(i));
     btn.innerHTML = COPY_SVG;
-    btn.onclick = (function(txt, b){
+    btn.onclick = (function(txt, idx){
       return function(){
-        if(typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText){
+        if(window.ReactNativeWebView && window.ReactNativeWebView.postMessage){
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'copyCode', text: txt, index: idx }));
+        } else if(typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText){
           navigator.clipboard.writeText(txt).then(function(){
-            b.classList.add('copied');
-            b.innerHTML = CHECK_SVG;
-            setTimeout(function(){ b.classList.remove('copied'); b.innerHTML = COPY_SVG; }, 2000);
+            var b = document.querySelector('.code-copy-btn[data-copy-index="'+idx+'"]');
+            if(b){ b.classList.add('copied'); b.innerHTML = CHECK_SVG; setTimeout(function(){ b.classList.remove('copied'); b.innerHTML = COPY_SVG; }, 2000); }
           });
         }
       };
-    })(text, btn);
+    })(text, i);
     pre.insertBefore(btn, scrollWrap);
   }
 })(); true;
@@ -162,16 +165,40 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle, onCheckbox
     injectContent(html || "");
   }, [html, injectContent]);
 
-  const handleMessage = useCallback((event: { nativeEvent: { data: string } }) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data) as { type?: string; taskIndex?: number };
-      if (data?.type === "toggleCheckbox" && typeof data.taskIndex === "number") {
-        onCheckboxToggleRef.current?.(data.taskIndex);
-      }
-    } catch {
-      // ignore non-JSON or invalid messages
-    }
+  const showCopyCheckmarkScript = useCallback((index: number) => {
+    const CHECK_SVG =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    const COPY_SVG =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
+    const checkSvg = JSON.stringify(CHECK_SVG);
+    const copySvg = JSON.stringify(COPY_SVG);
+    return `(function(){ var idx = ${index}; var cs = ${checkSvg}; var cp = ${copySvg}; function run(){ var el = document.getElementById("content"); if(!el) return; var btns = el.querySelectorAll(".code-copy-btn"); var btn = btns[idx]; if(btn){ btn.classList.add("copied"); btn.innerHTML = cs; setTimeout(function(){ btn.classList.remove("copied"); btn.innerHTML = cp; }, 2000); } } if(typeof requestAnimationFrame !== "undefined") requestAnimationFrame(run); else setTimeout(run, 50); })(); true;`;
   }, []);
+
+  const handleMessage = useCallback(
+    async (event: { nativeEvent: { data: string } }) => {
+      try {
+        const data = JSON.parse(event.nativeEvent.data) as {
+          type?: string;
+          taskIndex?: number;
+          text?: string;
+          index?: number;
+        };
+        if (data?.type === "toggleCheckbox" && typeof data.taskIndex === "number") {
+          onCheckboxToggleRef.current?.(data.taskIndex);
+          return;
+        }
+        if (data?.type === "copyCode" && typeof data.text === "string") {
+          await Clipboard.setStringAsync(data.text);
+          const index = typeof data.index === "number" ? data.index : 0;
+          webViewRef.current?.injectJavaScript(showCopyCheckmarkScript(index));
+        }
+      } catch {
+        // ignore non-JSON or invalid messages
+      }
+    },
+    [showCopyCheckmarkScript]
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: theme.muted }, contentContainerStyle]}>
