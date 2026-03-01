@@ -1,6 +1,5 @@
 "use client";
 
-import { MARKDOWN_CONTENT_PADDING_PX } from "@/lib/markdown-content-layout";
 import {
   getCodeMirrorThemeConfig,
   getMarkdownHighlightStyleConfig,
@@ -311,7 +310,6 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
           minHeight: 0,
           backgroundColor: bg,
           color: fg,
-          ...MARKDOWN_CONTENT_PADDING_PX,
         }}
       />
     );

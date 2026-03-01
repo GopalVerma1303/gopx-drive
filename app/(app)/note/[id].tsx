@@ -37,7 +37,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
+import { KeyboardController, useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import Animated, { useAnimatedStyle } from "react-native-reanimated";
 
 export default function NoteEditorScreen() {
@@ -202,13 +202,15 @@ export default function NoteEditorScreen() {
     if (Platform.OS !== "android") return;
 
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
-      // After a full reload / deep-link, this screen can be the root of the navigator.
-      // In that case, GO_BACK has no route to pop to, so we explicitly fall back to /notes.
-      if (router.canGoBack?.()) {
-        router.back();
-      } else {
-        router.replace("/notes");
-      }
+      // Dismiss keyboard first so it doesn't reopen during transition (editor stays focused otherwise).
+      const navigate = () => {
+        if (router.canGoBack?.()) {
+          router.back();
+        } else {
+          router.replace("/notes");
+        }
+      };
+      KeyboardController.dismiss().then(navigate);
       return true;
     });
 

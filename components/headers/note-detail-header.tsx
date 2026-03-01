@@ -12,7 +12,8 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { ArrowLeft, Check, Edit, Eye, Folder, MoreVertical, RefreshCcw, Share2 } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, View } from "react-native";
+import { KeyboardController } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface NoteDetailHeaderProps {
@@ -99,10 +100,17 @@ export function NoteDetailHeader({
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              if (router.canGoBack?.()) {
-                router.back();
+              const navigate = () => {
+                if (router.canGoBack?.()) {
+                  router.back();
+                } else {
+                  router.replace("/notes");
+                }
+              };
+              if (Platform.OS === "web") {
+                navigate();
               } else {
-                router.replace("/notes");
+                KeyboardController.dismiss().then(navigate);
               }
             }}
             style={{ padding: 8 }}

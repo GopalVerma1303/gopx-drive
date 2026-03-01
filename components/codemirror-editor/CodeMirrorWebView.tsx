@@ -94,7 +94,7 @@ export const CodeMirrorWebView = React.forwardRef<CodeMirrorEditorHandle, CodeMi
       inject(
         `(function(){ var s = document.getElementById('rn-cm-theme'); if (!s) { s = document.createElement('style'); s.id = 'rn-cm-theme'; document.documentElement.appendChild(s); } s.textContent = ${JSON.stringify(styleContent)}; })(); true;`
       );
-    }, [inject, theme.foreground, theme.background, theme.muted, theme.link, theme.codeBackground, theme.blockquoteBorder]);
+    }, [inject, theme.foreground, theme.background, theme.muted, theme.link, theme.codeBackground, theme.blockquoteBorder, theme.ring]);
 
     // Init editor when WebView loads. Use a short delay so the WebView's script has run, then set initial value, theme, and mark loaded.
     const onLoadEnd = useCallback(() => {

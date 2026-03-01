@@ -17,6 +17,20 @@ export const MARKDOWN_CONTENT_PADDING_PX = {
   paddingBottom: 65,
 } as const;
 
+/** Web editor only: slightly smaller horizontal padding for CodeMirror .cm-content (scrollbar stays at edge). */
+export const MARKDOWN_EDITOR_CONTENT_PADDING_PX_WEB = {
+  ...MARKDOWN_CONTENT_PADDING_PX,
+  paddingLeft: 24,
+  paddingRight: 24,
+} as const;
+
+/** Native-only: same as above but with smaller horizontal padding. Used by CodeMirrorDOM. */
+export const MARKDOWN_CONTENT_PADDING_PX_NATIVE = {
+  ...MARKDOWN_CONTENT_PADDING_PX,
+  paddingLeft: 20,
+  paddingRight: 20,
+} as const;
+
 /** Base font size (px) for editor and preview body text. */
 export const MARKDOWN_FONT_SIZE = 16;
 
@@ -33,6 +47,14 @@ export const MARKDOWN_HEADING3_EM = "1.2em";
 export const MARKDOWN_HEADING4_EM = "1.1em";
 export const MARKDOWN_HEADING5_EM = "1em";
 export const MARKDOWN_HEADING6_EM = "0.9375em";
+
+/** Line heights for headings – shared by preview and editor so they match. */
+export const MARKDOWN_HEADING1_LINE_HEIGHT = "1.3";
+export const MARKDOWN_HEADING2_LINE_HEIGHT = "1.35";
+export const MARKDOWN_HEADING3_LINE_HEIGHT = "1.4";
+export const MARKDOWN_HEADING4_LINE_HEIGHT = "1.4";
+export const MARKDOWN_HEADING5_LINE_HEIGHT = "1.4";
+export const MARKDOWN_HEADING6_LINE_HEIGHT = "1.4";
 /** Body text in editor (1em = inherit root size from MARKDOWN_FONT_SIZE). Use in native/WebView so one constant controls actual px. */
 export const MARKDOWN_FONT_SIZE_EM = "0.875em";
 

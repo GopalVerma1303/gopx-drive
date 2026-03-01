@@ -9,7 +9,7 @@
  * @see https://docs.expo.dev/guides/dom-components
  */
 
-import { MARKDOWN_CONTENT_PADDING_PX, MARKDOWN_FONT_SIZE } from "@/lib/markdown-content-layout";
+import { MARKDOWN_CONTENT_PADDING_PX_NATIVE, MARKDOWN_FONT_SIZE } from "@/lib/markdown-content-layout";
 import {
   getCodeMirrorThemeConfig,
   getMarkdownHighlightStyleConfig,
@@ -32,6 +32,7 @@ function buildThemeFromProps(props: {
   linkUrlColor?: string;
   codeBackground?: string;
   blockquoteBorder?: string;
+  ringColor?: string;
   isDark?: boolean;
 }): MarkdownThemeColors {
   return {
@@ -39,7 +40,7 @@ function buildThemeFromProps(props: {
     background: props.backgroundColor,
     muted: props.backgroundColor,
     mutedForeground: "#737373",
-    ring: "#a3a3a3",
+    ring: props.ringColor ?? (props.isDark ? "#525252" : "#a3a3a3"),
     link: props.linkColor,
     linkUrl: props.linkUrlColor,
     codeBackground: props.codeBackground,
@@ -67,6 +68,8 @@ interface CodeMirrorDOMProps {
   linkUrlColor?: string;
   codeBackground?: string;
   blockquoteBorder?: string;
+  /** Code block border/fence color – must match preview (e.g. colors.ring). */
+  ringColor?: string;
   isDark?: boolean;
   dom?: import("expo/dom").DOMProps;
   ref?: Ref<CodeMirrorDOMRef>;
@@ -83,6 +86,7 @@ export default function CodeMirrorDOM({
   linkUrlColor,
   codeBackground,
   blockquoteBorder,
+  ringColor,
   isDark,
   ref: refProp,
 }: CodeMirrorDOMProps) {
@@ -109,6 +113,7 @@ export default function CodeMirrorDOM({
       linkUrlColor,
       codeBackground,
       blockquoteBorder,
+      ringColor,
       isDark,
     });
     const jsSupport = javascript();
@@ -125,7 +130,7 @@ export default function CodeMirrorDOM({
     const highlightStyle = HighlightStyle.define(
       getMarkdownHighlightStyleConfig(theme) as Parameters<typeof HighlightStyle.define>[0]
     );
-    const baseTheme = getCodeMirrorThemeConfig(theme);
+    const baseTheme = getCodeMirrorThemeConfig(theme, { contentPadding: false });
     const state = EditorState.create({
       doc: initial,
       extensions: [
@@ -214,7 +219,7 @@ export default function CodeMirrorDOM({
         maxHeight: "100%",
         overflow: "hidden",
         fontSize: `${MARKDOWN_FONT_SIZE}px`,
-        ...MARKDOWN_CONTENT_PADDING_PX,
+        ...MARKDOWN_CONTENT_PADDING_PX_NATIVE,
         backgroundColor,
         color,
         boxSizing: "border-box",

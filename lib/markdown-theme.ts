@@ -7,15 +7,22 @@
 import {
   MARKDOWN_CODE_FONT_SIZE_EM,
   MARKDOWN_CONTENT_PADDING_PX,
+  MARKDOWN_EDITOR_CONTENT_PADDING_PX_WEB,
   MARKDOWN_FONT_FAMILY_BODY,
   MARKDOWN_FONT_FAMILY_CODE,
   MARKDOWN_FONT_SIZE,
   MARKDOWN_HEADING1_EM,
+  MARKDOWN_HEADING1_LINE_HEIGHT,
   MARKDOWN_HEADING2_EM,
+  MARKDOWN_HEADING2_LINE_HEIGHT,
   MARKDOWN_HEADING3_EM,
+  MARKDOWN_HEADING3_LINE_HEIGHT,
   MARKDOWN_HEADING4_EM,
+  MARKDOWN_HEADING4_LINE_HEIGHT,
   MARKDOWN_HEADING5_EM,
+  MARKDOWN_HEADING5_LINE_HEIGHT,
   MARKDOWN_HEADING6_EM,
+  MARKDOWN_HEADING6_LINE_HEIGHT,
   MARKDOWN_LINE_HEIGHT,
   MARKDOWN_LINE_HEIGHT_CSS,
 } from "@/lib/markdown-content-layout";
@@ -123,13 +130,13 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
   width: 100%;
   min-height: 100%;
 }
-/* Headings: same sizes as editor (shared constants) */
-.markdown-preview h1 { font-size: ${MARKDOWN_HEADING1_EM}; font-weight: 700; margin: 0 0 0.5em 0; padding: 0; line-height: 1.3; color: ${colors.foreground}; }
-.markdown-preview h2 { font-size: ${MARKDOWN_HEADING2_EM}; font-weight: 700; margin: 0 0 0.5em 0; padding: 0; line-height: 1.35; color: ${colors.foreground}; }
-.markdown-preview h3 { font-size: ${MARKDOWN_HEADING3_EM}; font-weight: 600; margin: 0 0 0.5em 0; padding: 0; line-height: 1.4; color: ${colors.foreground}; }
-.markdown-preview h4 { font-size: ${MARKDOWN_HEADING4_EM}; font-weight: 600; margin: 0 0 0.5em 0; padding: 0; line-height: 1.4; color: ${colors.foreground}; }
-.markdown-preview h5 { font-size: ${MARKDOWN_HEADING5_EM}; font-weight: 600; margin: 0 0 0.5em 0; padding: 0; line-height: 1.4; color: ${colors.foreground}; }
-.markdown-preview h6 { font-size: ${MARKDOWN_HEADING6_EM}; font-weight: 600; margin: 0 0 0.5em 0; padding: 0; line-height: 1.4; opacity: 0.9; color: ${colors.foreground}; }
+/* Headings: same sizes and line-heights as editor (shared constants) */
+.markdown-preview h1 { font-size: ${MARKDOWN_HEADING1_EM}; font-weight: 700; margin: 0 0 0.5em 0; padding: 0; line-height: ${MARKDOWN_HEADING1_LINE_HEIGHT}; color: ${colors.foreground}; }
+.markdown-preview h2 { font-size: ${MARKDOWN_HEADING2_EM}; font-weight: 700; margin: 0 0 0.5em 0; padding: 0; line-height: ${MARKDOWN_HEADING2_LINE_HEIGHT}; color: ${colors.foreground}; }
+.markdown-preview h3 { font-size: ${MARKDOWN_HEADING3_EM}; font-weight: 600; margin: 0 0 0.5em 0; padding: 0; line-height: ${MARKDOWN_HEADING3_LINE_HEIGHT}; color: ${colors.foreground}; }
+.markdown-preview h4 { font-size: ${MARKDOWN_HEADING4_EM}; font-weight: 600; margin: 0 0 0.5em 0; padding: 0; line-height: ${MARKDOWN_HEADING4_LINE_HEIGHT}; color: ${colors.foreground}; }
+.markdown-preview h5 { font-size: ${MARKDOWN_HEADING5_EM}; font-weight: 600; margin: 0 0 0.5em 0; padding: 0; line-height: ${MARKDOWN_HEADING5_LINE_HEIGHT}; color: ${colors.foreground}; }
+.markdown-preview h6 { font-size: ${MARKDOWN_HEADING6_EM}; font-weight: 600; margin: 0 0 0.5em 0; padding: 0; line-height: ${MARKDOWN_HEADING6_LINE_HEIGHT}; opacity: 0.9; color: ${colors.foreground}; }
 .markdown-preview p { margin: 0 0 0.75em 0; padding: 0; color: ${colors.foreground}; }
 .markdown-preview p:last-child { margin-bottom: 0; }
 .markdown-preview strong { font-weight: 700; color: ${colors.foreground}; }
@@ -158,8 +165,10 @@ ${getHighlightCss(colors)}
 .markdown-preview hr { border: none; height: 1px; background: ${colors.ring}; margin: 1em 0; }
 .markdown-preview img { max-width: 100%; height: auto; border-radius: 4px; }
 .markdown-preview .preview-placeholder { color: ${colors.mutedForeground}; font-style: italic; margin: 0; padding: 0; }
-/* Task lists (GFM): hide bullet, use custom checkbox component; align checkbox with text on same horizontal axis */
-.markdown-preview li.task-list-item { list-style: none; margin-left: 0; padding-left: 0; display: flex; align-items: center; gap: 0.5em; }
+/* Task lists (GFM): same left padding as bullet lists; bullet is hidden but its space was still reserved – cancel it so checkbox aligns with bullet position */
+.markdown-preview ul.contains-task-list { list-style: none; padding-left: 1.5em; }
+.markdown-preview li.task-list-item { list-style: none; margin-left: -1em; padding-left: 0; padding-inline-start: 0; margin-inline-start: -1em; display: flex; align-items: center; gap: 0.5em; }
+.markdown-preview li.task-list-item::marker { content: none; width: 0; display: none; }
 .markdown-preview li.task-list-item .markdown-preview-checkbox-wrapper { display: inline-flex; flex-shrink: 0; margin-right: 0.25em; align-items: center; justify-content: center; height: 16px; }
 /* Web-only custom checkbox (matches UI checkbox: green when checked, red when unchecked); click toggles completed/not completed */
 .markdown-preview .md-preview-checkbox { appearance: none; margin: 0; font: inherit; line-height: 1; width: 16px; height: 16px; min-width: 16px; min-height: 16px; border-radius: 4px; border: 2px solid #ef4444; background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: background-color 0.15s, border-color 0.15s; -webkit-tap-highlight-color: transparent; user-select: none; vertical-align: middle; }
@@ -214,13 +223,13 @@ export function getMarkdownHighlightStyleConfig(colors: MarkdownThemeColors) {
   const { link, linkUrl, codeBg, quoteBorder } = resolveColors(colors);
   const solarized = getSolarizedCodeColors(colors.isDark === true);
   return [
-    // Markdown
-    { tag: tags.heading1, fontWeight: "700", fontSize: MARKDOWN_HEADING1_EM },
-    { tag: tags.heading2, fontWeight: "700", fontSize: MARKDOWN_HEADING2_EM },
-    { tag: tags.heading3, fontWeight: "600", fontSize: MARKDOWN_HEADING3_EM },
-    { tag: tags.heading4, fontWeight: "600", fontSize: MARKDOWN_HEADING4_EM },
-    { tag: tags.heading5, fontWeight: "600", fontSize: MARKDOWN_HEADING5_EM },
-    { tag: tags.heading6, fontWeight: "600", fontSize: MARKDOWN_HEADING6_EM, opacity: "0.9" },
+    // Markdown – font-size and line-height match preview (shared constants)
+    { tag: tags.heading1, fontWeight: "700", fontSize: MARKDOWN_HEADING1_EM, lineHeight: MARKDOWN_HEADING1_LINE_HEIGHT },
+    { tag: tags.heading2, fontWeight: "700", fontSize: MARKDOWN_HEADING2_EM, lineHeight: MARKDOWN_HEADING2_LINE_HEIGHT },
+    { tag: tags.heading3, fontWeight: "600", fontSize: MARKDOWN_HEADING3_EM, lineHeight: MARKDOWN_HEADING3_LINE_HEIGHT },
+    { tag: tags.heading4, fontWeight: "600", fontSize: MARKDOWN_HEADING4_EM, lineHeight: MARKDOWN_HEADING4_LINE_HEIGHT },
+    { tag: tags.heading5, fontWeight: "600", fontSize: MARKDOWN_HEADING5_EM, lineHeight: MARKDOWN_HEADING5_LINE_HEIGHT },
+    { tag: tags.heading6, fontWeight: "600", fontSize: MARKDOWN_HEADING6_EM, lineHeight: MARKDOWN_HEADING6_LINE_HEIGHT, opacity: "0.9" },
     { tag: tags.strong, fontWeight: "700" },
     { tag: tags.emphasis, fontStyle: "italic" },
     { tag: tags.link, color: link, textDecoration: "underline" },
@@ -278,8 +287,18 @@ export function getMarkdownHighlightStyleConfig(colors: MarkdownThemeColors) {
   ];
 }
 
+/** Options for getCodeMirrorThemeConfig. When contentPadding is false (e.g. native), padding is on the container instead of .cm-content. */
+export interface CodeMirrorThemeOptions {
+  /** If false, .cm-content has no padding (container provides it, e.g. native). Default true for web so scrollbar is at edge. */
+  contentPadding?: boolean;
+}
+
 /** Theme object for EditorView.theme({...}) – base editor colors and typography. */
-export function getCodeMirrorThemeConfig(colors: MarkdownThemeColors): Record<string, Record<string, string>> {
+export function getCodeMirrorThemeConfig(
+  colors: MarkdownThemeColors,
+  options?: CodeMirrorThemeOptions
+): Record<string, Record<string, string>> {
+  const contentPadding = options?.contentPadding !== false;
   const bg = colors.muted ?? colors.background;
   const fg = colors.foreground;
   const codeBg = colors.codeBackground ?? DEFAULT_CODE_BG;
@@ -295,8 +314,9 @@ export function getCodeMirrorThemeConfig(colors: MarkdownThemeColors): Record<st
       outline: "none",
     },
     ".cm-content": {
-      padding: "0",
-      paddingBottom: `${MARKDOWN_CONTENT_PADDING_PX.paddingBottom}px`,
+      padding: contentPadding
+        ? `${MARKDOWN_EDITOR_CONTENT_PADDING_PX_WEB.paddingTop}px ${MARKDOWN_EDITOR_CONTENT_PADDING_PX_WEB.paddingRight}px ${MARKDOWN_EDITOR_CONTENT_PADDING_PX_WEB.paddingBottom}px ${MARKDOWN_EDITOR_CONTENT_PADDING_PX_WEB.paddingLeft}px`
+        : "0",
       color: fg,
       caretColor: fg,
     },
