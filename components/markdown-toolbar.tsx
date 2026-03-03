@@ -6,12 +6,15 @@ import {
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import {
   Bold,
   Calendar,
   Code,
   Code2,
-  Hash,
+  Heading1,
+  Heading2,
+  Heading3,
   Image,
   IndentDecrease,
   IndentIncrease,
@@ -26,7 +29,8 @@ import {
   RotateCw,
   Sparkles,
   Strikethrough,
-  Table
+  Table,
+  Wrench,
 } from "lucide-react-native";
 import * as React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -128,6 +132,7 @@ export function MarkdownToolbar({
   onImageInsert,
 }: MarkdownToolbarProps) {
   const { colors } = useThemeColors();
+  const router = useRouter();
   const TAB_SPACES = "   ";
   const [visibleItems, setVisibleItems] = useState<ToolbarItemId[]>(
     DEFAULT_PREFERENCES.visible
@@ -203,9 +208,19 @@ export function MarkdownToolbar({
     wrapOrInsert("~~", "~~", 2); // ~~|~~
   };
 
-  const handleHeading = () => {
+  const handleHeading1 = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onInsertText("#", 1);
+    onInsertText("# ", 2);
+  };
+
+  const handleHeading2 = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onInsertText("## ", 3);
+  };
+
+  const handleHeading3 = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onInsertText("### ", 4);
   };
 
   const handleInlineCode = () => {
@@ -305,6 +320,11 @@ export function MarkdownToolbar({
     onAIAssistant?.();
   };
 
+  const handleToolbarSettings = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push("/(app)/toolbar-order" as any);
+  };
+
   // Map item IDs to handlers and icons
   const itemHandlers: Record<ToolbarItemId, () => void> = {
     undo: handleUndo,
@@ -312,7 +332,9 @@ export function MarkdownToolbar({
     bold: handleBold,
     italic: handleItalic,
     strikethrough: handleStrikethrough,
-    heading: handleHeading,
+    heading1: handleHeading1,
+    heading2: handleHeading2,
+    heading3: handleHeading3,
     inlineCode: handleInlineCode,
     indent: handleIndent,
     outdent: handleOutdent,
@@ -327,6 +349,7 @@ export function MarkdownToolbar({
     horizontalRule: handleHorizontalRule,
     date: handleDate,
     aiAssistant: handleAIAssistant,
+    toolbarSettings: handleToolbarSettings,
   };
 
   const itemIcons: Record<ToolbarItemId, React.ComponentType<{ size?: number; color?: string }>> = {
@@ -335,7 +358,9 @@ export function MarkdownToolbar({
     bold: Bold,
     italic: Italic,
     strikethrough: Strikethrough,
-    heading: Hash,
+    heading1: Heading1,
+    heading2: Heading2,
+    heading3: Heading3,
     inlineCode: Code,
     indent: IndentIncrease,
     outdent: IndentDecrease,
@@ -350,6 +375,7 @@ export function MarkdownToolbar({
     horizontalRule: Minus,
     date: Calendar,
     aiAssistant: Sparkles,
+    toolbarSettings: Wrench,
   };
 
   const itemLabels: Record<ToolbarItemId, string> = {
@@ -358,7 +384,9 @@ export function MarkdownToolbar({
     bold: "Bold",
     italic: "Italic",
     strikethrough: "Strikethrough",
-    heading: "Heading",
+    heading1: "H1",
+    heading2: "H2",
+    heading3: "H3",
     inlineCode: "Inline Code",
     indent: "Indent (Tab)",
     outdent: "Outdent (Shift+Tab)",
@@ -373,6 +401,7 @@ export function MarkdownToolbar({
     horizontalRule: "Horizontal Rule",
     date: "Insert Date",
     aiAssistant: "AI Assistant",
+    toolbarSettings: "Toolbar Settings",
   };
 
   const itemDisabled: Record<ToolbarItemId, boolean | undefined> = {
@@ -381,7 +410,9 @@ export function MarkdownToolbar({
     bold: false,
     italic: false,
     strikethrough: false,
-    heading: false,
+    heading1: false,
+    heading2: false,
+    heading3: false,
     inlineCode: false,
     indent: false,
     outdent: false,
@@ -396,6 +427,7 @@ export function MarkdownToolbar({
     horizontalRule: false,
     date: false,
     aiAssistant: false,
+    toolbarSettings: false,
   };
 
   const iconSize = 20;

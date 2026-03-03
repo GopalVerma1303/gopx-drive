@@ -138,6 +138,8 @@ export function useFilePreview() {
             <WebView
               source={{ uri: previewUrl }}
               style={{ flex: 1 }}
+              scrollEnabled={true}
+              nestedScrollEnabled={true}
               onError={() => {
                 alert("Error", "Failed to load preview");
                 closePreview();

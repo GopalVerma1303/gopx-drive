@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { AttachmentOptionsModal } from "@/components/attachment-options-modal";
 import { useAuth } from "@/contexts/auth-context";
 import { deleteAttachment, listAttachments, type AttachmentBucketItem } from "@/lib/attachments";
 import { invalidateAttachmentsQueries } from "@/lib/query-utils";
@@ -374,125 +375,24 @@ export default function AttachmentsScreen() {
         </ScrollView>
       )}
 
-      {/* Action modal: Delete (left), Cancel (center), Copy URL (right) */}
-      {Platform.OS === "web" ? (
-        deleteDialogOpen && selectedAttachment && (
-          <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <Pressable
-              className="absolute inset-0"
-              onPress={() => setDeleteDialogOpen(false)}
-            />
-            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
-              <Text
-                numberOfLines={2}
-                className="mb-2 text-lg font-semibold text-foreground"
-              >
-                {selectedAttachment?.name ?? "Attachment"}
-              </Text>
-              <Text className="mb-5 text-sm leading-5 text-muted-foreground">
-                Click "Copy URL" to copy the URL to the clipboard. Delete is
-                permanent and cannot be recovered.
-              </Text>
-              <View className="flex-row items-center justify-between">
-                <Pressable
-                  className="pr-4 py-2"
-                  onPress={() => {
-                    confirmDelete();
-                  }}
-                  disabled={deleteMutation.isPending}
-                >
-                  <Text className="font-semibold text-red-500">
-                    Delete
-                  </Text>
-                </Pressable>
-                <View className="flex-row items-center gap-3">
-                  <Pressable
-                    className="px-4 py-2"
-                    onPress={() => setDeleteDialogOpen(false)}
-                  >
-                    <Text className="text-foreground">Cancel</Text>
-                  </Pressable>
-                  <Pressable
-                    className="px-4 py-2"
-                    onPress={async () => {
-                      await handleCopyLink(selectedAttachment);
-                      setDeleteDialogOpen(false);
-                      setSelectedAttachment(null);
-                    }}
-                  >
-                    <Text className="font-semibold text-blue-500">
-                      Copy URL
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-            </View>
-          </View>
-        )
-      ) : (
-        <Modal
-          visible={deleteDialogOpen}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setDeleteDialogOpen(false)}
-        >
-          <View className="flex-1 items-center justify-center bg-black/50 p-4">
-            <Pressable
-              className="absolute inset-0"
-              onPress={() => setDeleteDialogOpen(false)}
-            />
-            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
-              {selectedAttachment && (
-                <>
-                  <Text
-                    numberOfLines={2}
-                    className="mb-2 text-lg font-semibold text-foreground"
-                  >
-                    {selectedAttachment?.name ?? "Attachment"}
-                  </Text>
-                  <Text className="mb-5 text-sm leading-5 text-muted-foreground">
-                    Click "Copy URL" to copy the URL to the clipboard. Delete is
-                    permanent and cannot be recovered.
-                  </Text>
-                  <View className="flex-row items-center justify-between">
-                    <Pressable
-                      className="pr-4 py-2"
-                      onPress={() => {
-                        confirmDelete();
-                      }}
-                      disabled={deleteMutation.isPending}
-                    >
-                      <Text className="font-semibold text-red-500">
-                        Delete
-                      </Text>
-                    </Pressable>
-                    <View className="flex-row items-center gap-3">
-                      <Pressable
-                        className="px-4 py-2"
-                        onPress={() => setDeleteDialogOpen(false)}
-                      >
-                        <Text className="text-foreground">Cancel</Text>
-                      </Pressable>
-                      <Pressable
-                        className="px-4 py-2"
-                        onPress={async () => {
-                          await handleCopyLink(selectedAttachment);
-                          setDeleteDialogOpen(false);
-                          setSelectedAttachment(null);
-                        }}
-                      >
-                        <Text className="font-semibold text-blue-500">
-                          Copy URL
-                        </Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                </>
-              )}
-            </View>
-          </View>
-        </Modal>
-      )}
+      <AttachmentOptionsModal
+        visible={deleteDialogOpen && !!selectedAttachment}
+        title={selectedAttachment?.name ?? "Attachment"}
+        isDeleting={deleteMutation.isPending}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setSelectedAttachment(null);
+        }}
+        onDelete={() => {
+          confirmDelete();
+        }}
+        onCopyUrl={async () => {
+          if (!selectedAttachment) return;
+          await handleCopyLink(selectedAttachment);
+          setDeleteDialogOpen(false);
+          setSelectedAttachment(null);
+        }}
+      />
     </View>
   );
 }

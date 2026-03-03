@@ -11,6 +11,10 @@ export interface MarkdownEditorProps {
   previewOnly?: boolean;
   /** When true with previewOnly, render only the Markdown content without ScrollView (parent provides scroll). */
   noScrollView?: boolean;
+  /** On mobile WebView: called with raw content when editor sends a change. Use to keep note state in sync (e.g. pass setContent). */
+  onContentSync?: (text: string) => void;
+  /** (Web only) Measured height in px for the editor area. When set, CodeMirror wrapper uses this so the scroll viewport has a definite size. */
+  editorAreaHeight?: number;
 }
 
 export interface MarkdownEditorRef {
@@ -26,6 +30,8 @@ export interface MarkdownEditorRef {
   getSelection: () => { start: number; end: number };
   /** Replace the range [start, end) with text and place cursor after it. Use when selection was lost (e.g. after opening a modal). */
   replaceRange: (start: number, end: number, text: string) => void;
+  /** (Native only) Flush WebView content to parent. Returns a promise that resolves with current editor text. Use before switching to preview so typed content is not lost. */
+  getContentAsync?: () => Promise<string>;
 }
 
 export type Snapshot = {

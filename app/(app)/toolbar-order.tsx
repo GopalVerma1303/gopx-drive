@@ -20,7 +20,9 @@ import {
   ChevronUp,
   Code,
   Code2,
-  Hash,
+  Heading1,
+  Heading2,
+  Heading3,
   Image,
   IndentDecrease,
   IndentIncrease,
@@ -37,6 +39,7 @@ import {
   Sparkles,
   Strikethrough,
   Table,
+  Wrench,
   X,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
@@ -60,7 +63,9 @@ const TOOLBAR_ITEMS: Record<ToolbarItemId, ToolbarItem> = {
   bold: { id: "bold", label: "Bold", icon: Bold },
   italic: { id: "italic", label: "Italic", icon: Italic },
   strikethrough: { id: "strikethrough", label: "Strikethrough", icon: Strikethrough },
-  heading: { id: "heading", label: "Heading", icon: Hash },
+  heading1: { id: "heading1", label: "H1", icon: Heading1 },
+  heading2: { id: "heading2", label: "H2", icon: Heading2 },
+  heading3: { id: "heading3", label: "H3", icon: Heading3 },
   inlineCode: { id: "inlineCode", label: "Inline Code", icon: Code },
   indent: { id: "indent", label: "Indent", icon: IndentIncrease },
   outdent: { id: "outdent", label: "Outdent", icon: IndentDecrease },
@@ -75,6 +80,7 @@ const TOOLBAR_ITEMS: Record<ToolbarItemId, ToolbarItem> = {
   horizontalRule: { id: "horizontalRule", label: "Horizontal Rule", icon: Minus },
   date: { id: "date", label: "Date", icon: Calendar },
   aiAssistant: { id: "aiAssistant", label: "AI Assistant", icon: Sparkles },
+  toolbarSettings: { id: "toolbarSettings", label: "Toolbar Settings", icon: Wrench },
 };
 
 export default function ToolbarOrderScreen() {
