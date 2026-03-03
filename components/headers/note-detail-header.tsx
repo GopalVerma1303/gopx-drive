@@ -212,6 +212,7 @@ export function NoteDetailHeader({
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
                   }
                   style={{ paddingVertical: 8 }}
+                  className="bg-transparent data-[state=open]:bg-transparent focus-visible:outline-none focus-visible:ring-0"
                 >
                   <MoreVertical
                     color={colors.foreground}
