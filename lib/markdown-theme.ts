@@ -78,6 +78,40 @@ function resolveColors(colors: MarkdownThemeColors) {
   };
 }
 
+/** Convert hex (#rgb or #rrggbb) to rgba with given alpha. Matches global.css scrollbar opacity. */
+function hexToRgba(hex: string, alpha: number): string {
+  const m = hex.replace(/^#/, "").match(/^([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+  if (!m) return hex;
+  let r: number, g: number, b: number;
+  if (m[1].length === 3) {
+    r = parseInt(m[1][0] + m[1][0], 16);
+    g = parseInt(m[1][1] + m[1][1], 16);
+    b = parseInt(m[1][2] + m[1][2], 16);
+  } else {
+    r = parseInt(m[1].slice(0, 2), 16);
+    g = parseInt(m[1].slice(2, 4), 16);
+    b = parseInt(m[1].slice(4, 6), 16);
+  }
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/** Scrollbar CSS matching global.css (theme-responsive thumb/track). scopeSelector defaults to * for full document. */
+export function getScrollbarCss(
+  colors: { muted: string; mutedForeground: string },
+  scopeSelector = "*"
+): string {
+  const thumb = hexToRgba(colors.mutedForeground, 0.45);
+  const thumbHover = hexToRgba(colors.mutedForeground, 0.6);
+  const track = hexToRgba(colors.muted, 0.6);
+  return (
+    `${scopeSelector} { scrollbar-width: thin; scrollbar-color: ${thumb} ${track}; } ` +
+    `${scopeSelector}::-webkit-scrollbar { width: 8px; height: 8px; } ` +
+    `${scopeSelector}::-webkit-scrollbar-track { background: ${track}; } ` +
+    `${scopeSelector}::-webkit-scrollbar-thumb { background: ${thumb}; border-radius: 4px; } ` +
+    `${scopeSelector}::-webkit-scrollbar-thumb:hover { background: ${thumbHover}; } `
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Preview CSS (MarkdownPreviewWeb, MarkdownPreviewWebView, getPreviewFullHtml)
 // ---------------------------------------------------------------------------
@@ -281,6 +315,8 @@ ${getHighlightCss(colors)}
   margin: 0 0.5em 0 0;
   padding: 0;
 }
+/* Theme scrollbars (match global.css) */
+${getScrollbarCss({ muted: colors.muted, mutedForeground: colors.mutedForeground })}
 `.trim();
 }
 
@@ -569,8 +605,11 @@ export function getCodeMirrorThemeConfig(
 export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): string {
   const bg = colors.muted ?? colors.background;
   const fg = colors.foreground;
+  const muted = colors.muted ?? bg;
+  const mutedFg = colors.mutedForeground;
   const { link, codeBg } = resolveColors(colors);
   const codeBlockFontSize = Math.round(MARKDOWN_FONT_SIZE * 0.875);
+  const scrollbarCss = getScrollbarCss({ muted, mutedForeground: mutedFg });
   return (
     `body, #codemirror-root, .cm-editor, .cm-scroller { background: ${bg} !important; } ` +
     `.cm-content, .cm-line { color: ${fg} !important; caret-color: ${fg} !important; } ` +
@@ -582,6 +621,7 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
     `.code-block-wrapper .cm-monospace { padding: 0 !important; border-radius: 0 !important; background: transparent !important; } ` +
     `.blockquote-wrapper { font-style: italic !important; } ` +
     `.blockquote-wrapper .cm-line { opacity: 0.58 !important; } ` +
-    `.blockquote-wrapper .cm-quote { border-left: none !important; } `
+    `.blockquote-wrapper .cm-quote { border-left: none !important; } ` +
+    scrollbarCss
   );
 }

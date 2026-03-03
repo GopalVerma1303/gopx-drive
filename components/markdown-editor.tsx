@@ -2851,6 +2851,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               }}
               backgroundColor={colors.muted ?? colors.background}
               color={colors.foreground}
+              muted={colors.muted}
+              mutedForeground={colors.mutedForeground}
               linkColor={colors.link}
               linkUrlColor={colors.linkUrl}
               codeBackground={colors.codeBackground}

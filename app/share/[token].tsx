@@ -1,6 +1,6 @@
 "use client";
 
-import { MarkdownEditor } from "@/components/markdown-editor";
+import { MarkdownPreview } from "@/components/markdown-preview";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -251,10 +251,6 @@ export default function SharedNoteScreen() {
     );
   }
 
-  // Status bar matches note detail header: same height, padding, background, and button style
-  const contentPaddingHorizontal = 32;
-  const contentPaddingBottom = 80 + insets.bottom;
-
   return (
     <>
       <Head>
@@ -378,92 +374,83 @@ export default function SharedNoteScreen() {
         </View>
 
         {Platform.OS === "web" ? (
-          <ScrollView
-            style={{ flex: 1, width: "100%" }}
-            contentContainerStyle={{
-              flexGrow: 1,
-              minHeight: "100%",
-            }}
-            removeClippedSubviews={false}
-            nestedScrollEnabled
-            showsVerticalScrollIndicator={true}
-          >
-            {/* Centered content column: same max-width as before. */}
+          <View style={{ flex: 1, minHeight: 0, backgroundColor: colors.background }}>
             <View
               style={{
                 flex: 1,
-                minHeight: "100%",
+                minHeight: 0,
                 width: "100%",
                 maxWidth: 672,
                 alignSelf: "center",
                 backgroundColor: colors.muted,
-                paddingHorizontal: contentPaddingHorizontal,
-                paddingTop: 16,
-                paddingBottom: contentPaddingBottom,
               }}
               className="w-full max-w-2xl mx-auto bg-muted"
             >
-              {note.content ? (
-                <MarkdownEditor
-                  value={note.content}
-                  isPreview
-                  previewOnly
-                  noScrollView
-                  placeholder=""
-                />
-              ) : (
-                <Text style={{ color: colors.mutedForeground, fontStyle: "italic", fontSize: 16 }}>
-                  No content
-                </Text>
-              )}
-
-              <View
-                style={{
-                  marginTop: 40,
-                  paddingTop: 40,
-                  borderTopWidth: 0,
-                  borderTopColor: colors.ring,
-                  alignItems: "center",
-                  flexDirection: "column",
-                  gap: 8,
-                }}
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ flexGrow: 1, minHeight: "100%" }}
+                showsVerticalScrollIndicator
+                removeClippedSubviews={false}
+                nestedScrollEnabled
               >
-                <Text
+                {note.content ? (
+                  <MarkdownPreview
+                    content={note.content}
+                    placeholder="Start writing in markdown..."
+                  />
+                ) : (
+                  <Text style={{ color: colors.mutedForeground, fontStyle: "italic", fontSize: 16 }}>
+                    No content
+                  </Text>
+                )}
+
+                <View
                   style={{
-                    color: colors.mutedForeground,
-                    fontSize: 13,
+                    marginTop: 24,
+                    paddingTop: 24,
+                    alignItems: "center",
+                    flexDirection: "column",
+                    gap: 8,
+                    paddingBottom: 72 + insets.bottom,
                   }}
                 >
-                  Note taken on
-                </Text>
-                <Pressable
-                  onPress={openGopxDrive}
-                  style={({ pressed }) => ({
-                    opacity: pressed ? 0.7 : 1,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 6,
-                  })}
-                >
-                  <Image
-                    source={GopxDriveIcon}
-                    style={{ width: 16, height: 16 }}
-                    resizeMode="contain"
-                    className="filter dark:invert rounded-[2px]"
-                  />
                   <Text
                     style={{
-                      color: colors.primary,
+                      color: colors.mutedForeground,
                       fontSize: 13,
-                      fontWeight: "600",
                     }}
                   >
-                    Gopx Drive
+                    Note taken on
                   </Text>
-                </Pressable>
-              </View>
+                  <Pressable
+                    onPress={openGopxDrive}
+                    style={({ pressed }) => ({
+                      opacity: pressed ? 0.7 : 1,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                    })}
+                  >
+                    <Image
+                      source={GopxDriveIcon}
+                      style={{ width: 16, height: 16 }}
+                      resizeMode="contain"
+                      className="filter dark:invert rounded-[2px]"
+                    />
+                    <Text
+                      style={{
+                        color: colors.primary,
+                        fontSize: 13,
+                        fontWeight: "600",
+                      }}
+                    >
+                      Gopx Drive
+                    </Text>
+                  </Pressable>
+                </View>
+              </ScrollView>
             </View>
-          </ScrollView>
+          </View>
         ) : (
           <View
             style={{
@@ -477,23 +464,16 @@ export default function SharedNoteScreen() {
           >
             <ScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{
-                paddingHorizontal: contentPaddingHorizontal,
-                paddingTop: 10,
-                paddingBottom: contentPaddingBottom,
-                flexGrow: 1,
-              }}
+              contentContainerStyle={{ flexGrow: 1 }}
               removeClippedSubviews={false}
               nestedScrollEnabled
-              showsVerticalScrollIndicator={true}
+              showsVerticalScrollIndicator
             >
               {note.content ? (
-                <MarkdownEditor
-                  value={note.content}
-                  isPreview
-                  previewOnly
-                  noScrollView
-                  placeholder=""
+                <MarkdownPreview
+                  content={note.content}
+                  placeholder="Start writing in markdown..."
+                  contentContainerStyle={{ flex: 1, width: "100%" }}
                 />
               ) : (
                 <Text style={{ color: colors.mutedForeground, fontStyle: "italic", fontSize: 16 }}>
@@ -503,13 +483,12 @@ export default function SharedNoteScreen() {
 
               <View
                 style={{
-                  marginTop: 40,
-                  paddingTop: 40,
-                  borderTopWidth: 0,
-                  borderTopColor: colors.ring,
+                  marginTop: 24,
+                  paddingTop: 24,
                   alignItems: "center",
                   flexDirection: "column",
                   gap: 8,
+                  paddingBottom: 72 + insets.bottom,
                 }}
               >
                 <Text

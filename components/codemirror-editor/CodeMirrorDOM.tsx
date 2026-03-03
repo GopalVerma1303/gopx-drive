@@ -13,6 +13,7 @@ import { MARKDOWN_CONTENT_PADDING_PX_NATIVE, MARKDOWN_FONT_SIZE } from "@/lib/ma
 import {
   getCodeMirrorThemeConfig,
   getMarkdownHighlightStyleMinimalConfig,
+  getScrollbarCss,
   type MarkdownThemeColors,
 } from "@/lib/markdown-theme";
 import { defaultKeymap, history, indentWithTab } from "@codemirror/commands";
@@ -22,11 +23,16 @@ import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { useDOMImperativeHandle, type DOMImperativeFactory } from "expo/dom";
+
+/** Matches expo/dom marshalling: methods exposed to native must accept JSON-serializable args. */
+type JSONValue = boolean | number | string | null | JSONValue[] | { [key: string]: JSONValue | undefined };
 import React, { useEffect, useRef, type Ref } from "react";
 
 function buildThemeFromProps(props: {
   backgroundColor: string;
   color: string;
+  muted?: string;
+  mutedForeground?: string;
   linkColor?: string;
   linkUrlColor?: string;
   codeBackground?: string;
@@ -37,8 +43,8 @@ function buildThemeFromProps(props: {
   return {
     foreground: props.color,
     background: props.backgroundColor,
-    muted: props.backgroundColor,
-    mutedForeground: "#737373",
+    muted: props.muted ?? props.backgroundColor,
+    mutedForeground: props.mutedForeground ?? "#737373",
     ring: props.ringColor ?? (props.isDark ? "#525252" : "#a3a3a3"),
     link: props.linkColor,
     linkUrl: props.linkUrlColor,
@@ -49,8 +55,8 @@ function buildThemeFromProps(props: {
 }
 
 export interface CodeMirrorDOMRef extends DOMImperativeFactory {
-  focus: () => void;
-  setSelection: (start: number, end: number) => void;
+  focus: (...args: JSONValue[]) => void;
+  setSelection: (...args: JSONValue[]) => void;
 }
 
 interface CodeMirrorDOMProps {
@@ -69,6 +75,9 @@ interface CodeMirrorDOMProps {
   blockquoteBorder?: string;
   /** Code block border/fence color – must match preview (e.g. colors.ring). */
   ringColor?: string;
+  /** For scrollbar styling (match app theme). */
+  muted?: string;
+  mutedForeground?: string;
   isDark?: boolean;
   dom?: import("expo/dom").DOMProps;
   ref?: Ref<CodeMirrorDOMRef>;
@@ -86,6 +95,8 @@ export default function CodeMirrorDOM({
   codeBackground,
   blockquoteBorder,
   ringColor,
+  muted,
+  mutedForeground,
   isDark,
   ref: refProp,
 }: CodeMirrorDOMProps) {
@@ -108,6 +119,8 @@ export default function CodeMirrorDOM({
     const theme = buildThemeFromProps({
       backgroundColor,
       color,
+      muted,
+      mutedForeground,
       linkColor,
       linkUrlColor,
       codeBackground,
@@ -193,13 +206,14 @@ export default function CodeMirrorDOM({
   // Expose ref methods for native (focus, setSelection). getValueAsync is not
   // supported here; native should rely on onContentChange so state is always in sync.
   useDOMImperativeHandle(
-    refProp,
+    refProp ?? null,
     () => ({
       focus: () => {
         viewRef.current?.focus();
       },
-      setSelection: (start: number, end: number) => {
-        if (viewRef.current) {
+      setSelection: (...args: JSONValue[]) => {
+        const [start, end] = args as [number, number];
+        if (viewRef.current && typeof start === "number" && typeof end === "number") {
           viewRef.current.dispatch({
             selection: { anchor: start, head: end },
           });
@@ -209,21 +223,29 @@ export default function CodeMirrorDOM({
     []
   );
 
+  const scrollbarCss = getScrollbarCss(
+    { muted: muted ?? backgroundColor, mutedForeground: mutedForeground ?? "#737373" },
+    ".cm-scroller"
+  );
+
   return (
-    <div
-      ref={containerRef}
-      style={{
-        flex: 1,
-        minHeight: 200,
-        height: "100%",
-        maxHeight: "100%",
-        overflow: "hidden",
-        fontSize: `${MARKDOWN_FONT_SIZE}px`,
-        ...MARKDOWN_CONTENT_PADDING_PX_NATIVE,
-        backgroundColor,
-        color,
-        boxSizing: "border-box",
-      }}
-    />
+    <>
+      <style dangerouslySetInnerHTML={{ __html: scrollbarCss }} />
+      <div
+        ref={containerRef}
+        style={{
+          flex: 1,
+          minHeight: 200,
+          height: "100%",
+          maxHeight: "100%",
+          overflow: "hidden",
+          fontSize: `${MARKDOWN_FONT_SIZE}px`,
+          ...MARKDOWN_CONTENT_PADDING_PX_NATIVE,
+          backgroundColor,
+          color,
+          boxSizing: "border-box",
+        }}
+      />
+    </>
   );
 }
