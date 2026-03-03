@@ -31,6 +31,7 @@ const COPIED_DURATION_MS = 2000;
 
 const CODE_BLOCK_SCROLL_CLASS = "code-block-scroll";
 const TABLE_SCROLL_CLASS = "markdown-table-scroll";
+const IMAGE_WITH_CAPTION_CLASS = "image-with-caption";
 
 /**
  * Add copy button to each code block (pre). Wrap code in a scrollable div so the button (sibling) stays fixed and does not scroll with the code.
@@ -90,6 +91,30 @@ function wrapWideTables(container: HTMLDivElement) {
     wrapper.className = TABLE_SCROLL_CLASS;
     table.parentNode?.insertBefore(wrapper, table);
     wrapper.appendChild(table);
+  });
+}
+
+/**
+ * Wrap images that have alt text in a <figure> with a <figcaption> so we can
+ * show the alt text as a caption under the image. Images without alt text stay
+ * as-is with no caption.
+ */
+function wrapImagesWithCaptions(container: HTMLDivElement) {
+  const images = container.querySelectorAll<HTMLImageElement>("img[alt]");
+  images.forEach((img) => {
+    const alt = (img.getAttribute("alt") || "").trim();
+    if (!alt) return;
+    // Avoid double-wrapping
+    if (img.parentElement && img.parentElement.tagName.toLowerCase() === "figure") {
+      return;
+    }
+    const figure = document.createElement("figure");
+    figure.className = IMAGE_WITH_CAPTION_CLASS;
+    const caption = document.createElement("figcaption");
+    caption.textContent = alt;
+    img.parentNode?.insertBefore(figure, img);
+    figure.appendChild(img);
+    figure.appendChild(caption);
   });
 }
 
@@ -168,6 +193,7 @@ export function MarkdownPreviewWeb({
     replaceCheckboxesWithDom(container, (taskIndex) => onToggleRef.current?.(taskIndex));
     addCodeCopyButtons(container);
     wrapWideTables(container);
+    wrapImagesWithCaptions(container);
   }, [html, onToggleCheckbox]);
 
   if (!html) {

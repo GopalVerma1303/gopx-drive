@@ -224,7 +224,16 @@ ${getHighlightCss(colors)}
 .markdown-preview th[align="center"], .markdown-preview td[align="center"] { text-align: center; }
 .markdown-preview th[align="right"], .markdown-preview td[align="right"] { text-align: right; }
 .markdown-preview hr { border: none; height: 1px; background: ${colors.ring}; margin: 1em 0; }
-.markdown-preview img { max-width: 100%; height: auto; border-radius: 4px; }
+.markdown-preview img { max-width: 100%; height: auto; border-radius: 4px; display: block; margin-left: auto; margin-right: auto; }
+.markdown-preview figure.image-with-caption { margin: 1.25em 0; text-align: center; }
+.markdown-preview figure.image-with-caption > img { display: block; margin-left: auto; margin-right: auto; }
+.markdown-preview figure.image-with-caption > figcaption {
+  margin-top: 0.5em;
+  font-size: 0.9em;
+  line-height: 1.4;
+  color: ${colors.mutedForeground};
+  font-style: italic;
+}
 .markdown-preview .preview-placeholder { color: ${colors.mutedForeground}; font-style: italic; margin: 0; padding: 0; }
 /* Task lists (GFM): same left padding as bullet/number lists; we hide the default marker and draw our own checkbox. */
 .markdown-preview ul.contains-task-list,
