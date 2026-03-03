@@ -192,8 +192,8 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
     }
 /* Fenced blocks (GFM): syntax highlighting via rehype-highlight (highlight.js); copy button in pre, scroll only on code wrapper.
    Reset color for code inside pre so only inline code is pink. */
-.markdown-preview pre { position: relative; z-index: 0; background: ${colors.muted}; font-size: ${Math.round(MARKDOWN_FONT_SIZE * 0.875)}px; line-height: 1.45; margin: 0 0 1em 0; padding: 12px 16px; border-radius: 8px; font-family: ${MARKDOWN_FONT_FAMILY_CODE}; border: 1px solid ${colors.ring}; overflow: visible; }
-.markdown-preview pre .code-block-scroll { overflow-x: auto; overflow-y: hidden; }
+.markdown-preview pre { position: relative; z-index: 0; background: ${colors.muted}; font-size: ${Math.round(MARKDOWN_FONT_SIZE * 0.875)}px; line-height: 1.45; margin: 0 0 1em 0; padding: 12px 16px; border-radius: 8px; font-family: ${MARKDOWN_FONT_FAMILY_CODE}; border: 1px solid ${colors.ring}; overflow-x: auto; overflow-y: hidden; width: 100%; box-sizing: border-box; -webkit-overflow-scrolling: touch; }
+.markdown-preview pre .code-block-scroll { display: block; }
 .markdown-preview pre code { padding: 0; margin: 0; font-size: inherit; background: none; color: ${colors.foreground}; }
 .markdown-preview pre .code-copy-btn { position: absolute !important; top: 8px !important; right: 8px !important; left: auto !important; bottom: auto !important; width: 24px !important; min-width: 24px !important; max-width: 24px !important; height: 24px !important; margin: 0 !important; padding: 0 !important; border: none !important; border-radius: 0; background: transparent !important; color: ${colors.ring}; cursor: pointer; display: inline-flex !important; flex-shrink: 0; align-items: center; justify-content: center; opacity: 0.85; transition: opacity 0.15s; z-index: 9999 !important; box-sizing: border-box; pointer-events: auto !important; -webkit-tap-highlight-color: transparent !important; tap-highlight-color: transparent; outline: none !important; }
 .markdown-preview .code-copy-btn:hover { opacity: 1; }

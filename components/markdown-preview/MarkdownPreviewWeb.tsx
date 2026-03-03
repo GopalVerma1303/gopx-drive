@@ -34,6 +34,37 @@ const TABLE_SCROLL_CLASS = "markdown-table-scroll";
 const IMAGE_WITH_CAPTION_CLASS = "image-with-caption";
 
 /**
+ * Best-effort clipboard copy that works on more mobile browsers.
+ * Tries navigator.clipboard; falls back to a hidden textarea + execCommand("copy").
+ */
+async function copyTextToClipboard(text: string) {
+  if (!text) return;
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+  } catch {
+    // fall through to textarea path
+  }
+
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "true");
+    textarea.style.position = "absolute";
+    textarea.style.opacity = "0";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  } catch {
+    // give up; no supported clipboard path
+  }
+}
+
+/**
  * Add copy button to each code block (pre). Wrap code in a scrollable div so the button (sibling) stays fixed and does not scroll with the code.
  */
 function addCodeCopyButtons(container: HTMLDivElement) {
@@ -43,34 +74,22 @@ function addCodeCopyButtons(container: HTMLDivElement) {
     const codeEl = pre.querySelector("code");
     const text = (codeEl?.innerText ?? (pre as HTMLElement).innerText ?? "").trim();
 
-    // Wrap all existing children (the code) in a scrollable div so only the code scrolls, not the button
-    const scrollWrap = document.createElement("div");
-    scrollWrap.className = CODE_BLOCK_SCROLL_CLASS;
-    while (pre.firstChild) {
-      scrollWrap.appendChild(pre.firstChild);
-    }
-    pre.appendChild(scrollWrap);
-
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = CODE_COPY_BTN_CLASS;
     btn.setAttribute("aria-label", "Copy code");
     btn.innerHTML = COPY_ICON_SVG;
     btn.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(text);
-        btn.classList.add("copied");
-        btn.innerHTML = CHECK_ICON_SVG;
-        const t = setTimeout(() => {
-          btn.classList.remove("copied");
-          btn.innerHTML = COPY_ICON_SVG;
-        }, COPIED_DURATION_MS);
-        (btn as unknown as { _copyTimeout?: number })._copyTimeout = t;
-      } catch {
-        // ignore
-      }
+      await copyTextToClipboard(text);
+      btn.classList.add("copied");
+      btn.innerHTML = CHECK_ICON_SVG;
+      const t = setTimeout(() => {
+        btn.classList.remove("copied");
+        btn.innerHTML = COPY_ICON_SVG;
+      }, COPIED_DURATION_MS);
+      (btn as unknown as { _copyTimeout?: number })._copyTimeout = t;
     });
-    pre.insertBefore(btn, scrollWrap);
+    pre.insertBefore(btn, pre.firstChild);
   });
 }
 
@@ -179,18 +198,40 @@ export function MarkdownPreviewWeb({
   const onToggleRef = useRef(onToggleCheckbox);
   onToggleRef.current = onToggleCheckbox;
 
-  // Replace native checkboxes whenever container content changes.
-  // On web we can do this immediately after innerHTML is applied – React commits
-  // the HTML before running effects – so we don't need delayed rAF/timeout logic.
+  // Best-effort "post-processing" for innerHTML content: we:
+  // - enhance checkboxes
+  // - attach copy buttons to code blocks
+  // - wrap tables/images
+  // and keep those enhancements in place across React re-renders by
+  // observing DOM mutations and re-running idempotent helpers.
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !html) return;
 
-    replaceCheckboxesWithDom(container, (taskIndex) => onToggleRef.current?.(taskIndex));
-    addCodeCopyButtons(container);
-    wrapWideTables(container);
-    wrapImagesWithCaptions(container);
-  }, [html, onToggleCheckbox]);
+    const runEnhancers = () => {
+      replaceCheckboxesWithDom(container, (taskIndex) => onToggleRef.current?.(taskIndex));
+      addCodeCopyButtons(container);
+      wrapWideTables(container);
+      wrapImagesWithCaptions(container);
+    };
+
+    runEnhancers();
+
+    const observer = new MutationObserver(() => {
+      // Batch multiple mutations; helpers are idempotent and cheap for
+      // typical note sizes, so we can safely re-run.
+      runEnhancers();
+    });
+
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [html]);
 
   if (!html) {
     return (
