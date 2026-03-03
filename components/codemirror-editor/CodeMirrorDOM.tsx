@@ -12,7 +12,7 @@
 import { MARKDOWN_CONTENT_PADDING_PX_NATIVE, MARKDOWN_FONT_SIZE } from "@/lib/markdown-content-layout";
 import {
   getCodeMirrorThemeConfig,
-  getMarkdownHighlightStyleConfig,
+  getMarkdownHighlightStyleMinimalConfig,
   type MarkdownThemeColors,
 } from "@/lib/markdown-theme";
 import { defaultKeymap, history, indentWithTab } from "@codemirror/commands";
@@ -21,8 +21,6 @@ import { markdown } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
-import { blockquoteHideQuoteMarks } from "./blockquote-hide-quote-marks";
-import { codeBlockLinePlugin } from "./code-block-line-plugin";
 import { useDOMImperativeHandle, type DOMImperativeFactory } from "expo/dom";
 import React, { useEffect, useRef, type Ref } from "react";
 
@@ -129,7 +127,9 @@ export default function CodeMirrorDOM({
       },
     };
     const highlightStyle = HighlightStyle.define(
-      getMarkdownHighlightStyleConfig(theme) as Parameters<typeof HighlightStyle.define>[0]
+      getMarkdownHighlightStyleMinimalConfig(theme) as Parameters<
+        typeof HighlightStyle.define
+      >[0]
     );
     const baseTheme = getCodeMirrorThemeConfig(theme, { contentPadding: false });
     const state = EditorState.create({
@@ -137,8 +137,6 @@ export default function CodeMirrorDOM({
       extensions: [
         markdown(markdownConfig),
         syntaxHighlighting(highlightStyle),
-        ...codeBlockLinePlugin,
-        ...blockquoteHideQuoteMarks,
         history(),
         keymap.of([...defaultKeymap, indentWithTab]),
         EditorView.lineWrapping,

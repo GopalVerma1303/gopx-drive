@@ -2,7 +2,7 @@
 
 import {
   getCodeMirrorThemeConfig,
-  getMarkdownHighlightStyleConfig,
+  getMarkdownHighlightStyleMinimalConfig,
   getMarkdownThemeFromPalette,
 } from "@/lib/markdown-theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -191,9 +191,8 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       if (!node || !(node instanceof HTMLElement)) return;
 
       const initial = initialValueRef.current;
-      const markdownHighlightStyle = HighlightStyle.define(getMarkdownHighlightStyleConfig(theme));
-
-      const { jsSupport, tsSupport } = getMarkdownCodeLanguages?.() ?? { jsSupport: null, tsSupport: null };
+      const { jsSupport, tsSupport } =
+        getMarkdownCodeLanguages?.() ?? { jsSupport: null, tsSupport: null };
       const markdownConfig = jsSupport && tsSupport
         ? {
           defaultCodeLanguage: jsSupport.language,
@@ -213,12 +212,16 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       themeColorsCompartmentRef.current = themeColorsCompartment;
       highlightCompartmentRef.current = highlightCompartment;
 
+      const markdownHighlightStyle = HighlightStyle.define(
+        getMarkdownHighlightStyleMinimalConfig(theme)
+      );
+
       const state = EditorState.create({
         doc: initial,
         extensions: [
           markdown(markdownConfig ?? {}),
           highlightCompartment.of(syntaxHighlighting(markdownHighlightStyle)),
-          ...(getCodeBlockLinePlugin?.() ?? []),
+          // Removed code block / blockquote wrapper plugins for better typing performance
           history(),
           keymap.of([...defaultKeymap, indentWithTab]),
           EditorView.lineWrapping,
@@ -239,7 +242,13 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
           ),
           themeColorsCompartment.of(EditorView.theme(getCodeMirrorThemeConfig(theme))),
           EditorView.theme({
-            ".cm-scroller": { minHeight: 0, overflow: "auto", overflowY: "scroll", height: "100%", maxHeight: "100%" },
+            ".cm-scroller": {
+              minHeight: 0,
+              overflow: "auto",
+              overflowY: "scroll",
+              height: "100%",
+              maxHeight: "100%",
+            },
           }),
         ],
       });
@@ -265,7 +274,7 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       };
     }, []);
 
-    // Reconfigure theme and syntax colors when light/dark theme changes
+    // Reconfigure theme and minimal syntax colors when light/dark theme changes
     useEffect(() => {
       if (Platform.OS !== "web" || !EditorView || !viewRef.current) return;
       const view = viewRef.current;
@@ -273,7 +282,9 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       const highlightComp = highlightCompartmentRef.current;
       if (!themeComp || !highlightComp) return;
 
-      const markdownHighlightStyle = HighlightStyle.define(getMarkdownHighlightStyleConfig(theme));
+      const markdownHighlightStyle = HighlightStyle.define(
+        getMarkdownHighlightStyleMinimalConfig(theme)
+      );
       view.dispatch({
         effects: [
           themeComp.reconfigure(EditorView.theme(getCodeMirrorThemeConfig(theme))),

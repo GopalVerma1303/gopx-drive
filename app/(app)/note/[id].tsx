@@ -522,6 +522,8 @@ export default function NoteEditorScreen() {
     },
   });
 
+  const [previewReady, setPreviewReady] = useState<boolean>(isNewNote);
+
   if (isLoading && !isNewNote) {
     return (
       <View
@@ -603,6 +605,7 @@ export default function NoteEditorScreen() {
                     content={content}
                     onToggleCheckbox={setContent}
                     placeholder="Start writing in markdown..."
+                    onFirstHtmlRendered={() => setPreviewReady(true)}
                   />
                 </ScrollView>
               </View>
@@ -702,6 +705,7 @@ export default function NoteEditorScreen() {
                       onToggleCheckbox={setContent}
                       placeholder="Start writing in markdown..."
                       contentContainerStyle={{ flex: 1, width: "100%", height: "100%" }}
+                      onFirstHtmlRendered={() => setPreviewReady(true)}
                     />
                   </ScrollView>
                 </View>
@@ -760,6 +764,23 @@ export default function NoteEditorScreen() {
               </View>
             </View>
           </Animated.View>
+        )}
+        {/* Overlay loader while initial preview HTML is being generated, so user does not see a blank note screen. */}
+        {!isNewNote && !previewReady && (
+          <View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: colors.background,
+            }}
+          >
+            <ActivityIndicator size="large" color={colors.foreground} />
+          </View>
         )}
       </View>
       <AIPromptModal

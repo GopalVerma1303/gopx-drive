@@ -141,12 +141,45 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
 .markdown-preview p:last-child { margin-bottom: 0; }
 .markdown-preview strong { font-weight: 700; color: ${colors.foreground}; }
 .markdown-preview em { font-style: italic; color: ${colors.foreground}; }
-/* Inline code: same size as editor (shared constant) */
-.markdown-preview code { font-family: ${MARKDOWN_FONT_FAMILY_CODE}; font-size: ${MARKDOWN_CODE_FONT_SIZE_EM}; background: ${codeBg}; padding: 0.12em 0.3em; border-radius: 4px; color: ${colors.foreground}; margin: 0; }
-/* Fenced blocks (GFM): syntax highlighting via rehype-highlight (highlight.js); copy button in pre, scroll only on code wrapper */
+/* Inline code: same size as editor (shared constant). Use pink text, no background. */
+.markdown-preview code {
+  font-family: ${MARKDOWN_FONT_FAMILY_CODE};
+  font-size: ${MARKDOWN_CODE_FONT_SIZE_EM};
+  background: none;
+  padding: 0.12em 0.3em;
+  border-radius: 4px;
+  color: #ec4899;
+  margin: 0;
+}
+/* Inline code with strikethrough:
+   - remove the inherited line-through from the parent for the code itself
+   - draw our own 1px pink line via ::after, positioned vertically in the middle */
+.markdown-preview del > code,
+.markdown-preview s > code {
+  position: relative;
+  text-decoration: none;
+}
+.markdown-preview del > code::after,
+.markdown-preview s > code::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  border-top: 1px solid #ec4899;
+}
+/* When a strike element wraps only inline code,
+   remove its own text-decoration so we don't see a second white line behind the pink one. */
+.markdown-preview del:has(> code:only-child),
+.markdown-preview s:has(> code:only-child) {
+  text-decoration: none;
+}
+/* Fenced blocks (GFM): syntax highlighting via rehype-highlight (highlight.js); copy button in pre, scroll only on code wrapper.
+   Reset color for code inside pre so only inline code is pink. */
 .markdown-preview pre { position: relative; z-index: 0; background: ${colors.muted}; font-size: ${Math.round(MARKDOWN_FONT_SIZE * 0.875)}px; line-height: 1.45; margin: 0 0 1em 0; padding: 12px 16px; border-radius: 8px; font-family: ${MARKDOWN_FONT_FAMILY_CODE}; border: 1px solid ${colors.ring}; overflow: visible; }
 .markdown-preview pre .code-block-scroll { overflow-x: auto; overflow-y: hidden; }
-.markdown-preview pre code { padding: 0; margin: 0; font-size: inherit; background: none; }
+.markdown-preview pre code { padding: 0; margin: 0; font-size: inherit; background: none; color: ${colors.foreground}; }
 .markdown-preview pre .code-copy-btn { position: absolute !important; top: 8px !important; right: 8px !important; left: auto !important; bottom: auto !important; width: 24px !important; min-width: 24px !important; max-width: 24px !important; height: 24px !important; margin: 0 !important; padding: 0 !important; border: none !important; border-radius: 0; background: transparent !important; color: ${colors.ring}; cursor: pointer; display: inline-flex !important; flex-shrink: 0; align-items: center; justify-content: center; opacity: 0.85; transition: opacity 0.15s; z-index: 9999 !important; box-sizing: border-box; pointer-events: auto !important; -webkit-tap-highlight-color: transparent !important; tap-highlight-color: transparent; outline: none !important; }
 .markdown-preview .code-copy-btn:hover { opacity: 1; }
 .markdown-preview .code-copy-btn:active { background: transparent !important; }
@@ -154,9 +187,9 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
 .markdown-preview .code-copy-btn.copied svg { color: inherit; }
 .markdown-preview .code-copy-btn svg { width: 18px; height: 18px; pointer-events: none; flex-shrink: 0; display: block; }
 ${getHighlightCss(colors)}
-/* Blockquote: border at full opacity; text content slightly faded */
-.markdown-preview blockquote { border-left: 3px solid ${quoteBorder}; padding-left: 0.5em; margin: 0 0 1em 0; color: ${colors.foreground}; font-style: italic; }
-.markdown-preview blockquote > * { opacity: 0.58; }
+/* Blockquote: border + soft padding; slightly faded inner text (match editor) */
+.markdown-preview blockquote { border-left: 3px solid ${quoteBorder}; padding-left: 1.25em; margin: 0 0 1em 0; color: ${colors.foreground}; font-style: italic; }
+.markdown-preview blockquote > * { opacity: 0.7; }
 /* Lists: restore bullets/numbers (Tailwind preflight removes them). Task lists get list-style: none below. */
 .markdown-preview ul { margin: 0 0 1em 0; padding-left: 1.5em; list-style-position: outside; list-style-type: disc; }
 .markdown-preview ol { margin: 0 0 1em 0; padding-left: 1.5em; list-style-position: outside; list-style-type: decimal; }
@@ -167,6 +200,10 @@ ${getHighlightCss(colors)}
 .markdown-preview a:visited { color: ${linkUrl}; }
 /* Tables (GFM): match old react-native-markdown-display table styles */
 .markdown-preview table { border-collapse: collapse; width: 100%; margin: 16px 0; border: 1px solid ${colors.ring}; border-radius: 0; background: ${colors.background}; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+/* When tables have many columns they can overflow on small screens. Wrap wide tables in a scroll container (see MarkdownPreviewWeb)
+   which enables horizontal scrolling without breaking layout. */
+.markdown-preview .markdown-table-scroll { width: 100%; overflow-x: auto; margin: 16px 0; }
+.markdown-preview .markdown-table-scroll > table { width: max-content; min-width: 100%; margin: 0; }
 .markdown-preview thead { background: color-mix(in srgb, ${colors.foreground} 10%, transparent); }
 .markdown-preview tbody { background: ${colors.muted}; }
 .markdown-preview th, .markdown-preview td { border: 1px solid ${colors.ring}; text-align: left; color: ${colors.foreground}; }
@@ -179,15 +216,35 @@ ${getHighlightCss(colors)}
 .markdown-preview hr { border: none; height: 1px; background: ${colors.ring}; margin: 1em 0; }
 .markdown-preview img { max-width: 100%; height: auto; border-radius: 4px; }
 .markdown-preview .preview-placeholder { color: ${colors.mutedForeground}; font-style: italic; margin: 0; padding: 0; }
-/* Task lists (GFM): same left padding as bullet lists; bullet is hidden but its space was still reserved – cancel it so checkbox aligns with bullet position */
-.markdown-preview ul.contains-task-list { list-style: none; padding-left: 1.5em; }
-.markdown-preview li.task-list-item { list-style: none; margin-left: -1em; padding-left: 0; padding-inline-start: 0; margin-inline-start: -1em; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em; }
-.markdown-preview li.task-list-item::marker { content: none; width: 0; display: none; }
-/* Keep checkbox and text on same horizontal line; prevent p from forcing a break */
-.markdown-preview li.task-list-item > p { margin: 0; flex: 1 1 auto; min-width: 0; }
-/* Nested task list: force ul to wrap to next line and preserve indentation */
-.markdown-preview li.task-list-item > ul { flex-basis: 100%; width: 100%; min-width: 100%; margin-top: 0.25em; margin-bottom: 0; align-self: flex-start; }
-.markdown-preview li.task-list-item .markdown-preview-checkbox-wrapper { display: inline-flex; flex-shrink: 0; margin-right: 0.25em; align-items: center; justify-content: center; height: 16px; }
+/* Task lists (GFM): same left padding as bullet/number lists; we hide the default marker and draw our own checkbox. */
+.markdown-preview ul.contains-task-list,
+.markdown-preview ol.contains-task-list { list-style: none; padding-left: 1.5em; }
+.markdown-preview li.task-list-item {
+  position: relative;
+  list-style: none;
+  margin: 0.25em 0;
+}
+.markdown-preview li.task-list-item::marker {
+  content: none;
+}
+/* Ensure the first paragraph in a task item doesn't add extra spacing */
+.markdown-preview li.task-list-item > p:first-child {
+  margin-top: 0;
+}
+.markdown-preview li.task-list-item > p {
+  margin-bottom: 0;
+}
+/* Checkbox wrapper: sits in the marker slot, vertically aligned with the first line of text */
+.markdown-preview li.task-list-item .markdown-preview-checkbox-wrapper {
+  position: absolute;
+  left: -1.5em;
+  top: 0.1em;
+  width: 1.2em;
+  display: flex;
+  padding-top: 2.5px;
+  align-items: center;
+  justify-content: center;
+}
 /* Web-only custom checkbox (matches UI checkbox: green when checked, red when unchecked); click toggles completed/not completed */
 .markdown-preview .md-preview-checkbox { appearance: none; margin: 0; font: inherit; line-height: 1; width: 16px; height: 16px; min-width: 16px; min-height: 16px; border-radius: 4px; border: 2px solid #ef4444; background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: background-color 0.15s, border-color 0.15s; -webkit-tap-highlight-color: transparent; user-select: none; vertical-align: middle; }
 .markdown-preview .md-preview-checkbox.checked { border-color: #22c55e; background-color: #22c55e; }
@@ -250,13 +307,14 @@ export function getMarkdownHighlightStyleConfig(colors: MarkdownThemeColors) {
     { tag: tags.heading6, fontWeight: "600", fontSize: MARKDOWN_HEADING6_EM, lineHeight: MARKDOWN_HEADING6_LINE_HEIGHT, opacity: "0.9" },
     { tag: tags.strong, fontWeight: "700" },
     { tag: tags.emphasis, fontStyle: "italic" },
+    { tag: [tags.strikethrough, tags.deleted], textDecoration: "line-through", textDecorationColor: "#ec4899" },
     { tag: tags.link, color: link, textDecoration: "underline" },
     { tag: tags.url, color: linkUrl },
     {
       tag: tags.monospace,
       fontFamily: MARKDOWN_FONT_FAMILY_CODE,
       fontSize: MARKDOWN_CODE_FONT_SIZE_EM,
-      backgroundColor: codeBg,
+      color: "#ec4899",
       padding: "0.12em 0.3em",
       borderRadius: "4px",
     },
@@ -271,6 +329,107 @@ export function getMarkdownHighlightStyleConfig(colors: MarkdownThemeColors) {
     { tag: tags.processingInstruction, opacity: "0.65" },
     { tag: tags.comment, opacity: "0.6", fontStyle: "italic" },
     // Code block content (GitHub-style – same as preview)
+    { tag: tags.lineComment, color: code.comment },
+    { tag: tags.blockComment, color: code.comment },
+    { tag: tags.docComment, color: code.comment },
+    { tag: tags.keyword, color: code.keyword },
+    { tag: tags.controlKeyword, color: code.keyword },
+    { tag: tags.definitionKeyword, color: code.keyword },
+    { tag: tags.moduleKeyword, color: code.keyword },
+    { tag: tags.operatorKeyword, color: code.keyword },
+    { tag: tags.string, color: code.string },
+    { tag: tags.docString, color: code.string },
+    { tag: tags.character, color: code.string },
+    { tag: tags.number, color: code.number },
+    { tag: tags.integer, color: code.number },
+    { tag: tags.float, color: code.number },
+    { tag: tags.literal, color: code.string },
+    { tag: tags.regexp, color: code.string },
+    { tag: tags.bool, color: code.keyword },
+    { tag: tags.name, color: code.name },
+    { tag: tags.typeName, color: code.typeName },
+    { tag: tags.tagName, color: code.typeName },
+    { tag: tags.propertyName, color: code.propertyName },
+    { tag: tags.attributeName, color: code.propertyName },
+    { tag: tags.variableName, color: code.variableName },
+    { tag: tags.labelName, color: code.name },
+    { tag: tags.className, color: code.typeName },
+    { tag: tags.namespace, color: code.typeName },
+    { tag: tags.operator, color: code.operator },
+    { tag: tags.punctuation, color: code.punctuation },
+    { tag: tags.bracket, color: code.punctuation },
+    { tag: tags.meta, color: code.meta },
+    { tag: tags.invalid, color: code.invalid },
+  ];
+}
+
+/**
+ * Minimal markdown highlight config for the editor:
+ * only uses color / fontWeight / fontStyle / textDecoration – no fontSize,
+ * lineHeight, padding, margin, or other size-dependent properties.
+ */
+export function getMarkdownHighlightStyleMinimalConfig(colors: MarkdownThemeColors) {
+  const { link, linkUrl, codeBg } = resolveColors(colors);
+  const code = getGitHubCodeColors(colors.isDark === true);
+  return [
+    // Headings and emphasis – weight + font-size/line-height (to match preview)
+    {
+      tag: tags.heading1,
+      fontWeight: "700",
+      fontSize: MARKDOWN_HEADING1_EM,
+      lineHeight: MARKDOWN_HEADING1_LINE_HEIGHT,
+    },
+    {
+      tag: tags.heading2,
+      fontWeight: "700",
+      fontSize: MARKDOWN_HEADING2_EM,
+      lineHeight: MARKDOWN_HEADING2_LINE_HEIGHT,
+    },
+    {
+      tag: tags.heading3,
+      fontWeight: "600",
+      fontSize: MARKDOWN_HEADING3_EM,
+      lineHeight: MARKDOWN_HEADING3_LINE_HEIGHT,
+    },
+    {
+      tag: tags.heading4,
+      fontWeight: "600",
+      fontSize: MARKDOWN_HEADING4_EM,
+      lineHeight: MARKDOWN_HEADING4_LINE_HEIGHT,
+    },
+    {
+      tag: tags.heading5,
+      fontWeight: "600",
+      fontSize: MARKDOWN_HEADING5_EM,
+      lineHeight: MARKDOWN_HEADING5_LINE_HEIGHT,
+    },
+    {
+      tag: tags.heading6,
+      fontWeight: "600",
+      fontSize: MARKDOWN_HEADING6_EM,
+      lineHeight: MARKDOWN_HEADING6_LINE_HEIGHT,
+    },
+    { tag: tags.strong, fontWeight: "700" },
+    { tag: tags.emphasis, fontStyle: "italic" },
+    // Links
+    { tag: tags.link, color: link, textDecoration: "underline" },
+    { tag: tags.url, color: linkUrl },
+    // Inline code: color + background only
+    {
+      tag: tags.monospace,
+      // Match preview: pink inline code
+      color: "#ec4899",
+    },
+    // Strikethrough
+    { tag: [tags.strikethrough, tags.deleted], textDecoration: "line-through", textDecorationColor: "#ec4899" },
+    // Blockquote + lists
+    { tag: tags.quote, opacity: "0.7", fontStyle: "italic" },
+    { tag: tags.list, opacity: "0.95" },
+    // Comments / separators
+    { tag: tags.contentSeparator, opacity: "0.6" },
+    { tag: tags.processingInstruction, opacity: "0.65" },
+    { tag: tags.comment, opacity: "0.6", fontStyle: "italic" },
+    // Code block tokens – colors only
     { tag: tags.lineComment, color: code.comment },
     { tag: tags.blockComment, color: code.comment },
     { tag: tags.docComment, color: code.comment },
@@ -349,17 +508,9 @@ export function getCodeMirrorThemeConfig(
     "&.cm-focused > .cm-scroller > .cm-cursorLayer .cm-cursor": {
       borderLeftColor: fg,
     },
-    /* Code block: match preview – no fill, same border (ring), same size. Inline code keeps .cm-monospace pill style. */
+    /* Code block: text-only styling – no border/padding; keep code font. Inline code keeps .cm-monospace pill style. */
     ".code-block-wrapper": {
       backgroundColor: "transparent",
-      padding: "12px 16px",
-      marginTop: "0",
-      marginBottom: "1em",
-      border: `1px solid ${colors.ring}`,
-      borderRadius: "8px",
-      overflow: "auto",
-      fontSize: `${Math.round(MARKDOWN_FONT_SIZE * 0.875)}px`,
-      lineHeight: "1.45",
       fontFamily: MARKDOWN_FONT_FAMILY_CODE,
     },
     ".code-block-wrapper .cm-monospace": {
@@ -367,11 +518,8 @@ export function getCodeMirrorThemeConfig(
       borderRadius: "0",
       backgroundColor: "transparent",
     },
-    /* Blockquote: border at full opacity; text content slightly faded */
+    /* Blockquote: text-only styling (no border/padding); text slightly faded */
     ".blockquote-wrapper": {
-      borderLeft: `3px solid ${quoteBorder}`,
-      paddingLeft: "0.5em",
-      marginBottom: "1em",
       fontStyle: "italic",
     },
     ".blockquote-wrapper .cm-line": {
@@ -390,8 +538,7 @@ export function getCodeMirrorThemeConfig(
 export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): string {
   const bg = colors.muted ?? colors.background;
   const fg = colors.foreground;
-  const { link, codeBg, quoteBorder } = resolveColors(colors);
-  const ring = colors.ring;
+  const { link, codeBg } = resolveColors(colors);
   const codeBlockFontSize = Math.round(MARKDOWN_FONT_SIZE * 0.875);
   return (
     `body, #codemirror-root, .cm-editor, .cm-scroller { background: ${bg} !important; } ` +
@@ -400,9 +547,9 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
     `.cm-scroller { -webkit-overflow-scrolling: touch !important; overflow-y: scroll !important; height: 100% !important; max-height: 100% !important; touch-action: pan-y !important; } ` +
     `.cm-url, .cm-link { color: ${link} !important; } ` +
     `.cm-monospace { background: ${codeBg} !important; } ` +
-    `.code-block-wrapper { background: transparent !important; padding: 12px 16px !important; margin-bottom: 1em !important; border: 1px solid ${ring} !important; border-radius: 8px !important; overflow: auto !important; font-size: ${codeBlockFontSize}px !important; line-height: 1.45 !important; font-family: ${MARKDOWN_FONT_FAMILY_CODE} !important; } ` +
+    `.code-block-wrapper { background: transparent !important; overflow: auto !important; font-size: ${codeBlockFontSize}px !important; line-height: 1.45 !important; font-family: ${MARKDOWN_FONT_FAMILY_CODE} !important; } ` +
     `.code-block-wrapper .cm-monospace { padding: 0 !important; border-radius: 0 !important; background: transparent !important; } ` +
-    `.blockquote-wrapper { border-left: 3px solid ${quoteBorder} !important; padding-left: 0.5em !important; margin-bottom: 1em !important; font-style: italic !important; } ` +
+    `.blockquote-wrapper { font-style: italic !important; } ` +
     `.blockquote-wrapper .cm-line { opacity: 0.58 !important; } ` +
     `.blockquote-wrapper .cm-quote { border-left: none !important; } `
   );

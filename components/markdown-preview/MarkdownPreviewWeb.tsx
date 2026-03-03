@@ -30,6 +30,7 @@ const CODE_COPY_BTN_CLASS = "code-copy-btn";
 const COPIED_DURATION_MS = 2000;
 
 const CODE_BLOCK_SCROLL_CLASS = "code-block-scroll";
+const TABLE_SCROLL_CLASS = "markdown-table-scroll";
 
 /**
  * Add copy button to each code block (pre). Wrap code in a scrollable div so the button (sibling) stays fixed and does not scroll with the code.
@@ -69,6 +70,26 @@ function addCodeCopyButtons(container: HTMLDivElement) {
       }
     });
     pre.insertBefore(btn, scrollWrap);
+  });
+}
+
+/**
+ * Wrap tables that have more than 3 columns in a horizontal scroll container
+ * so they don't overflow the viewport. The wrapper uses the TABLE_SCROLL_CLASS
+ * which is styled in markdown-theme.ts.
+ */
+function wrapWideTables(container: HTMLDivElement) {
+  const tables = container.querySelectorAll<HTMLTableElement>("table");
+  tables.forEach((table) => {
+    if (table.closest(`.${TABLE_SCROLL_CLASS}`)) return;
+    const headerRow = table.tHead?.rows[0] ?? table.rows[0];
+    if (!headerRow) return;
+    const columnCount = headerRow.cells.length;
+    if (columnCount <= 3) return;
+    const wrapper = document.createElement("div");
+    wrapper.className = TABLE_SCROLL_CLASS;
+    table.parentNode?.insertBefore(wrapper, table);
+    wrapper.appendChild(table);
   });
 }
 
@@ -149,6 +170,7 @@ export function MarkdownPreviewWeb({
       if (el) {
         replaceCheckboxesWithDom(el, (taskIndex) => onToggleRef.current?.(taskIndex));
         addCodeCopyButtons(el);
+        wrapWideTables(el);
       }
     };
     const scheduleRun = () => {
