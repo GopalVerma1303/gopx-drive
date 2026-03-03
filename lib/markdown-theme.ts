@@ -119,6 +119,7 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
   const { link, linkUrl, codeBg, quoteBorder } = resolveColors(colors);
   return `
 /* Padding on content only so scrollbar can sit at edge of device */
+/* Long URLs and unbreakable strings: wrap so content stays visible (no horizontal cut-off). */
 .markdown-preview {
   color: ${colors.foreground};
   font-size: ${MARKDOWN_FONT_SIZE}px;
@@ -130,6 +131,9 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
   width: 100%;
   min-height: 100%;
   overflow-x: hidden;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
 }
 /* Headings: same sizes and line-heights as editor (shared constants) */
 .markdown-preview h1 { font-size: ${MARKDOWN_HEADING1_EM}; font-weight: 700; margin: 0 0 0.5em 0; padding: 0; line-height: ${MARKDOWN_HEADING1_LINE_HEIGHT}; color: ${colors.foreground}; }
@@ -205,8 +209,8 @@ ${getHighlightCss(colors)}
 .markdown-preview ol { margin: 0 0 1em 0; padding-left: 1.5em; list-style-position: outside; list-style-type: decimal; }
 .markdown-preview li { margin: 0.25em 0; color: ${colors.foreground}; }
 .markdown-preview li > p { margin: 0; }
-/* Links: GFM-style, match editor link highlight */
-.markdown-preview a { color: ${link}; text-decoration: underline; }
+/* Links: GFM-style, match editor link highlight. Allow long URLs to wrap so they don't cut off. */
+.markdown-preview a { color: ${link}; text-decoration: underline; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word; }
 .markdown-preview a:visited { color: ${linkUrl}; }
       /* Tables (GFM): match old react-native-markdown-display table styles */
       .markdown-preview table { border-collapse: collapse; width: 100%; margin: 16px 0; border: 1px solid ${colors.ring}; border-radius: 0; background: ${colors.background}; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -216,7 +220,7 @@ ${getHighlightCss(colors)}
       .markdown-preview .markdown-table-scroll > table { width: max-content; min-width: 100%; margin: 0; }
 .markdown-preview thead { background: color-mix(in srgb, ${colors.foreground} 10%, transparent); }
 .markdown-preview tbody { background: ${colors.muted}; }
-.markdown-preview th, .markdown-preview td { border: 1px solid ${colors.ring}; text-align: left; color: ${colors.foreground}; }
+.markdown-preview th, .markdown-preview td { border: 1px solid ${colors.ring}; text-align: left; color: ${colors.foreground}; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word; }
 .markdown-preview th { padding: 14px 12px; font-weight: 600; font-size: 14px; letter-spacing: 0.3px; background: color-mix(in srgb, ${colors.foreground} 10%, transparent); }
 .markdown-preview td { padding: 12px; font-size: 14px; line-height: 20px; }
 /* Table alignment from markdown alignment row ( :--- left, :---: center, ---: right ) */
