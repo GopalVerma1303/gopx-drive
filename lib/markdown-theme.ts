@@ -181,39 +181,15 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
 .markdown-preview strong { font-weight: 700; color: ${colors.foreground}; }
 .markdown-preview em { font-style: italic; color: ${colors.foreground}; }
 /* Inline code: same size as editor (shared constant). Use pink text, no background. */
-.markdown-preview code {
-  font-family: ${MARKDOWN_FONT_FAMILY_CODE};
-  font-size: ${MARKDOWN_CODE_FONT_SIZE_EM};
-  background: none;
-  padding: 0.12em 0.3em;
-  border-radius: 4px;
-  color: #ec4899;
-  margin: 0;
-}
-/* Inline code with strikethrough:
-   - remove the inherited line-through from the parent for the code itself
-   - draw our own 1px pink line via ::after, positioned vertically in the middle */
-.markdown-preview del > code,
-.markdown-preview s > code {
-  position: relative;
-  text-decoration: none;
-}
-.markdown-preview del > code::after,
-.markdown-preview s > code::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  border-top: 1px solid #ec4899;
-}
-/* When a strike element wraps only inline code,
-   remove its own text-decoration so we don't see a second white line behind the pink one. */
-.markdown-preview del:has(> code:only-child),
-.markdown-preview s:has(> code:only-child) {
-  text-decoration: none;
-}
+      .markdown-preview code {
+      font-family: ${MARKDOWN_FONT_FAMILY_CODE};
+      font-size: ${MARKDOWN_CODE_FONT_SIZE_EM};
+      background: none;
+      padding: 0.12em 0.3em;
+      border-radius: 4px;
+      color: #ec4899;
+      margin: 0;
+    }
 /* Fenced blocks (GFM): syntax highlighting via rehype-highlight (highlight.js); copy button in pre, scroll only on code wrapper.
    Reset color for code inside pre so only inline code is pink. */
 .markdown-preview pre { position: relative; z-index: 0; background: ${colors.muted}; font-size: ${Math.round(MARKDOWN_FONT_SIZE * 0.875)}px; line-height: 1.45; margin: 0 0 1em 0; padding: 12px 16px; border-radius: 8px; font-family: ${MARKDOWN_FONT_FAMILY_CODE}; border: 1px solid ${colors.ring}; overflow: visible; }
