@@ -92,6 +92,25 @@ const ADD_CODE_COPY_BUTTONS_SCRIPT = `
 })(); true;
 `;
 
+/** Injected into WebView: wrap all tables in a horizontal scroll container so wide content can scroll on small screens. */
+const WRAP_TABLES_SCRIPT = `
+(function(){
+  var container = document.getElementById('content');
+  if (!container) return;
+  var tables = container.querySelectorAll('table');
+  for (var i = 0; i < tables.length; i++) {
+    var table = tables[i];
+    if (table.closest('.markdown-table-scroll')) continue;
+    var wrapper = document.createElement('div');
+    wrapper.className = 'markdown-table-scroll';
+    if (table.parentNode) {
+      table.parentNode.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+    }
+  }
+})(); true;
+`;
+
 interface MarkdownPreviewWebViewProps {
   html: string;
   contentContainerStyle?: object;
@@ -144,7 +163,7 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle, onCheckbox
         var el = document.getElementById('content');
         if(el) {
           el.innerHTML = html;
-          var run = function() { ${REPLACE_CHECKBOXES_SCRIPT} ${ADD_CODE_COPY_BUTTONS_SCRIPT} };
+          var run = function() { ${REPLACE_CHECKBOXES_SCRIPT} ${ADD_CODE_COPY_BUTTONS_SCRIPT} ${WRAP_TABLES_SCRIPT} };
           setTimeout(run, 0);
           setTimeout(run, 80);
           setTimeout(run, 250);
