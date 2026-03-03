@@ -158,43 +158,16 @@ export function MarkdownPreviewWeb({
   const onToggleRef = useRef(onToggleCheckbox);
   onToggleRef.current = onToggleCheckbox;
 
-  // Replace native checkboxes whenever container content changes (avoids race where DOM isn't ready yet)
+  // Replace native checkboxes whenever container content changes.
+  // On web we can do this immediately after innerHTML is applied – React commits
+  // the HTML before running effects – so we don't need delayed rAF/timeout logic.
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !html) return;
 
-    let rafId: number | null = null;
-    const run = () => {
-      rafId = null;
-      const el = containerRef.current;
-      if (el) {
-        replaceCheckboxesWithDom(el, (taskIndex) => onToggleRef.current?.(taskIndex));
-        addCodeCopyButtons(el);
-        wrapWideTables(el);
-      }
-    };
-    const scheduleRun = () => {
-      if (rafId != null) return;
-      rafId = requestAnimationFrame(run);
-    };
-
-    // Run once after mount/update (double rAF so React has committed innerHTML)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(scheduleRun);
-    });
-    const t1 = setTimeout(scheduleRun, 50);
-    const t2 = setTimeout(scheduleRun, 200);
-
-    // Observe future DOM changes (e.g. late innerHTML, or container reused) so checkboxes are always replaced
-    const observer = new MutationObserver(scheduleRun);
-    observer.observe(container, { childList: true, subtree: true });
-
-    return () => {
-      if (rafId != null) cancelAnimationFrame(rafId);
-      clearTimeout(t1);
-      clearTimeout(t2);
-      observer.disconnect();
-    };
+    replaceCheckboxesWithDom(container, (taskIndex) => onToggleRef.current?.(taskIndex));
+    addCodeCopyButtons(container);
+    wrapWideTables(container);
   }, [html, onToggleCheckbox]);
 
   if (!html) {
