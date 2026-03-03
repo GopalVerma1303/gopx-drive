@@ -216,7 +216,7 @@ ${getHighlightCss(colors)}
       .markdown-preview table { border-collapse: collapse; width: 100%; margin: 16px 0; border: 1px solid ${colors.ring}; border-radius: 0; background: ${colors.background}; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
       /* When tables overflow on small screens they are wrapped in a scroll container (see MarkdownPreviewWeb / MarkdownPreviewWebView)
          which enables horizontal scrolling without breaking layout. */
-      .markdown-preview .markdown-table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; touch-action: pan-x; margin: 16px 0; }
+      .markdown-preview .markdown-table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; margin: 16px 0; }
       .markdown-preview .markdown-table-scroll > table { width: max-content; min-width: 100%; margin: 0; }
 .markdown-preview thead { background: color-mix(in srgb, ${colors.foreground} 10%, transparent); }
 .markdown-preview tbody { background: ${colors.muted}; }
