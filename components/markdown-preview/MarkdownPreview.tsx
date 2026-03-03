@@ -69,6 +69,13 @@ export function MarkdownPreview({
 
     if (!content || !content.trim()) {
       setHtml("");
+      // For empty content, consider preview "ready" so outer loaders can hide.
+      if (!hasNotifiedFirstHtmlRef.current) {
+        hasNotifiedFirstHtmlRef.current = true;
+        if (typeof onFirstHtmlRendered === "function") {
+          onFirstHtmlRendered();
+        }
+      }
       return;
     }
 

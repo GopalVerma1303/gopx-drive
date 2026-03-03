@@ -524,17 +524,6 @@ export default function NoteEditorScreen() {
 
   const [previewReady, setPreviewReady] = useState<boolean>(isNewNote);
 
-  if (isLoading && !isNewNote) {
-    return (
-      <View
-        className="flex-1 items-center justify-center"
-        style={{ backgroundColor: colors.background }}
-      >
-        <ActivityIndicator size="large" color={colors.foreground} />
-      </View>
-    );
-  }
-
   return (
     <>
       <Stack.Screen
@@ -765,8 +754,9 @@ export default function NoteEditorScreen() {
             </View>
           </Animated.View>
         )}
-        {/* Overlay loader while initial preview HTML is being generated, so user does not see a blank note screen. */}
-        {!isNewNote && !previewReady && (
+        {/* Overlay loader while the note is loading or initial preview HTML is being generated,
+            so the user does not see a blank note screen. */}
+        {!isNewNote && (isLoading || !previewReady) && (
           <View
             style={{
               position: "absolute",
