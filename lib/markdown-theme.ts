@@ -129,6 +129,7 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
   padding: ${MARKDOWN_CONTENT_PADDING_PX.paddingTop}px ${MARKDOWN_CONTENT_PADDING_PX.paddingRight}px ${MARKDOWN_CONTENT_PADDING_PX.paddingBottom}px ${MARKDOWN_CONTENT_PADDING_PX.paddingLeft}px;
   width: 100%;
   min-height: 100%;
+  overflow-x: hidden;
 }
 /* Headings: same sizes and line-heights as editor (shared constants) */
 .markdown-preview h1 { font-size: ${MARKDOWN_HEADING1_EM}; font-weight: 700; margin: 0 0 0.5em 0; padding: 0; line-height: ${MARKDOWN_HEADING1_LINE_HEIGHT}; color: ${colors.foreground}; }
@@ -188,7 +189,16 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
 .markdown-preview .code-copy-btn svg { width: 18px; height: 18px; pointer-events: none; flex-shrink: 0; display: block; }
 ${getHighlightCss(colors)}
 /* Blockquote: border + soft padding; slightly faded inner text (match editor) */
-.markdown-preview blockquote { border-left: 3px solid ${quoteBorder}; padding-left: 1.25em; margin: 0 0 1em 0; color: ${colors.foreground}; font-style: italic; }
+.markdown-preview blockquote {
+  border-left: 3px solid ${quoteBorder};
+  padding-left: 0.75em;
+  margin: 1em 0 1em 0;
+  color: ${colors.foreground};
+  font-style: italic;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
 .markdown-preview blockquote > * { opacity: 0.7; }
 /* Lists: restore bullets/numbers (Tailwind preflight removes them). Task lists get list-style: none below. */
 .markdown-preview ul { margin: 0 0 1em 0; padding-left: 1.5em; list-style-position: outside; list-style-type: disc; }
@@ -241,7 +251,7 @@ ${getHighlightCss(colors)}
   top: 0.1em;
   width: 1.2em;
   display: flex;
-  padding-top: 2.5px;
+  padding-top: 2px;
   align-items: center;
   justify-content: center;
 }
