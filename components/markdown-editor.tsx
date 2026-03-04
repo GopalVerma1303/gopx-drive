@@ -141,7 +141,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
   ) {
     const { colors, isDark } = useThemeColors() as { colors: ThemePalette; isDark: boolean };
     const { width: windowWidth } = useWindowDimensions();
-    const inputRef = useRef<import("@/components/codemirror-editor").CodeMirrorEditorHandle | import("@/components/codemirror-editor/CodeMirrorDOM").CodeMirrorDOMRef | null>(null);
+    const inputRef = useRef<
+      (import("@/components/codemirror-editor").CodeMirrorEditorHandle &
+        Partial<import("@/components/codemirror-editor/CodeMirrorDOM").CodeMirrorDOMRef>) |
+        null
+    >(null);
     const previousValueRef = useRef<string>(value);
     const isProcessingListRef = useRef<boolean>(false);
     const pendingInternalValueRef = useRef<string | null>(null);
@@ -630,7 +634,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       previousValueRef.current = nextText;
       pendingInternalValueRef.current = nextText;
       onChangeText?.(nextText);
-      inputRef.current?.focus();
 
       const setCursorPosition = () => {
         const input = inputRef.current as any;
@@ -649,7 +652,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               selection: { start: nextSelection.start, end: nextSelection.end },
             });
           }
-          inputRef.current?.focus();
         }
         endProgrammaticSelection();
       };
@@ -1306,33 +1308,51 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
     useImperativeHandle(ref, () => ({
       insertText: (text: string, cursorOffset?: number) => {
-        insertTextAtSelection(text, cursorOffset);
+        const input = inputRef.current as any;
+        if (input && typeof input.insertText === "function") {
+          input.insertText(text, cursorOffset);
+        } else {
+          insertTextAtSelection(text, cursorOffset);
+        }
       },
       wrapSelection: (before: string, after: string, cursorOffset?: number) => {
-        if (isPreview || !inputRef.current) return;
-
-        const start = selection.start;
-        const end = selection.end;
-        const currentText = previousValueRef.current;
-        const selectedText = currentText.substring(start, end);
-
-        // If there's selected text, wrap it; otherwise insert the formatting markers
-        let nextText: string;
-        let newCursorPosition: number;
-
-        if (selectedText.length > 0) {
-          // Wrap selected text - place cursor at the end of the wrapped text
-          nextText = currentText.substring(0, start) + before + selectedText + after + currentText.substring(end);
-          newCursorPosition = start + before.length + selectedText.length + after.length;
+        const input = inputRef.current as any;
+        if (input && typeof input.wrapSelection === "function") {
+          input.wrapSelection(before, after, cursorOffset);
         } else {
-          // No selection, insert formatting markers with cursor positioned according to cursorOffset
-          nextText = currentText.substring(0, start) + before + after + currentText.substring(end);
-          // cursorOffset should position cursor between before and after markers
-          // e.g., for "**" + "**" with offset 2, cursor should be at start + 2 (after first "**")
-          newCursorPosition = start + (cursorOffset ?? before.length);
-        }
+          if (isPreview || !inputRef.current) return;
 
-        applyTextAndSelection(nextText, { start: newCursorPosition, end: newCursorPosition });
+          const start = selection.start;
+          const end = selection.end;
+          const currentText = previousValueRef.current;
+          const selectedText = currentText.substring(start, end);
+
+          // If there's selected text, wrap it; otherwise insert the formatting markers
+          let nextText: string;
+          let newCursorPosition: number;
+
+          if (selectedText.length > 0) {
+            nextText =
+              currentText.substring(0, start) +
+              before +
+              selectedText +
+              after +
+              currentText.substring(end);
+            newCursorPosition = start + before.length + selectedText.length + after.length;
+          } else {
+            nextText =
+              currentText.substring(0, start) +
+              before +
+              after +
+              currentText.substring(end);
+            newCursorPosition = start + (cursorOffset ?? before.length);
+          }
+
+          applyTextAndSelection(nextText, {
+            start: newCursorPosition,
+            end: newCursorPosition,
+          });
+        }
       },
       indent: () => {
         indentAtSelection();
@@ -2817,7 +2837,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           />
         ) : Platform.OS === "web" ? (
           <CodeMirrorWeb
-            ref={inputRef}
+            ref={inputRef as React.Ref<import("@/components/codemirror-editor").CodeMirrorEditorHandle>}
             value={value}
             onChangeText={handleTextChange}
             onSelectionChange={(sel) => {

@@ -235,6 +235,10 @@ if (typeof document !== "undefined") {
 export interface CodeMirrorEditorHandle {
   setSelection: (start: number, end: number) => void;
   focus: () => void;
+  /** Insert text at the current selection, optionally positioning the cursor within the inserted text. */
+  insertText?: (text: string, cursorOffset?: number) => void;
+  /** Wrap the current selection (or insert markers) with `before`/`after`, controlling cursor position. */
+  wrapSelection?: (before: string, after: string, cursorOffset?: number) => void;
   /** For web: return the editor container DOM node so parent can check focus (e.g. for keyboard shortcuts). */
   getDomNode?: () => HTMLDivElement | null;
 }
@@ -442,8 +446,67 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
             });
           }
         },
+        insertText: (text: string, cursorOffset?: number) => {
+          const view = viewRef.current;
+          if (!view) return;
+
+          const tr = view.state.replaceSelection(text);
+          view.dispatch(tr);
+
+          if (typeof cursorOffset === "number") {
+            const sel = view.state.selection.main;
+            const from = sel.from - text.length + cursorOffset;
+            view.dispatch({
+              selection: { anchor: from, head: from },
+            });
+          }
+        },
+        wrapSelection: (before: string, after: string, cursorOffset?: number) => {
+          const view = viewRef.current;
+          if (!view) return;
+
+          const sel = view.state.selection.main;
+          const selectedText = view.state.sliceDoc(sel.from, sel.to);
+
+          if (selectedText.length > 0) {
+            const replacement = before + selectedText + after;
+            view.dispatch({
+              changes: { from: sel.from, to: sel.to, insert: replacement },
+              selection: {
+                anchor: sel.from + replacement.length,
+                head: sel.from + replacement.length,
+              },
+            });
+          } else {
+            const replacement = before + after;
+            const offset = typeof cursorOffset === "number" ? cursorOffset : before.length;
+            const cursorPos = sel.from + offset;
+            view.dispatch({
+              changes: { from: sel.from, to: sel.to, insert: replacement },
+              selection: { anchor: cursorPos, head: cursorPos },
+            });
+          }
+        },
         focus: () => {
-          viewRef.current?.focus();
+          const view = viewRef.current;
+          if (!view) return;
+
+          // Prefer focusing the underlying DOM node with preventScroll so the
+          // page doesn't jump when toolbar actions re-focus the editor.
+          const dom: any = (view as any).dom;
+          if (dom && typeof dom.focus === "function") {
+            try {
+              dom.focus({ preventScroll: true } as any);
+              return;
+            } catch {
+              // Older browsers may not support the options bag; fall back.
+              dom.focus();
+              return;
+            }
+          }
+
+          // Fallback: use CodeMirror's focus, which may scroll the page.
+          view.focus();
         },
         getDomNode: () => containerRef.current,
       }),

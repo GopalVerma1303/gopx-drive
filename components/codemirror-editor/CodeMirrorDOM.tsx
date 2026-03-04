@@ -282,7 +282,23 @@ export default function CodeMirrorDOM({
     refProp ?? null,
     () => ({
       focus: () => {
-        viewRef.current?.focus();
+        const view = viewRef.current;
+        if (!view) return;
+
+        // On native, focus the underlying DOM node with preventScroll where
+        // supported so toolbar actions don't cause the editor viewport to jump.
+        const dom: any = (view as any).dom;
+        if (dom && typeof dom.focus === "function") {
+          try {
+            dom.focus({ preventScroll: true } as any);
+            return;
+          } catch {
+            dom.focus();
+            return;
+          }
+        }
+
+        view.focus();
       },
       setSelection: (...args: JSONValue[]) => {
         const [start, end] = args as [number, number];
