@@ -12,13 +12,23 @@
 import { MARKDOWN_CONTENT_PADDING_PX_NATIVE, MARKDOWN_FONT_SIZE } from "@/lib/markdown-content-layout";
 import {
   getCodeMirrorThemeConfig,
-  getMarkdownHighlightStyleMinimalConfig,
+  getMarkdownHighlightStyleConfig,
   getScrollbarCss,
   type MarkdownThemeColors,
 } from "@/lib/markdown-theme";
 import { defaultKeymap, history, indentWithTab } from "@codemirror/commands";
+import { cpp } from "@codemirror/lang-cpp";
+import { css } from "@codemirror/lang-css";
+import { html } from "@codemirror/lang-html";
+import { java } from "@codemirror/lang-java";
 import { javascript } from "@codemirror/lang-javascript";
+import { json } from "@codemirror/lang-json";
 import { markdown } from "@codemirror/lang-markdown";
+import { php } from "@codemirror/lang-php";
+import { python } from "@codemirror/lang-python";
+import { rust } from "@codemirror/lang-rust";
+import { sql } from "@codemirror/lang-sql";
+import { xml } from "@codemirror/lang-xml";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
@@ -130,19 +140,82 @@ export default function CodeMirrorDOM({
     });
     const jsSupport = javascript();
     const tsSupport = javascript({ typescript: true });
+    const pythonSupport = python();
+    const rustSupport = rust();
+    const phpSupport = php();
+    const javaSupport = java();
+    const cppSupport = cpp();
+    const sqlSupport = sql();
+    const jsonSupport = json();
+    const htmlSupport = html();
+    const xmlSupport = xml();
+    const cssSupport = css();
+
+    const codeLanguageSpecs: Array<{ names: string[]; support: { language: any } }> = [
+      {
+        support: tsSupport,
+        names: ["ts", "typescript", "tsx"],
+      },
+      {
+        support: jsSupport,
+        names: ["", "js", "javascript", "jsx", "mjs", "cjs", "node"],
+      },
+      {
+        support: pythonSupport,
+        names: ["py", "python"],
+      },
+      {
+        support: rustSupport,
+        names: ["rs", "rust"],
+      },
+      {
+        support: phpSupport,
+        names: ["php"],
+      },
+      {
+        support: javaSupport,
+        names: ["java"],
+      },
+      {
+        support: cppSupport,
+        names: ["c", "h", "hpp", "hh", "hxx", "cc", "cxx", "cpp", "c++"],
+      },
+      {
+        support: sqlSupport,
+        names: ["sql", "postgres", "postgresql", "mysql"],
+      },
+      {
+        support: jsonSupport,
+        names: ["json"],
+      },
+      {
+        support: htmlSupport,
+        names: ["html", "htm", "xhtml"],
+      },
+      {
+        support: xmlSupport,
+        names: ["xml", "xaml", "svg"],
+      },
+      {
+        support: cssSupport,
+        names: ["css", "scss", "less"],
+      },
+    ];
+
     const markdownConfig = {
       defaultCodeLanguage: jsSupport.language,
       codeLanguages: (info: string) => {
-        const n = (info || "").trim().toLowerCase();
-        if (n === "ts" || n === "typescript") return tsSupport.language;
-        if (n === "tsx") return tsSupport.language;
+        const name = (info || "").trim().toLowerCase();
+        for (const spec of codeLanguageSpecs) {
+          if (spec.names.includes(name)) {
+            return spec.support.language;
+          }
+        }
         return jsSupport.language;
       },
     };
     const highlightStyle = HighlightStyle.define(
-      getMarkdownHighlightStyleMinimalConfig(theme) as Parameters<
-        typeof HighlightStyle.define
-      >[0]
+      getMarkdownHighlightStyleConfig(theme) as Parameters<typeof HighlightStyle.define>[0]
     );
     const baseTheme = getCodeMirrorThemeConfig(theme, { contentPadding: false });
     const state = EditorState.create({

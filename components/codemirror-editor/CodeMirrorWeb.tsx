@@ -2,7 +2,7 @@
 
 import {
   getCodeMirrorThemeConfig,
-  getMarkdownHighlightStyleMinimalConfig,
+  getMarkdownHighlightStyleConfig,
   getMarkdownThemeFromPalette,
 } from "@/lib/markdown-theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -26,7 +26,13 @@ let syntaxHighlighting: any;
 let HighlightStyle: any;
 let syntaxTree: any;
 let BlockWrapper: any;
-let getMarkdownCodeLanguages: (() => { jsSupport: any; tsSupport: any }) | null = null;
+let getMarkdownCodeLanguages:
+  | (() => {
+      jsSupport: any;
+      tsSupport: any;
+      codeLanguageSpecs: Array<{ names: string[]; support: any }>;
+    })
+  | null = null;
 let getCodeBlockLinePlugin: (() => any[]) | null = null;
 
 if (typeof document !== "undefined") {
@@ -36,6 +42,17 @@ if (typeof document !== "undefined") {
   const cmLangMarkdown = require("@codemirror/lang-markdown");
   const cmLanguage = require("@codemirror/language");
   const cmLangJs = require("@codemirror/lang-javascript");
+  const cmLangPython = require("@codemirror/lang-python");
+  const cmLangRust = require("@codemirror/lang-rust");
+  const cmLangGo = require("@codemirror/lang-go");
+  const cmLangPhp = require("@codemirror/lang-php");
+  const cmLangJava = require("@codemirror/lang-java");
+  const cmLangCpp = require("@codemirror/lang-cpp");
+  const cmLangSql = require("@codemirror/lang-sql");
+  const cmLangJson = require("@codemirror/lang-json");
+  const cmLangHtml = require("@codemirror/lang-html");
+  const cmLangXml = require("@codemirror/lang-xml");
+  const cmLangCss = require("@codemirror/lang-css");
   EditorView = cmView.EditorView;
   EditorState = cmState.EditorState;
   Compartment = cmState.Compartment;
@@ -51,7 +68,74 @@ if (typeof document !== "undefined") {
   syntaxTree = cmLanguage.syntaxTree;
   const jsSupport = cmLangJs.javascript();
   const tsSupport = cmLangJs.javascript({ typescript: true });
-  getMarkdownCodeLanguages = () => ({ jsSupport, tsSupport });
+  const pythonSupport = cmLangPython.python();
+  const rustSupport = cmLangRust.rust();
+  const goSupport = cmLangGo.go();
+  const phpSupport = cmLangPhp.php();
+  const javaSupport = cmLangJava.java();
+  const cppSupport = cmLangCpp.cpp();
+  const sqlSupport = cmLangSql.sql();
+  const jsonSupport = cmLangJson.json();
+  const htmlSupport = cmLangHtml.html();
+  const xmlSupport = cmLangXml.xml();
+  const cssSupport = cmLangCss.css();
+
+  const codeLanguageSpecs: Array<{ names: string[]; support: any }> = [
+    {
+      support: tsSupport,
+      names: ["ts", "typescript", "tsx"],
+    },
+    {
+      support: jsSupport,
+      names: ["", "js", "javascript", "jsx", "mjs", "cjs", "node"],
+    },
+    {
+      support: pythonSupport,
+      names: ["py", "python"],
+    },
+    {
+      support: rustSupport,
+      names: ["rs", "rust"],
+    },
+    {
+      support: goSupport,
+      names: ["go", "golang"],
+    },
+    {
+      support: phpSupport,
+      names: ["php"],
+    },
+    {
+      support: javaSupport,
+      names: ["java"],
+    },
+    {
+      support: cppSupport,
+      names: ["c", "h", "hpp", "hh", "hxx", "cc", "cxx", "cpp", "c++"],
+    },
+    {
+      support: sqlSupport,
+      names: ["sql", "postgres", "postgresql", "mysql"],
+    },
+    {
+      support: jsonSupport,
+      names: ["json"],
+    },
+    {
+      support: htmlSupport,
+      names: ["html", "htm", "xhtml"],
+    },
+    {
+      support: xmlSupport,
+      names: ["xml", "xaml", "svg"],
+    },
+    {
+      support: cssSupport,
+      names: ["css", "scss", "less"],
+    },
+  ];
+
+  getMarkdownCodeLanguages = () => ({ jsSupport, tsSupport, codeLanguageSpecs });
 
   // Inline code-block + blockquote wrapper plugin (same logic as code-block-line-plugin.ts) using this module's CodeMirror instances
   const Decoration = cmView.Decoration;
@@ -191,19 +275,27 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       if (!node || !(node instanceof HTMLElement)) return;
 
       const initial = initialValueRef.current;
-      const { jsSupport, tsSupport } =
-        getMarkdownCodeLanguages?.() ?? { jsSupport: null, tsSupport: null };
-      const markdownConfig = jsSupport && tsSupport
-        ? {
-          defaultCodeLanguage: jsSupport.language,
-          codeLanguages: (info: string) => {
-            const n = (info || "").trim().toLowerCase();
-            if (n === "ts" || n === "typescript") return tsSupport.language;
-            if (n === "tsx") return tsSupport.language;
-            return jsSupport.language;
-          },
-        }
-        : undefined;
+      const { jsSupport, codeLanguageSpecs } =
+        getMarkdownCodeLanguages?.() ?? {
+          jsSupport: null,
+          tsSupport: null,
+          codeLanguageSpecs: [],
+        };
+      const markdownConfig =
+        jsSupport && codeLanguageSpecs.length > 0
+          ? {
+              defaultCodeLanguage: jsSupport.language,
+              codeLanguages: (info: string) => {
+                const name = (info || "").trim().toLowerCase();
+                for (const spec of codeLanguageSpecs) {
+                  if (spec.names.includes(name)) {
+                    return spec.support.language;
+                  }
+                }
+                return jsSupport.language;
+              },
+            }
+          : undefined;
 
       const heightCompartment = new Compartment();
       const themeColorsCompartment = new Compartment();
@@ -213,7 +305,7 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       highlightCompartmentRef.current = highlightCompartment;
 
       const markdownHighlightStyle = HighlightStyle.define(
-        getMarkdownHighlightStyleMinimalConfig(theme)
+        getMarkdownHighlightStyleConfig(theme)
       );
 
       const state = EditorState.create({
@@ -283,7 +375,7 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       if (!themeComp || !highlightComp) return;
 
       const markdownHighlightStyle = HighlightStyle.define(
-        getMarkdownHighlightStyleMinimalConfig(theme)
+        getMarkdownHighlightStyleConfig(theme)
       );
       view.dispatch({
         effects: [
