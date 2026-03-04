@@ -202,6 +202,97 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
 .markdown-preview .code-copy-btn.copied { color: ${colors.ring}; }
 .markdown-preview .code-copy-btn.copied svg { color: inherit; }
 .markdown-preview .code-copy-btn svg { width: 18px; height: 18px; pointer-events: none; flex-shrink: 0; display: block; }
+/* Mermaid diagrams: wrapped in a block container similar to fenced code blocks, with a small control toolbar. */
+.markdown-preview .mermaid-block {
+  position: relative;
+  z-index: 0;
+  background: ${codeBlockBg};
+  margin: 0 0 1.5em 0;
+  padding: 20px 24px 24px 24px;
+  border-radius: 8px;
+  border: 1px solid ${colors.ring};
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  min-height: 340px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.markdown-preview .mermaid-block .mermaid-controls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, 30px);
+  grid-template-rows: repeat(3, 30px);
+  grid-template-areas:
+    ".    up      zoomIn"
+    "left reset   right"
+    ".    down    zoomOut";
+  gap: 4px;
+  z-index: 2;
+}
+.markdown-preview .mermaid-block .mermaid-copy-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid ${colors.ring};
+  background: ${colors.background};
+  color: ${colors.foreground};
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+.markdown-preview .mermaid-block .mermaid-copy-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+.markdown-preview .mermaid-block .mermaid-controls button {
+  font-size: 11px;
+  line-height: 1;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid ${colors.ring};
+  background: ${colors.background};
+  color: ${colors.foreground};
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+.markdown-preview .mermaid-block .mermaid-controls button:hover {
+  background: ${colors.background};
+  border-color: ${colors.ring};
+}
+.markdown-preview .mermaid-block .mermaid-controls button svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+.markdown-preview .mermaid-block .mermaid {
+  display: inline-block;
+  transition: transform 0.18s ease-out;
+}
+.markdown-preview .mermaid-block .mermaid svg {
+  max-width: 100%;
+  height: auto;
+  transform-origin: center center;
+}
 ${getHighlightCss(colors)}
 /* Blockquote: border + soft padding; slightly faded inner text (match editor) */
 .markdown-preview blockquote {

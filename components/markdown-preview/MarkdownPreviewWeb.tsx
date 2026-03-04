@@ -26,12 +26,36 @@ const CHECK_ICON_SVG =
 const COPY_ICON_SVG =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
 
+/** Reset/refresh icon for mermaid zoom reset (Lucide-style rotate-cw). */
+const RESET_ICON_SVG =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><polyline points="21 3 21 9 15 9"/></svg>';
+
+/** Zoom in icon (Lucide zoom-in). */
+const ZOOM_IN_ICON_SVG =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+
+/** Zoom out icon (Lucide zoom-out). */
+const ZOOM_OUT_ICON_SVG =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+
+/** Arrow icons (Lucide arrows). */
+const ARROW_UP_SVG =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
+const ARROW_DOWN_SVG =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>';
+const ARROW_LEFT_SVG =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>';
+const ARROW_RIGHT_SVG =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+
 const CODE_COPY_BTN_CLASS = "code-copy-btn";
 const COPIED_DURATION_MS = 2000;
 
 const CODE_BLOCK_SCROLL_CLASS = "code-block-scroll";
 const TABLE_SCROLL_CLASS = "markdown-table-scroll";
 const IMAGE_WITH_CAPTION_CLASS = "image-with-caption";
+const MERMAID_BLOCK_CLASS = "mermaid-block";
+const MERMAID_CONTROLS_CLASS = "mermaid-controls";
 
 /**
  * Best-effort clipboard copy that works on more mobile browsers.
@@ -144,6 +168,167 @@ function wrapImagesWithCaptions(container: HTMLDivElement) {
   });
 }
 
+function enhanceMermaidBlocks(container: HTMLDivElement) {
+  const mermaidNodes = container.querySelectorAll<HTMLElement>(".mermaid");
+  mermaidNodes.forEach((node) => {
+    if (node.parentElement && node.parentElement.classList.contains(MERMAID_BLOCK_CLASS)) {
+      return;
+    }
+
+    const source = node.getAttribute("data-mermaid-source") ?? "";
+
+    const wrapper = document.createElement("div");
+    wrapper.className = MERMAID_BLOCK_CLASS;
+
+    const controls = document.createElement("div");
+    controls.className = MERMAID_CONTROLS_CLASS;
+
+    let scale = 1;
+    let offsetX = 0;
+    let offsetY = 0;
+    const applyScale = () => {
+      node.style.transformOrigin = "center center";
+      node.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+    };
+
+    const makeButton = (opts: {
+      html: string;
+      ariaLabel: string;
+      onClick: () => void;
+      extraClassName?: string;
+      gridArea?: string;
+    }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.innerHTML = opts.html;
+      btn.setAttribute("aria-label", opts.ariaLabel);
+      if (opts.extraClassName) {
+        btn.className = opts.extraClassName;
+      }
+      if (opts.gridArea) {
+        btn.style.gridArea = opts.gridArea;
+      }
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        opts.onClick();
+      });
+      return btn;
+    };
+
+    const PAN_STEP = 40;
+
+    const upBtn = makeButton({
+      html: ARROW_UP_SVG,
+      ariaLabel: "Pan up",
+      gridArea: "up",
+      onClick: () => {
+        offsetY += PAN_STEP;
+        applyScale();
+      },
+    });
+
+    const downBtn = makeButton({
+      html: ARROW_DOWN_SVG,
+      ariaLabel: "Pan down",
+      gridArea: "down",
+      onClick: () => {
+        offsetY -= PAN_STEP;
+        applyScale();
+      },
+    });
+
+    const leftBtn = makeButton({
+      html: ARROW_LEFT_SVG,
+      ariaLabel: "Pan left",
+      gridArea: "left",
+      onClick: () => {
+        offsetX += PAN_STEP;
+        applyScale();
+      },
+    });
+
+    const rightBtn = makeButton({
+      html: ARROW_RIGHT_SVG,
+      ariaLabel: "Pan right",
+      gridArea: "right",
+      onClick: () => {
+        offsetX -= PAN_STEP;
+        applyScale();
+      },
+    });
+
+    const zoomOutBtn = makeButton({
+      html: ZOOM_OUT_ICON_SVG,
+      ariaLabel: "Zoom out",
+      gridArea: "zoomOut",
+      onClick: () => {
+        scale = Math.max(scale - 0.25, 0.5);
+        applyScale();
+      },
+    });
+
+    const zoomInBtn = makeButton({
+      html: ZOOM_IN_ICON_SVG,
+      ariaLabel: "Zoom in",
+      gridArea: "zoomIn",
+      onClick: () => {
+        scale = Math.min(scale + 0.25, 3);
+        applyScale();
+      },
+    });
+
+    const resetBtn = makeButton({
+      html: RESET_ICON_SVG,
+      ariaLabel: "Reset zoom",
+      gridArea: "reset",
+      onClick: () => {
+        scale = 1;
+        offsetX = 0;
+        offsetY = 0;
+        applyScale();
+      },
+    });
+
+    const copyBtn = makeButton({
+      html: COPY_ICON_SVG,
+      ariaLabel: "Copy mermaid source",
+      extraClassName: "mermaid-copy-btn",
+      onClick: async () => {
+        if (!source) return;
+        await copyTextToClipboard(source);
+        copyBtn.classList.add("copied");
+        copyBtn.innerHTML = CHECK_ICON_SVG;
+        const t = window.setTimeout(() => {
+          copyBtn.classList.remove("copied");
+          copyBtn.innerHTML = COPY_ICON_SVG;
+        }, COPIED_DURATION_MS);
+        (copyBtn as unknown as { _copyTimeout?: number })._copyTimeout = t;
+      },
+    });
+
+    // Arrange in a 3x3 joystick-style grid via CSS grid areas.
+    controls.appendChild(zoomInBtn);
+    controls.appendChild(upBtn);
+    controls.appendChild(leftBtn);
+    controls.appendChild(resetBtn);
+    controls.appendChild(rightBtn);
+    controls.appendChild(zoomOutBtn);
+    controls.appendChild(downBtn);
+
+    const parent = node.parentNode;
+    if (parent) {
+      parent.insertBefore(wrapper, node);
+      wrapper.appendChild(controls);
+      wrapper.appendChild(node);
+      wrapper.appendChild(copyBtn);
+    }
+
+    // Ensure initial scale is applied.
+    applyScale();
+  });
+}
+
 const TASK_INDEX_ATTR = "data-task-index";
 
 /**
@@ -202,12 +387,37 @@ export function MarkdownPreviewWeb({
   contentContainerStyle,
   className,
 }: MarkdownPreviewWebProps) {
-  const { colors, isDark } = useThemeColors();
+  const { colors, isDark } = useThemeColors() as { colors: any; isDark: boolean };
   const theme = getMarkdownThemeFromPalette(colors, isDark);
   const css = getPreviewCss(theme);
   const containerRef = useRef<HTMLDivElement>(null);
   const onToggleRef = useRef(onToggleCheckbox);
   onToggleRef.current = onToggleCheckbox;
+  const mermaidRef = useRef<any | null>(null);
+
+  // Initialize Mermaid lazily in the browser so bundlers / SSR never import it on the server.
+  useEffect(() => {
+    let cancelled = false;
+    if (typeof window === "undefined") return;
+    (async () => {
+      try {
+        const mod = await import("mermaid");
+        const m: any = (mod as any).default ?? mod;
+        if (cancelled || !m) return;
+        m.initialize({
+          startOnLoad: false,
+          securityLevel: "loose",
+          theme: isDark ? "dark" : "default",
+        });
+        mermaidRef.current = m;
+      } catch {
+        // If mermaid fails to load, skip diagrams but keep the rest of preview working.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isDark]);
 
   // Best-effort "post-processing" for innerHTML content: we:
   // - enhance checkboxes
@@ -224,6 +434,25 @@ export function MarkdownPreviewWeb({
       addCodeCopyButtons(container);
       wrapWideTables(container);
       wrapImagesWithCaptions(container);
+      // After structural enhancers run, render any Mermaid diagrams present.
+      if (mermaidRef.current) {
+        try {
+          const mermaid: any = mermaidRef.current;
+          const mermaidNodes = container.querySelectorAll<HTMLElement>(".mermaid");
+          if (mermaidNodes.length > 0) {
+            // Mermaid v10+ exposes run; fall back to init if needed.
+            if (typeof mermaid.run === "function") {
+              mermaid.run({ nodes: mermaidNodes });
+            } else if (typeof mermaid.init === "function") {
+              mermaid.init(undefined, mermaidNodes);
+            }
+          }
+        } catch {
+          // Ignore mermaid failures so preview never breaks other content.
+        }
+      }
+      // After diagrams are rendered into SVG, wrap them in a block with controls.
+      enhanceMermaidBlocks(container);
     };
 
     runEnhancers();

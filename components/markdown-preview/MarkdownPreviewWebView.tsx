@@ -111,6 +111,166 @@ const WRAP_TABLES_SCRIPT = `
 })(); true;
 `;
 
+/** Injected into WebView: after content is updated, ask Mermaid (if loaded) to render any diagrams. */
+const RENDER_MERMAID_SCRIPT = `
+(function(){
+  try {
+    if (window.mermaid && typeof window.mermaid.run === 'function') {
+      window.mermaid.run({ querySelector: '.mermaid' });
+    } else if (window.mermaid && typeof window.mermaid.init === 'function') {
+      window.mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+    }
+  } catch (e) {
+    // Ignore failures so other markdown still renders.
+  }
+})(); true;
+`;
+
+/** Injected into WebView: wrap Mermaid diagrams in a .mermaid-block with joystick + copy controls, mirroring web behavior. */
+const ENHANCE_MERMAID_SCRIPT = `
+(function(){
+  try {
+    var container = document.getElementById('content');
+    if (!container) return;
+    var mermaids = container.querySelectorAll('.mermaid');
+    if (!mermaids.length) return;
+
+    var CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    var COPY_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
+    var RESET_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><polyline points="21 3 21 9 15 9"/></svg>';
+    var ZOOM_IN_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+    var ZOOM_OUT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+    var ARROW_UP_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
+    var ARROW_DOWN_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>';
+    var ARROW_LEFT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>';
+    var ARROW_RIGHT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+
+    function makeButton(opts) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.innerHTML = opts.html;
+      btn.setAttribute('aria-label', opts.ariaLabel);
+      if (opts.extraClassName) btn.className = opts.extraClassName;
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        opts.onClick();
+      });
+      return btn;
+    }
+
+    mermaids.forEach(function(node) {
+      if (node.parentElement && node.parentElement.classList.contains('mermaid-block')) return;
+
+      var source = node.getAttribute('data-mermaid-source') || node.textContent || '';
+      var wrapper = document.createElement('div');
+      wrapper.className = 'mermaid-block';
+
+      var controls = document.createElement('div');
+      controls.className = 'mermaid-controls';
+
+      var scale = 1;
+      var offsetX = 0;
+      var offsetY = 0;
+      function applyTransform() {
+        node.style.transformOrigin = 'center center';
+        node.style.transform = 'translate(' + offsetX + 'px,' + offsetY + 'px) scale(' + scale + ')';
+      }
+
+      var PAN_STEP = 40;
+
+      var upBtn = makeButton({
+        html: ARROW_UP_SVG,
+        ariaLabel: 'Pan up',
+        onClick: function() { offsetY += PAN_STEP; applyTransform(); }
+      });
+      upBtn.style.gridArea = 'up';
+
+      var downBtn = makeButton({
+        html: ARROW_DOWN_SVG,
+        ariaLabel: 'Pan down',
+        onClick: function() { offsetY -= PAN_STEP; applyTransform(); }
+      });
+      downBtn.style.gridArea = 'down';
+
+      var leftBtn = makeButton({
+        html: ARROW_LEFT_SVG,
+        ariaLabel: 'Pan left',
+        onClick: function() { offsetX += PAN_STEP; applyTransform(); }
+      });
+      leftBtn.style.gridArea = 'left';
+
+      var rightBtn = makeButton({
+        html: ARROW_RIGHT_SVG,
+        ariaLabel: 'Pan right',
+        onClick: function() { offsetX -= PAN_STEP; applyTransform(); }
+      });
+      rightBtn.style.gridArea = 'right';
+
+      var zoomInBtn = makeButton({
+        html: ZOOM_IN_SVG,
+        ariaLabel: 'Zoom in',
+        onClick: function() { scale = Math.min(scale + 0.25, 3); applyTransform(); }
+      });
+      zoomInBtn.style.gridArea = 'zoomIn';
+
+      var zoomOutBtn = makeButton({
+        html: ZOOM_OUT_SVG,
+        ariaLabel: 'Zoom out',
+        onClick: function() { scale = Math.max(scale - 0.25, 0.5); applyTransform(); }
+      });
+      zoomOutBtn.style.gridArea = 'zoomOut';
+
+      var resetBtn = makeButton({
+        html: RESET_SVG,
+        ariaLabel: 'Reset zoom',
+        onClick: function() { scale = 1; offsetX = 0; offsetY = 0; applyTransform(); }
+      });
+      resetBtn.style.gridArea = 'reset';
+
+      controls.appendChild(zoomInBtn);
+      controls.appendChild(upBtn);
+      controls.appendChild(leftBtn);
+      controls.appendChild(resetBtn);
+      controls.appendChild(rightBtn);
+      controls.appendChild(zoomOutBtn);
+      controls.appendChild(downBtn);
+
+      var copyBtn = makeButton({
+        html: COPY_SVG,
+        ariaLabel: 'Copy mermaid source',
+        extraClassName: 'mermaid-copy-btn',
+        onClick: function() {
+          if (!source) return;
+          if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'copyCode', text: source, index: -1 }));
+          } else if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(source).catch(function(){});
+          }
+          copyBtn.classList.add('copied');
+          copyBtn.innerHTML = CHECK_SVG;
+          setTimeout(function() {
+            copyBtn.classList.remove('copied');
+            copyBtn.innerHTML = COPY_SVG;
+          }, 2000);
+        }
+      });
+
+      var parent = node.parentNode;
+      if (parent) {
+        parent.insertBefore(wrapper, node);
+        wrapper.appendChild(controls);
+        wrapper.appendChild(node);
+        wrapper.appendChild(copyBtn);
+      }
+      applyTransform();
+    });
+  } catch (e) {
+    // Ignore errors to avoid breaking preview on native.
+  }
+})(); true;
+`;
+
 interface MarkdownPreviewWebViewProps {
   html: string;
   contentContainerStyle?: object;
@@ -137,7 +297,26 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle, onCheckbox
   useEffect(() => {
     if (!loaded || Platform.OS === "web") return;
     const css = getPreviewCss(theme);
-    const script = `(function(){var s=document.getElementById('preview-theme-override');if(!s){s=document.createElement('style');s.id='preview-theme-override';document.head.appendChild(s);}s.textContent=${JSON.stringify(css)};})(); true;`;
+    const script = `(function(){
+      try {
+        var s=document.getElementById('preview-theme-override');
+        if(!s){
+          s=document.createElement('style');
+          s.id='preview-theme-override';
+          document.head.appendChild(s);
+        }
+        s.textContent=${JSON.stringify(css)};
+        if(window.mermaid && typeof window.mermaid.initialize === 'function'){
+          window.mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: 'loose',
+            theme: ${theme.isDark ? "'dark'" : "'default'"}
+          });
+        }
+        ${RENDER_MERMAID_SCRIPT}
+        ${ENHANCE_MERMAID_SCRIPT}
+      } catch(e) {}
+    })(); true;`;
     webViewRef.current?.injectJavaScript(script);
   }, [
     loaded,
@@ -163,7 +342,7 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle, onCheckbox
         var el = document.getElementById('content');
         if(el) {
           el.innerHTML = html;
-          var run = function() { ${REPLACE_CHECKBOXES_SCRIPT} ${ADD_CODE_COPY_BUTTONS_SCRIPT} ${WRAP_TABLES_SCRIPT} };
+          var run = function() { ${REPLACE_CHECKBOXES_SCRIPT} ${ADD_CODE_COPY_BUTTONS_SCRIPT} ${WRAP_TABLES_SCRIPT} ${RENDER_MERMAID_SCRIPT} ${ENHANCE_MERMAID_SCRIPT} };
           setTimeout(run, 0);
           setTimeout(run, 80);
           setTimeout(run, 250);
