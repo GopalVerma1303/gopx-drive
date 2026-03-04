@@ -519,17 +519,20 @@ export function getCodeMirrorThemeConfig(
   colors: MarkdownThemeColors,
   options?: CodeMirrorThemeOptions
 ): Record<string, Record<string, string>> {
+  // Slightly smaller than preview to account for different font rendering in the editor.
+  const editorFontScale = 0.94;
   const contentPadding = options?.contentPadding !== false;
   const bg = colors.muted ?? colors.background;
   const fg = colors.foreground;
   const codeBg = colors.codeBackground ?? DEFAULT_CODE_BG;
   const quoteBorder = colors.blockquoteBorder ?? DEFAULT_QUOTE_BORDER;
   const codeBlockBg = hexToRgba(colors.background, colors.isDark ? 0.22 : 0.06);
+  const editorFontSizePx = Math.round(MARKDOWN_FONT_SIZE * editorFontScale);
   return {
     "&.cm-editor": {
       backgroundColor: bg,
       color: fg,
-      fontSize: `${MARKDOWN_FONT_SIZE}px`,
+      fontSize: `${editorFontSizePx}px`,
       fontFamily: MARKDOWN_FONT_FAMILY_BODY,
       minHeight: "0",
     },
@@ -544,7 +547,7 @@ export function getCodeMirrorThemeConfig(
       caretColor: fg,
     },
     ".cm-line": {
-      lineHeight: MARKDOWN_LINE_HEIGHT_CSS,
+      lineHeight: `calc(${MARKDOWN_LINE_HEIGHT_CSS} * ${editorFontScale})`,
     },
     /* Cursor (caret) – theme responsive; override CodeMirror default (1.2px solid black) */
     ".cm-cursor": {

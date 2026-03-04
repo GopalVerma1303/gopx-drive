@@ -317,6 +317,9 @@ export default function CodeMirrorDOM({
     ".cm-scroller"
   );
 
+  const editorFontScale = 0.94;
+  const editorFontSizePx = Math.round(MARKDOWN_FONT_SIZE * editorFontScale);
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: scrollbarCss }} />
@@ -328,7 +331,7 @@ export default function CodeMirrorDOM({
           height: "100%",
           maxHeight: "100%",
           overflow: "hidden",
-          fontSize: `${MARKDOWN_FONT_SIZE}px`,
+          fontSize: `${editorFontSizePx}px`,
           ...MARKDOWN_CONTENT_PADDING_PX_NATIVE,
           backgroundColor,
           color,
