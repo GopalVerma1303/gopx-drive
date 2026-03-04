@@ -23,10 +23,10 @@ import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { useDOMImperativeHandle, type DOMImperativeFactory } from "expo/dom";
+import React, { useEffect, useRef, type Ref } from "react";
 
 /** Matches expo/dom marshalling: methods exposed to native must accept JSON-serializable args. */
 type JSONValue = boolean | number | string | null | JSONValue[] | { [key: string]: JSONValue | undefined };
-import React, { useEffect, useRef, type Ref } from "react";
 
 function buildThemeFromProps(props: {
   backgroundColor: string;

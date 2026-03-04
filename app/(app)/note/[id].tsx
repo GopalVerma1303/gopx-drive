@@ -47,6 +47,10 @@ export default function NoteEditorScreen() {
   const queryClient = useQueryClient();
   const { alert } = useAlert();
   const { colors } = useThemeColors();
+  // Provide enough vertical space in a new note so the editor has a large click/press target
+  // roughly matching an average phone screen height.
+  const DEFAULT_NEW_NOTE_LINES = 22;
+  const DEFAULT_NEW_NOTE_CONTENT = "\n".repeat(DEFAULT_NEW_NOTE_LINES);
   const isNewNote = id === "new";
   const initialFolderId = typeof folderId === "string" && folderId.length > 0 ? folderId : null;
   /** Open in edit mode for new notes, or when we just created and replaced (edit=1) */
@@ -54,9 +58,9 @@ export default function NoteEditorScreen() {
   const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
 
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(DEFAULT_NEW_NOTE_CONTENT);
   const [lastSavedTitle, setLastSavedTitle] = useState("");
-  const [lastSavedContent, setLastSavedContent] = useState("");
+  const [lastSavedContent, setLastSavedContent] = useState(DEFAULT_NEW_NOTE_CONTENT);
   const [isPreview, setIsPreview] = useState(!openInEditMode);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -179,9 +183,9 @@ export default function NoteEditorScreen() {
     if (id === "new") {
       lastSyncedNoteIdRef.current = null;
       setTitle("");
-      setContent("");
+      setContent(DEFAULT_NEW_NOTE_CONTENT);
       setLastSavedTitle("");
-      setLastSavedContent("");
+      setLastSavedContent(DEFAULT_NEW_NOTE_CONTENT);
       setIsPreview(false); // open new note in edit mode
       setAiReplaceRange(null);
       setSelectedText("");
