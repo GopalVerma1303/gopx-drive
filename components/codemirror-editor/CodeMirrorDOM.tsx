@@ -29,14 +29,114 @@ import { python } from "@codemirror/lang-python";
 import { rust } from "@codemirror/lang-rust";
 import { sql } from "@codemirror/lang-sql";
 import { xml } from "@codemirror/lang-xml";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { EditorState } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import { HighlightStyle, syntaxHighlighting, syntaxTree } from "@codemirror/language";
+import { EditorState, StateField } from "@codemirror/state";
+import { BlockWrapper, Decoration, EditorView, keymap, WidgetType } from "@codemirror/view";
 import { useDOMImperativeHandle, type DOMImperativeFactory } from "expo/dom";
 import React, { useEffect, useRef, type Ref } from "react";
 
 /** Matches expo/dom marshalling: methods exposed to native must accept JSON-serializable args. */
 type JSONValue = boolean | number | string | null | JSONValue[] | { [key: string]: JSONValue | undefined };
+
+// Code-block + blockquote wrappers match web editor behavior so styles like
+// `.code-block-wrapper` from `getCodeMirrorThemeConfig` also apply on native.
+const CODE_BLOCK_NODES = new Set(["FencedCode", "CodeBlock"]);
+const CODE_BLOCK_WRAPPER_CLASS = "code-block-wrapper";
+const codeBlockWrapper = BlockWrapper.create({
+  tagName: "div",
+  attributes: { class: CODE_BLOCK_WRAPPER_CLASS },
+});
+
+const BLOCKQUOTE_WRAPPER_CLASS = "blockquote-wrapper";
+const blockquoteWrapper = BlockWrapper.create({
+  tagName: "div",
+  attributes: { class: BLOCKQUOTE_WRAPPER_CLASS },
+});
+
+function getBlockWrappers(state: EditorState) {
+  const tree = syntaxTree(state);
+  const ranges: Array<{ from: number; to: number; value: any }> = [];
+  tree.iterate({
+    enter: (node: any) => {
+      if (CODE_BLOCK_NODES.has(node.name)) {
+        ranges.push({ from: node.from, to: node.to, value: codeBlockWrapper });
+      } else if (node.name === "Blockquote") {
+        ranges.push({ from: node.from, to: node.to, value: blockquoteWrapper });
+      }
+    },
+  });
+  if (ranges.length === 0) return BlockWrapper.set([]);
+  return BlockWrapper.set(ranges, true);
+}
+
+const blockWrapperField = StateField.define<any>({
+  create(state) {
+    return getBlockWrappers(state as EditorState);
+  },
+  update(value, tr) {
+    if (tr.docChanged) return getBlockWrappers(tr.state as EditorState);
+    return value;
+  },
+});
+
+class HiddenQuoteMarkWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const span = document.createElement("span");
+    span.style.display = "inline-block";
+    span.style.width = "0";
+    span.style.overflow = "hidden";
+    span.setAttribute("aria-hidden", "true");
+    return span;
+  }
+}
+
+const hiddenQuoteWidget = new HiddenQuoteMarkWidget();
+
+function getBlockquoteHideQuoteDecorations(state: EditorState) {
+  const tree = syntaxTree(state);
+  const decos: Array<{ from: number; to: number; decoration: any }> = [];
+  tree.iterate({
+    enter: (node: any) => {
+      if (node.name !== "Blockquote") return;
+      const firstLine = state.doc.lineAt(node.from);
+      tree.iterate({
+        from: node.from,
+        to: node.to,
+        enter: (n: any) => {
+          if (n.name === "QuoteMark" && n.from >= firstLine.to) {
+            decos.push({
+              from: n.from,
+              to: n.to,
+              decoration: Decoration.replace({ widget: hiddenQuoteWidget, side: 1 }),
+            });
+          }
+        },
+      });
+    },
+  });
+  if (decos.length === 0) return Decoration.none;
+  return Decoration.set(
+    decos.map((d) => ({ from: d.from, to: d.to, value: d.decoration })),
+    true
+  );
+}
+
+const blockquoteHideQuoteMarkField = StateField.define<any>({
+  create(state) {
+    return getBlockquoteHideQuoteDecorations(state as EditorState);
+  },
+  update(value, tr) {
+    if (tr.docChanged) return getBlockquoteHideQuoteDecorations(tr.state as EditorState);
+    return value.map(tr.changes);
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+const codeBlockAndBlockquotePlugins = [
+  blockWrapperField,
+  EditorView.blockWrappers.of((view) => view.state.field(blockWrapperField)),
+  blockquoteHideQuoteMarkField,
+];
 
 function buildThemeFromProps(props: {
   backgroundColor: string;
@@ -223,6 +323,7 @@ export default function CodeMirrorDOM({
       extensions: [
         markdown(markdownConfig),
         syntaxHighlighting(highlightStyle),
+        ...codeBlockAndBlockquotePlugins,
         history(),
         keymap.of([...defaultKeymap, indentWithTab]),
         EditorView.lineWrapping,
@@ -333,7 +434,7 @@ export default function CodeMirrorDOM({
           overflow: "hidden",
           fontSize: `${editorFontSizePx}px`,
           ...MARKDOWN_CONTENT_PADDING_PX_NATIVE,
-          backgroundColor,
+          backgroundColor: muted ?? backgroundColor,
           color,
           boxSizing: "border-box",
         }}

@@ -2869,7 +2869,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
                 setSelectionBoth(sel);
                 onSelectionChange?.(sel);
               }}
-              backgroundColor={colors.muted ?? colors.background}
+              backgroundColor={colors.background}
               color={colors.foreground}
               muted={colors.muted}
               mutedForeground={colors.mutedForeground}
