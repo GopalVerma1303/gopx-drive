@@ -28,10 +28,10 @@ let syntaxTree: any;
 let BlockWrapper: any;
 let getMarkdownCodeLanguages:
   | (() => {
-      jsSupport: any;
-      tsSupport: any;
-      codeLanguageSpecs: Array<{ names: string[]; support: any }>;
-    })
+    jsSupport: any;
+    tsSupport: any;
+    codeLanguageSpecs: Array<{ names: string[]; support: any }>;
+  })
   | null = null;
 let getCodeBlockLinePlugin: (() => any[]) | null = null;
 
@@ -284,17 +284,17 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       const markdownConfig =
         jsSupport && codeLanguageSpecs.length > 0
           ? {
-              defaultCodeLanguage: jsSupport.language,
-              codeLanguages: (info: string) => {
-                const name = (info || "").trim().toLowerCase();
-                for (const spec of codeLanguageSpecs) {
-                  if (spec.names.includes(name)) {
-                    return spec.support.language;
-                  }
+            defaultCodeLanguage: jsSupport.language,
+            codeLanguages: (info: string) => {
+              const name = (info || "").trim().toLowerCase();
+              for (const spec of codeLanguageSpecs) {
+                if (spec.names.includes(name)) {
+                  return spec.support.language;
                 }
-                return jsSupport.language;
-              },
-            }
+              }
+              return jsSupport.language;
+            },
+          }
           : undefined;
 
       const heightCompartment = new Compartment();
@@ -313,7 +313,7 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
         extensions: [
           markdown(markdownConfig ?? {}),
           highlightCompartment.of(syntaxHighlighting(markdownHighlightStyle)),
-          // Removed code block / blockquote wrapper plugins for better typing performance
+          ...(getCodeBlockLinePlugin?.() ?? []),
           history(),
           keymap.of([...defaultKeymap, indentWithTab]),
           EditorView.lineWrapping,

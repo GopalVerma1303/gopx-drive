@@ -5,26 +5,26 @@
  */
 
 import {
-  MARKDOWN_CODE_FONT_SIZE_EM,
-  MARKDOWN_CONTENT_PADDING_PX,
-  MARKDOWN_EDITOR_CONTENT_PADDING_PX_WEB,
-  MARKDOWN_FONT_FAMILY_BODY,
-  MARKDOWN_FONT_FAMILY_CODE,
-  MARKDOWN_FONT_SIZE,
-  MARKDOWN_HEADING1_EM,
-  MARKDOWN_HEADING1_LINE_HEIGHT,
-  MARKDOWN_HEADING2_EM,
-  MARKDOWN_HEADING2_LINE_HEIGHT,
-  MARKDOWN_HEADING3_EM,
-  MARKDOWN_HEADING3_LINE_HEIGHT,
-  MARKDOWN_HEADING4_EM,
-  MARKDOWN_HEADING4_LINE_HEIGHT,
-  MARKDOWN_HEADING5_EM,
-  MARKDOWN_HEADING5_LINE_HEIGHT,
-  MARKDOWN_HEADING6_EM,
-  MARKDOWN_HEADING6_LINE_HEIGHT,
-  MARKDOWN_LINE_HEIGHT,
-  MARKDOWN_LINE_HEIGHT_CSS,
+    MARKDOWN_CODE_FONT_SIZE_EM,
+    MARKDOWN_CONTENT_PADDING_PX,
+    MARKDOWN_EDITOR_CONTENT_PADDING_PX_WEB,
+    MARKDOWN_FONT_FAMILY_BODY,
+    MARKDOWN_FONT_FAMILY_CODE,
+    MARKDOWN_FONT_SIZE,
+    MARKDOWN_HEADING1_EM,
+    MARKDOWN_HEADING1_LINE_HEIGHT,
+    MARKDOWN_HEADING2_EM,
+    MARKDOWN_HEADING2_LINE_HEIGHT,
+    MARKDOWN_HEADING3_EM,
+    MARKDOWN_HEADING3_LINE_HEIGHT,
+    MARKDOWN_HEADING4_EM,
+    MARKDOWN_HEADING4_LINE_HEIGHT,
+    MARKDOWN_HEADING5_EM,
+    MARKDOWN_HEADING5_LINE_HEIGHT,
+    MARKDOWN_HEADING6_EM,
+    MARKDOWN_HEADING6_LINE_HEIGHT,
+    MARKDOWN_LINE_HEIGHT,
+    MARKDOWN_LINE_HEIGHT_CSS,
 } from "@/lib/markdown-content-layout";
 import type { ThemePalette } from "@/lib/use-theme-colors";
 import { tags } from "@lezer/highlight";
@@ -151,6 +151,7 @@ function getHighlightCss(colors: MarkdownThemeColors): string {
 
 export function getPreviewCss(colors: MarkdownThemeColors): string {
   const { link, linkUrl, codeBg, quoteBorder } = resolveColors(colors);
+  const codeBlockBg = hexToRgba(colors.background, colors.isDark ? 0.22 : 0.06);
   return `
 /* Padding on content only so scrollbar can sit at edge of device */
 /* Long URLs and unbreakable strings: wrap so content stays visible (no horizontal cut-off). */
@@ -190,12 +191,12 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
       color: #ec4899;
       margin: 0;
     }
-/* Fenced blocks (GFM): syntax highlighting via rehype-highlight (highlight.js); copy button in pre, scroll only on code wrapper.
-   Reset color for code inside pre so only inline code is pink. */
-.markdown-preview pre { position: relative; z-index: 0; background: ${colors.muted}; font-size: ${Math.round(MARKDOWN_FONT_SIZE * 0.875)}px; line-height: 1.45; margin: 0 0 1em 0; padding: 12px 16px; border-radius: 8px; font-family: ${MARKDOWN_FONT_FAMILY_CODE}; border: 1px solid ${colors.ring}; overflow-x: auto; overflow-y: hidden; width: 100%; box-sizing: border-box; -webkit-overflow-scrolling: touch; }
-.markdown-preview pre .code-block-scroll { display: block; }
+/* Fenced blocks (GFM): syntax highlighting via rehype-highlight (highlight.js); copy button pinned to the top-right of the block,
+   while only the inner code wrapper scrolls horizontally. Reset color for code inside pre so only inline code is pink. */
+.markdown-preview pre { position: relative; z-index: 0; background: ${codeBlockBg}; font-size: ${Math.round(MARKDOWN_FONT_SIZE * 0.875)}px; line-height: 1.45; margin: 0 0 1em 0; padding: 12px 16px; border-radius: 8px; font-family: ${MARKDOWN_FONT_FAMILY_CODE}; border: 1px solid ${colors.ring}; overflow: hidden; width: 100%; box-sizing: border-box; }
+.markdown-preview pre .code-block-scroll { display: block; overflow-x: auto; overflow-y: hidden; width: 100%; -webkit-overflow-scrolling: touch; box-sizing: border-box; }
 .markdown-preview pre code { padding: 0; margin: 0; font-size: inherit; background: none; color: ${colors.foreground}; }
-.markdown-preview pre .code-copy-btn { position: absolute !important; top: 8px !important; right: 8px !important; left: auto !important; bottom: auto !important; width: 24px !important; min-width: 24px !important; max-width: 24px !important; height: 24px !important; margin: 0 !important; padding: 0 !important; border: none !important; border-radius: 0; background: transparent !important; color: ${colors.ring}; cursor: pointer; display: inline-flex !important; flex-shrink: 0; align-items: center; justify-content: center; opacity: 0.85; transition: opacity 0.15s; z-index: 9999 !important; box-sizing: border-box; pointer-events: auto !important; -webkit-tap-highlight-color: transparent !important; tap-highlight-color: transparent; outline: none !important; }
+.markdown-preview pre .code-copy-btn { position: absolute !important; top: 8px !important; right: 8px !important; left: auto !important; bottom: auto !important; width: 24px !important; min-width: 24px !important; max-width: 24px !important; height: 24px !important; margin: 0 !important; padding: 0 !important; border: none !important; border-radius: 0; background: transparent !important; color: ${colors.ring}; cursor: pointer; display: inline-flex !important; flex-shrink: 0; align-items: center; justify-content: center; opacity: 0.85; transition: opacity 0.15s; z-index: 2 !important; box-sizing: border-box; pointer-events: auto !important; -webkit-tap-highlight-color: transparent !important; tap-highlight-color: transparent; outline: none !important; }
 .markdown-preview .code-copy-btn:hover { opacity: 1; }
 .markdown-preview .code-copy-btn:active { background: transparent !important; }
 .markdown-preview .code-copy-btn.copied { color: ${colors.ring}; }
@@ -523,6 +524,7 @@ export function getCodeMirrorThemeConfig(
   const fg = colors.foreground;
   const codeBg = colors.codeBackground ?? DEFAULT_CODE_BG;
   const quoteBorder = colors.blockquoteBorder ?? DEFAULT_QUOTE_BORDER;
+  const codeBlockBg = hexToRgba(colors.background, colors.isDark ? 0.22 : 0.06);
   return {
     "&.cm-editor": {
       backgroundColor: bg,
@@ -551,10 +553,12 @@ export function getCodeMirrorThemeConfig(
     "&.cm-focused > .cm-scroller > .cm-cursorLayer .cm-cursor": {
       borderLeftColor: fg,
     },
-    /* Code block: text-only styling – no border/padding; keep code font. Inline code keeps .cm-monospace pill style. */
+    /* Code block: subtle darker bg + GitHub-style border; inline code keeps .cm-monospace pill style. */
     ".code-block-wrapper": {
-      backgroundColor: "transparent",
+      backgroundColor: codeBlockBg,
       fontFamily: MARKDOWN_FONT_FAMILY_CODE,
+      border: `1px solid ${colors.ring}`,
+      borderRadius: "8px",
     },
     ".code-block-wrapper .cm-monospace": {
       padding: "0",
@@ -586,6 +590,7 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
   const { link, codeBg } = resolveColors(colors);
   const codeBlockFontSize = Math.round(MARKDOWN_FONT_SIZE * 0.875);
   const scrollbarCss = getScrollbarCss({ muted, mutedForeground: mutedFg });
+  const codeBlockBg = hexToRgba(colors.background, colors.isDark ? 0.22 : 0.06);
   return (
     `body, #codemirror-root, .cm-editor, .cm-scroller { background: ${bg} !important; } ` +
     `.cm-content, .cm-line { color: ${fg} !important; caret-color: ${fg} !important; } ` +
@@ -593,7 +598,7 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
     `.cm-scroller { -webkit-overflow-scrolling: touch !important; overflow-y: scroll !important; height: 100% !important; max-height: 100% !important; touch-action: pan-y !important; } ` +
     `.cm-url, .cm-link { color: ${link} !important; } ` +
     `.cm-monospace { background: ${codeBg} !important; } ` +
-    `.code-block-wrapper { background: transparent !important; overflow: auto !important; font-size: ${codeBlockFontSize}px !important; line-height: 1.45 !important; font-family: ${MARKDOWN_FONT_FAMILY_CODE} !important; } ` +
+    `.code-block-wrapper { background: ${codeBlockBg} !important; overflow: auto !important; font-size: ${codeBlockFontSize}px !important; line-height: 1.45 !important; font-family: ${MARKDOWN_FONT_FAMILY_CODE} !important; border: 1px solid ${colors.ring} !important; border-radius: 8px !important; } ` +
     `.code-block-wrapper .cm-monospace { padding: 0 !important; border-radius: 0 !important; background: transparent !important; } ` +
     `.blockquote-wrapper { font-style: italic !important; } ` +
     `.blockquote-wrapper .cm-line { opacity: 0.58 !important; } ` +

@@ -64,14 +64,24 @@ async function copyTextToClipboard(text: string) {
   }
 }
 
-/**
- * Add copy button to each code block (pre). Wrap code in a scrollable div so the button (sibling) stays fixed and does not scroll with the code.
- */
 function addCodeCopyButtons(container: HTMLDivElement) {
   const pres = container.querySelectorAll("pre");
   pres.forEach((pre) => {
     if (pre.querySelector(`.${CODE_COPY_BTN_CLASS}`)) return;
-    const codeEl = pre.querySelector("code");
+    // Ensure code is wrapped in an inner scroll container so the copy button
+    // can stay fixed while only the code scrolls horizontally.
+    let scrollWrapper = pre.querySelector<HTMLElement>(`.${CODE_BLOCK_SCROLL_CLASS}`);
+    if (!scrollWrapper) {
+      scrollWrapper = document.createElement("div");
+      scrollWrapper.className = CODE_BLOCK_SCROLL_CLASS;
+      // Move all existing children (code, whitespace, etc.) into the wrapper.
+      while (pre.firstChild) {
+        scrollWrapper.appendChild(pre.firstChild);
+      }
+      pre.appendChild(scrollWrapper);
+    }
+
+    const codeEl = scrollWrapper.querySelector("code") ?? pre.querySelector("code");
     const text = (codeEl?.innerText ?? (pre as HTMLElement).innerText ?? "").trim();
 
     const btn = document.createElement("button");
@@ -89,7 +99,8 @@ function addCodeCopyButtons(container: HTMLDivElement) {
       }, COPIED_DURATION_MS);
       (btn as unknown as { _copyTimeout?: number })._copyTimeout = t;
     });
-    pre.insertBefore(btn, pre.firstChild);
+    // Insert the button as a sibling before the scroll wrapper so it does not scroll with the code.
+    pre.insertBefore(btn, scrollWrapper);
   });
 }
 
