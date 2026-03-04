@@ -332,10 +332,34 @@ export default function CodeMirrorDOM({
             const v = update.state.doc.toString();
             onContentChangeRef.current(v);
           }
-          if (update.selectionSet && onSelectionChangeRef.current) {
+          if (update.selectionSet) {
             const sel = update.state.selection.main;
-            onSelectionChangeRef.current({ start: sel.from, end: sel.to });
+            // Keep caret line visible inside the editor viewport (helps when keyboard opens).
+            try {
+              update.view.dispatch({
+                effects: EditorView.scrollIntoView(sel.head, { y: "nearest", yMargin: 48 } as any),
+              });
+            } catch {
+              // Fallback without options if older CodeMirror version
+              try {
+                update.view.dispatch({
+                  effects: EditorView.scrollIntoView(sel.head),
+                });
+              } catch {
+                // ignore if scrollIntoView not available
+              }
+            }
+            if (onSelectionChangeRef.current) {
+              onSelectionChangeRef.current({ start: sel.from, end: sel.to });
+            }
           }
+        }),
+        // Disable browser/IME text assistance (Android keyboard underline, spellcheck, etc.)
+        EditorView.contentAttributes.of({
+          autocomplete: "off",
+          autocorrect: "off",
+          autocapitalize: "off",
+          spellcheck: "false",
         }),
         EditorView.theme({
           "&": { height: "100%", minHeight: 0, maxHeight: "100%" },
@@ -380,36 +404,71 @@ export default function CodeMirrorDOM({
   // Expose ref methods for native (focus, setSelection). getValueAsync is not
   // supported here; native should rely on onContentChange so state is always in sync.
   useDOMImperativeHandle(
-    refProp ?? null,
-    () => ({
-      focus: () => {
-        const view = viewRef.current;
-        if (!view) return;
+    (refProp as React.Ref<DOMImperativeFactory> | null) ?? null,
+    () =>
+      ({
+        focus: () => {
+          const view = viewRef.current;
+          if (!view) return;
 
-        // On native, focus the underlying DOM node with preventScroll where
-        // supported so toolbar actions don't cause the editor viewport to jump.
-        const dom: any = (view as any).dom;
-        if (dom && typeof dom.focus === "function") {
-          try {
-            dom.focus({ preventScroll: true } as any);
-            return;
-          } catch {
-            dom.focus();
-            return;
+          // On native, focus the underlying DOM node with preventScroll where
+          // supported so toolbar actions don't cause the editor viewport to jump.
+          const dom: any = (view as any).dom;
+          if (dom && typeof dom.focus === "function") {
+            try {
+              dom.focus({ preventScroll: true } as any);
+              return;
+            } catch {
+              dom.focus();
+              return;
+            }
           }
-        }
 
-        view.focus();
-      },
-      setSelection: (...args: JSONValue[]) => {
-        const [start, end] = args as [number, number];
-        if (viewRef.current && typeof start === "number" && typeof end === "number") {
-          viewRef.current.dispatch({
-            selection: { anchor: start, head: end },
+          view.focus();
+        },
+        setSelection: (...args: JSONValue[]) => {
+          const [start, end] = args as [number, number];
+          if (viewRef.current && typeof start === "number" && typeof end === "number") {
+            viewRef.current.dispatch({
+              selection: { anchor: start, head: end },
+            });
+          }
+        },
+        insertText: (...args: JSONValue[]) => {
+          const [text, cursorOffset] = args as [string, number | undefined];
+          const view = viewRef.current;
+          if (!view) return;
+          const sel = view.state.selection.main;
+          const insert = text ?? "";
+          const newPos = sel.from + (typeof cursorOffset === "number" ? cursorOffset : insert.length);
+          view.dispatch({
+            changes: { from: sel.from, to: sel.to, insert },
+            selection: { anchor: newPos, head: newPos },
           });
-        }
-      },
-    }),
+        },
+        wrapSelection: (...args: JSONValue[]) => {
+          const [before, after, cursorOffset] = args as [
+            string,
+            string,
+            number | undefined
+          ];
+          const view = viewRef.current;
+          if (!view) return;
+          const sel = view.state.selection.main;
+          const doc = view.state.doc.toString();
+          const selected = doc.slice(sel.from, sel.to);
+          const prefix = before ?? "";
+          const suffix = after ?? "";
+          const insert = prefix + selected + suffix;
+          const defaultOffset = selected.length > 0 ? prefix.length + selected.length + suffix.length : prefix.length;
+          const newPos =
+            sel.from + (typeof cursorOffset === "number" ? cursorOffset : defaultOffset);
+          view.dispatch({
+            changes: { from: sel.from, to: sel.to, insert },
+            selection: { anchor: newPos, head: newPos },
+          });
+        },
+      }) as DOMImperativeFactory,
     []
   );
 
