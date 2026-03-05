@@ -643,18 +643,20 @@ export default function NoteEditorScreen() {
                     if (typeof h === "number" && h > 0) setEditorAreaHeightPx(h);
                   }}
                 >
-                  <MarkdownEditor
-                    ref={editorRef}
-                    value={content}
-                    onChangeText={setContent}
-                    onSelectionChange={(sel) => {
-                      lastSelectionRef.current = sel;
-                    }}
-                    placeholder="Start writing in markdown..."
-                    isPreview={false}
-                    onSave={handleSave}
-                    editorAreaHeight={editorAreaHeightPx}
-                  />
+                  {(!isNewNote && isLoading) ? null : (
+                    <MarkdownEditor
+                      ref={editorRef}
+                      value={content}
+                      onChangeText={setContent}
+                      onSelectionChange={(sel) => {
+                        lastSelectionRef.current = sel;
+                      }}
+                      placeholder="Start writing in markdown..."
+                      isPreview={false}
+                      onSave={handleSave}
+                      editorAreaHeight={editorAreaHeightPx}
+                    />
+                  )}
                 </View>
               </View>
             </View>
@@ -740,18 +742,20 @@ export default function NoteEditorScreen() {
                       minHeight: nativeEditorContentMinHeight,
                     }}
                   >
-                    <MarkdownEditor
-                      key={`note-editor-${id}`}
-                      ref={editorRef}
-                      value={content}
-                      onChangeText={setContent}
-                      onContentSync={setContent}
-                      onSelectionChange={(sel) => {
-                        lastSelectionRef.current = sel;
-                      }}
-                      placeholder="Start writing in markdown..."
-                      isPreview={false}
-                    />
+                    {(!isNewNote && isLoading) ? null : (
+                      <MarkdownEditor
+                        key={`note-editor-${id}`}
+                        ref={editorRef}
+                        value={content}
+                        onChangeText={setContent}
+                        onContentSync={setContent}
+                        onSelectionChange={(sel) => {
+                          lastSelectionRef.current = sel;
+                        }}
+                        placeholder="Start writing in markdown..."
+                        isPreview={false}
+                      />
+                    )}
                   </View>
                 </View>
               </View>
