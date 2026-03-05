@@ -318,6 +318,59 @@ export default function CodeMirrorDOM({
       getMarkdownHighlightStyleConfig(theme) as Parameters<typeof HighlightStyle.define>[0]
     );
     const baseTheme = getCodeMirrorThemeConfig(theme, { contentPadding: false });
+    const wrapText = (view: EditorView, before: string, after: string, cursorOffset?: number) => {
+      const sel = view.state.selection.main;
+      const selectedText = view.state.sliceDoc(sel.from, sel.to);
+      if (selectedText.length > 0) {
+        const replacement = before + selectedText + after;
+        view.dispatch({
+          changes: { from: sel.from, to: sel.to, insert: replacement },
+          selection: {
+            anchor: sel.from + replacement.length,
+            head: sel.from + replacement.length,
+          },
+          scrollIntoView: true,
+        });
+      } else {
+        const replacement = before + after;
+        const offset = typeof cursorOffset === "number" ? cursorOffset : before.length;
+        const cursorPos = sel.from + offset;
+        view.dispatch({
+          changes: { from: sel.from, to: sel.to, insert: replacement },
+          selection: { anchor: cursorPos, head: cursorPos },
+          scrollIntoView: true,
+        });
+      }
+      return true;
+    };
+
+    const customMarkdownKeymap = [
+      { key: "Mod-b", run: (view: EditorView) => wrapText(view, "**", "**", 2) },
+      { key: "Mod-i", run: (view: EditorView) => wrapText(view, "*", "*", 1) },
+      { key: "Mod-u", run: () => true }, // Prevent native underline
+      {
+        key: "Mod-k",
+        run: (view: EditorView) => {
+          const sel = view.state.selection.main;
+          const selectedText = view.state.sliceDoc(sel.from, sel.to);
+          if (selectedText.length > 0) {
+            const replacement = `[${selectedText}]()`;
+            view.dispatch({
+              changes: { from: sel.from, to: sel.to, insert: replacement },
+              selection: {
+                anchor: sel.from + replacement.length - 1,
+                head: sel.from + replacement.length - 1,
+              },
+              scrollIntoView: true,
+            });
+          } else {
+            wrapText(view, "[", "]()", 1);
+          }
+          return true;
+        },
+      },
+    ];
+
     const state = EditorState.create({
       doc: initial,
       extensions: [
@@ -325,7 +378,7 @@ export default function CodeMirrorDOM({
         syntaxHighlighting(highlightStyle),
         ...codeBlockAndBlockquotePlugins,
         history(),
-        keymap.of([...defaultKeymap, indentWithTab]),
+        keymap.of([...customMarkdownKeymap, ...defaultKeymap, indentWithTab]),
         EditorView.lineWrapping,
         EditorView.updateListener.of((update) => {
           if (update.docChanged && onContentChangeRef.current) {
