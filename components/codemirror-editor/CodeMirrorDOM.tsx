@@ -334,21 +334,30 @@ export default function CodeMirrorDOM({
           }
           if (update.selectionSet) {
             const sel = update.state.selection.main;
-            // Keep caret line visible inside the editor viewport (helps when keyboard opens).
-            try {
-              update.view.dispatch({
-                effects: EditorView.scrollIntoView(sel.head, { y: "nearest", yMargin: 48 } as any),
-              });
-            } catch {
-              // Fallback without options if older CodeMirror version
+
+            // Skip explicit scrolling if the selection was changed by a pointer (e.g. tapping an empty line)
+            const isPointer = update.transactions.some(tr => tr.isUserEvent("select.pointer"));
+
+            if (!isPointer) {
+              // Keep caret line comfortably visible inside the editor viewport (helps when keyboard opens).
+              const yMargin = typeof window !== "undefined" ? Math.floor(window.innerHeight * 0.2) : 48;
+
               try {
                 update.view.dispatch({
-                  effects: EditorView.scrollIntoView(sel.head),
+                  effects: EditorView.scrollIntoView(sel.head, { y: "nearest", yMargin } as any),
                 });
               } catch {
-                // ignore if scrollIntoView not available
+                // Fallback without options if older CodeMirror version
+                try {
+                  update.view.dispatch({
+                    effects: EditorView.scrollIntoView(sel.head),
+                  });
+                } catch {
+                  // ignore if scrollIntoView not available
+                }
               }
             }
+
             if (onSelectionChangeRef.current) {
               onSelectionChangeRef.current({ start: sel.from, end: sel.to });
             }
@@ -395,8 +404,29 @@ export default function CodeMirrorDOM({
     const prevValue = prevValueRef.current;
     prevValueRef.current = value;
     if (value !== current && current === prevValue) {
+      // Find common prefix
+      let prefixLen = 0;
+      const minLength = Math.min(current.length, value.length);
+      while (prefixLen < minLength && current[prefixLen] === value[prefixLen]) {
+        prefixLen++;
+      }
+
+      // Find common suffix
+      let currentSuffixIdx = current.length - 1;
+      let valueSuffixIdx = value.length - 1;
+      while (
+        currentSuffixIdx >= prefixLen &&
+        valueSuffixIdx >= prefixLen &&
+        current[currentSuffixIdx] === value[valueSuffixIdx]
+      ) {
+        currentSuffixIdx--;
+        valueSuffixIdx--;
+      }
+
+      const insert = value.slice(prefixLen, valueSuffixIdx + 1);
+
       viewRef.current.dispatch({
-        changes: { from: 0, to: current.length, insert: value || "" },
+        changes: { from: prefixLen, to: currentSuffixIdx + 1, insert },
       });
     }
   }, [value]);

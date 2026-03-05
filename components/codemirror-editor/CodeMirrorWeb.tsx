@@ -403,8 +403,29 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
       if (!viewRef.current || Platform.OS !== "web") return;
       const current = viewRef.current.state.doc.toString();
       if (value !== current) {
+        // Find common prefix
+        let prefixLen = 0;
+        const minLength = Math.min(current.length, value.length);
+        while (prefixLen < minLength && current[prefixLen] === value[prefixLen]) {
+          prefixLen++;
+        }
+
+        // Find common suffix
+        let currentSuffixIdx = current.length - 1;
+        let valueSuffixIdx = value.length - 1;
+        while (
+          currentSuffixIdx >= prefixLen &&
+          valueSuffixIdx >= prefixLen &&
+          current[currentSuffixIdx] === value[valueSuffixIdx]
+        ) {
+          currentSuffixIdx--;
+          valueSuffixIdx--;
+        }
+
+        const insert = value.slice(prefixLen, valueSuffixIdx + 1);
+
         viewRef.current.dispatch({
-          changes: { from: 0, to: current.length, insert: value || "" },
+          changes: { from: prefixLen, to: currentSuffixIdx + 1, insert },
         });
       }
     }, [value]);
