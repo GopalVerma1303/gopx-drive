@@ -416,12 +416,12 @@ export default function CodeMirrorDOM({
             }
           }
         }),
-        // Disable browser/IME text assistance (Android keyboard underline, spellcheck, etc.)
+        // Enable browser/IME text assistance (Autocapitalization, autocorrect, spellcheck, etc.)
         EditorView.contentAttributes.of({
-          autocomplete: "off",
-          autocorrect: "off",
-          autocapitalize: "off",
-          spellcheck: "false",
+          autocomplete: "on",
+          autocorrect: "on",
+          autocapitalize: "sentences",
+          spellcheck: "true",
         }),
         EditorView.theme({
           "&": { height: "100%", minHeight: 0, maxHeight: "100%" },
