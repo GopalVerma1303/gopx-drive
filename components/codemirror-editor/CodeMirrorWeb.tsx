@@ -162,18 +162,7 @@ if (typeof document !== "undefined") {
         if (CODE_BLOCK_NODES.has(node.name)) {
           ranges.push({ from: node.from, to: node.to, value: codeBlockWrapper });
         } else if (node.name === "Blockquote") {
-          const firstLine = state.doc.lineAt(node.from);
-          const match = /^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i.exec(firstLine.text);
-          if (match) {
-            const type = match[1].toLowerCase();
-            const alertWrapper = BlockWrapper.create({
-              tagName: "div",
-              attributes: { class: `cm-alert cm-alert-${type}` },
-            });
-            ranges.push({ from: node.from, to: node.to, value: alertWrapper });
-          } else {
-            ranges.push({ from: node.from, to: node.to, value: blockquoteWrapper });
-          }
+          ranges.push({ from: node.from, to: node.to, value: blockquoteWrapper });
         }
       },
     });
@@ -190,68 +179,7 @@ if (typeof document !== "undefined") {
     },
   });
 
-  class AlertTitleWidget extends WidgetType {
-    type: string;
-    constructor(type: string) {
-      super();
-      this.type = type.toLowerCase();
-    }
-    eq(other: any) {
-      return other.type === this.type;
-    }
-    toDOM() {
-      const div = document.createElement("div");
-      div.className = "cm-alert-title";
-      let svg = "";
-      if (this.type === "note") {
-        svg = '<svg viewBox="0 0 24 24" width="16" height="16" class="lucide" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>';
-      } else if (this.type === "tip") {
-        svg = '<svg viewBox="0 0 24 24" width="16" height="16" class="lucide" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.9 1.2 1.5 1.5 2.5"></path><path d="M9 18h6"></path><path d="M10 22h4"></path></svg>';
-      } else if (this.type === "important") {
-        svg = '<svg viewBox="0 0 24 24" width="16" height="16" class="lucide" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><path d="M12 7v2"></path><path d="M12 13h.01"></path></svg>';
-      } else if (this.type === "warning") {
-        svg = '<svg viewBox="0 0 24 24" width="16" height="16" class="lucide" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>';
-      } else if (this.type === "caution") {
-        svg = '<svg viewBox="0 0 24 24" width="16" height="16" class="lucide" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
-      }
-      div.innerHTML = svg + "<span>" + this.type.charAt(0).toUpperCase() + this.type.slice(1) + "</span>";
-      return div;
-    }
-  }
 
-  function getAlertTextDecorations(state: any) {
-    const tree = syntaxTree(state);
-    const decos: Array<{ from: number, to: number, decoration: any }> = [];
-    tree.iterate({
-      enter: (node: any) => {
-        if (node.name === "Blockquote") {
-          const firstLine = state.doc.lineAt(node.from);
-          const match = /^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i.exec(firstLine.text);
-          if (match) {
-            decos.push({
-              from: firstLine.from,
-              to: firstLine.from + match[0].length,
-              decoration: Decoration.replace({
-                widget: new AlertTitleWidget(match[1]),
-                inclusive: false
-              })
-            });
-          }
-        }
-      }
-    });
-    if (decos.length === 0) return Decoration.none;
-    return Decoration.set(decos.sort((a, b) => a.from - b.from).map(d => d.decoration.range(d.from, d.to)), true);
-  }
-
-  const alertTextPlugin = StateField.define({
-    create(state: any) { return getAlertTextDecorations(state); },
-    update(value: any, tr: any) {
-      if (tr.docChanged) return getAlertTextDecorations(tr.state);
-      return value.map(tr.changes);
-    },
-    provide: (f: any) => EditorView.decorations.from(f),
-  });
 
   function getMathMarkers(state: any) {
     const text = state.doc.toString();
@@ -349,7 +277,6 @@ if (typeof document !== "undefined") {
   getCodeBlockLinePlugin = () => [
     blockWrapperField,
     EditorView.blockWrappers.of((view: any) => view.state.field(blockWrapperField)),
-    alertTextPlugin,
     mathMarkerPlugin,
     markHighlightPlugin,
   ];
