@@ -671,7 +671,7 @@ export function getCodeMirrorThemeConfig(
       fontStyle: "italic",
     },
     ".blockquote-wrapper .cm-line": {
-      opacity: "0.58",
+      opacity: "0.7",
     },
     ".cm-mention-tag": {
       color: colors.mentionTag ?? (colors.isDark ? "#facc15" : "#ca8a04"),
@@ -703,7 +703,7 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
     `.code-block-wrapper { background: ${codeBlockBg} !important; overflow: auto !important; font-size: ${codeBlockFontSize}px !important; line-height: 1.45 !important; font-family: ${MARKDOWN_FONT_FAMILY_CODE} !important; border: 1px solid ${colors.ring} !important; border-radius: 8px !important; } ` +
     `.code-block-wrapper .cm-monospace { padding: 0 !important; border-radius: 0 !important; background: transparent !important; } ` +
     `.blockquote-wrapper { font-style: italic !important; } ` +
-    `.blockquote-wrapper .cm-line { opacity: 0.58 !important; } ` +
+    `.blockquote-wrapper .cm-line { opacity: 0.7 !important; } ` +
     `.cm-mention-tag { color: ${colors.mentionTag ?? (colors.isDark ? "#facc15" : "#ca8a04")} !important; font-weight: 500 !important; } ` +
     scrollbarCss
   );
