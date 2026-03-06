@@ -595,7 +595,7 @@ export default function CodeMirrorDOM({
           ...baseTheme,
           ".cm-scroller": {
             overflow: "auto",
-            overflowY: "scroll",
+            overflowY: "auto",
             height: "100%",
             maxHeight: "100%",
             WebkitOverflowScrolling: "touch",
@@ -760,7 +760,8 @@ export default function CodeMirrorDOM({
 
   const scrollbarCss = getScrollbarCss(
     { muted: muted ?? backgroundColor, mutedForeground: mutedForeground ?? "#737373" },
-    ".cm-scroller"
+    ".cm-scroller",
+    true
   );
 
   const editorFontScale = 0.94;

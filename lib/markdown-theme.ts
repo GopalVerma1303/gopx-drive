@@ -104,8 +104,15 @@ function hexToRgba(hex: string, alpha: number): string {
 /** Scrollbar CSS matching global.css (theme-responsive thumb/track). scopeSelector defaults to * for full document. */
 export function getScrollbarCss(
   colors: { muted: string; mutedForeground: string },
-  scopeSelector = "*"
+  scopeSelector = "*",
+  hide = false
 ): string {
+  if (hide) {
+    return (
+      `${scopeSelector} { scrollbar-width: none !important; -ms-overflow-style: none !important; } ` +
+      `${scopeSelector}::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; } `
+    );
+  }
   const thumb = hexToRgba(colors.mutedForeground, 0.45);
   const thumbHover = hexToRgba(colors.mutedForeground, 0.6);
   const track = hexToRgba(colors.muted, 0.6);
@@ -803,14 +810,14 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
   const mutedFg = colors.mutedForeground;
   const { link, codeBg } = resolveColors(colors);
   const codeBlockFontSize = Math.round(MARKDOWN_FONT_SIZE * 0.875);
-  const scrollbarCss = getScrollbarCss({ muted, mutedForeground: mutedFg });
+  const scrollbarCss = getScrollbarCss({ muted, mutedForeground: mutedFg }, "*", true);
   const codeBlockBg = hexToRgba(colors.background, colors.isDark ? 0.22 : 0.06);
   return (
     `body, #codemirror-root, .cm-editor, .cm-scroller { background: ${bg} !important; } ` +
     `.cm-content { background: ${colors.muted} !important; margin: 0 auto !important; max-width: 672px !important; width: 100% !important; min-height: 100% !important; display: flex !important; flex-direction: column !important; } ` +
     `.cm-content, .cm-line { color: ${fg} !important; caret-color: ${fg} !important; } ` +
     `.cm-cursor, .cm-cursorLayer .cm-cursor { border-left: 1.2px solid ${fg} !important; border-left-color: ${fg} !important; } ` +
-    `.cm-scroller { -webkit-overflow-scrolling: touch !important; overflow-y: scroll !important; height: 100% !important; max-height: 100% !important; touch-action: pan-y !important; } ` +
+    `.cm-scroller { -webkit-overflow-scrolling: touch !important; overflow-y: auto !important; height: 100% !important; max-height: 100% !important; touch-action: pan-y !important; } ` +
     `.cm-url, .cm-link { color: ${link} !important; } ` +
     `.cm-monospace { background: ${codeBg} !important; } ` +
     `.code-block-wrapper { background: ${codeBlockBg} !important; overflow: auto !important; font-size: ${codeBlockFontSize}px !important; line-height: 1.45 !important; font-family: ${MARKDOWN_FONT_FAMILY_CODE} !important; border: 1px solid ${colors.ring} !important; border-radius: 8px !important; } ` +
