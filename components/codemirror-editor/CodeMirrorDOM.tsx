@@ -31,7 +31,7 @@ import { sql } from "@codemirror/lang-sql";
 import { xml } from "@codemirror/lang-xml";
 import { HighlightStyle, syntaxHighlighting, syntaxTree } from "@codemirror/language";
 import { EditorState, StateField } from "@codemirror/state";
-import { BlockWrapper, Decoration, EditorView, keymap, ViewPlugin, WidgetType } from "@codemirror/view";
+import { BlockWrapper, Decoration, EditorView, keymap, ViewPlugin } from "@codemirror/view";
 import { useDOMImperativeHandle, type DOMImperativeFactory } from "expo/dom";
 import React, { useEffect, useRef, type Ref } from "react";
 
@@ -79,63 +79,9 @@ const blockWrapperField = StateField.define<any>({
   },
 });
 
-class HiddenQuoteMarkWidget extends WidgetType {
-  toDOM(): HTMLElement {
-    const span = document.createElement("span");
-    span.style.display = "inline-block";
-    span.style.width = "0";
-    span.style.overflow = "hidden";
-    span.setAttribute("aria-hidden", "true");
-    return span;
-  }
-}
-
-const hiddenQuoteWidget = new HiddenQuoteMarkWidget();
-
-function getBlockquoteHideQuoteDecorations(state: EditorState) {
-  const tree = syntaxTree(state);
-  const decos: Array<{ from: number; to: number; decoration: any }> = [];
-  tree.iterate({
-    enter: (node: any) => {
-      if (node.name !== "Blockquote") return;
-      const firstLine = state.doc.lineAt(node.from);
-      tree.iterate({
-        from: node.from,
-        to: node.to,
-        enter: (n: any) => {
-          if (n.name === "QuoteMark" && n.from >= firstLine.to) {
-            decos.push({
-              from: n.from,
-              to: n.to,
-              decoration: Decoration.replace({ widget: hiddenQuoteWidget, side: 1 }),
-            });
-          }
-        },
-      });
-    },
-  });
-  if (decos.length === 0) return Decoration.none;
-  return Decoration.set(
-    decos.map((d) => ({ from: d.from, to: d.to, value: d.decoration })),
-    true
-  );
-}
-
-const blockquoteHideQuoteMarkField = StateField.define<any>({
-  create(state) {
-    return getBlockquoteHideQuoteDecorations(state as EditorState);
-  },
-  update(value, tr) {
-    if (tr.docChanged) return getBlockquoteHideQuoteDecorations(tr.state as EditorState);
-    return value.map(tr.changes);
-  },
-  provide: (f) => EditorView.decorations.from(f),
-});
-
 const codeBlockAndBlockquotePlugins = [
   blockWrapperField,
   EditorView.blockWrappers.of((view) => view.state.field(blockWrapperField)),
-  blockquoteHideQuoteMarkField,
 ];
 
 function buildThemeFromProps(props: {

@@ -178,60 +178,9 @@ if (typeof document !== "undefined") {
       return value;
     },
   });
-  // Hide ">" on blockquote continuation lines (only first line shows ">")
-  class HiddenQuoteMarkWidget extends WidgetType {
-    toDOM() {
-      const span = document.createElement("span");
-      span.style.display = "inline-block";
-      span.style.width = "0";
-      span.style.overflow = "hidden";
-      span.setAttribute("aria-hidden", "true");
-      return span;
-    }
-  }
-  const hiddenQuoteWidget = new HiddenQuoteMarkWidget();
-  function getBlockquoteHideQuoteDecorations(state: any) {
-    const tree = syntaxTree(state);
-    const decos: Array<{ from: number; to: number; decoration: any }> = [];
-    tree.iterate({
-      enter: (node: any) => {
-        if (node.name !== "Blockquote") return;
-        const firstLine = state.doc.lineAt(node.from);
-        tree.iterate({
-          from: node.from,
-          to: node.to,
-          enter: (n: any) => {
-            if (n.name === "QuoteMark" && n.from >= firstLine.to) {
-              decos.push({
-                from: n.from,
-                to: n.to,
-                decoration: Decoration.replace({ widget: hiddenQuoteWidget, side: 1 }),
-              });
-            }
-          },
-        });
-      },
-    });
-    if (decos.length === 0) return Decoration.none;
-    return Decoration.set(
-      decos.map((d: any) => ({ from: d.from, to: d.to, value: d.decoration })),
-      true
-    );
-  }
-  const blockquoteHideQuoteMarkField = StateField.define({
-    create(state: any) {
-      return getBlockquoteHideQuoteDecorations(state);
-    },
-    update(value: any, tr: any) {
-      if (tr.docChanged) return getBlockquoteHideQuoteDecorations(tr.state);
-      return value.map(tr.changes);
-    },
-    provide: (f: any) => EditorView.decorations.from(f),
-  });
   getCodeBlockLinePlugin = () => [
     blockWrapperField,
     EditorView.blockWrappers.of((view: any) => view.state.field(blockWrapperField)),
-    blockquoteHideQuoteMarkField,
   ];
 }
 

@@ -461,10 +461,9 @@ export function getMarkdownHighlightStyleConfig(colors: MarkdownThemeColors) {
       padding: "0.12em 0.3em",
       borderRadius: "4px",
     },
-    /* Quote: no per-line border here; single block border is applied via theme; text opacity on .blockquote-wrapper .cm-line */
+    /* Quote: text opacity on .blockquote-wrapper .cm-line */
     {
       tag: tags.quote,
-      paddingLeft: "0.5em",
       fontStyle: "italic",
     },
     { tag: tags.list, opacity: "0.95" },
@@ -667,15 +666,12 @@ export function getCodeMirrorThemeConfig(
       borderRadius: "0",
       backgroundColor: "transparent",
     },
-    /* Blockquote: text-only styling (no border/padding); text slightly faded */
+    /* Blockquote: text slightly faded */
     ".blockquote-wrapper": {
       fontStyle: "italic",
     },
     ".blockquote-wrapper .cm-line": {
       opacity: "0.58",
-    },
-    ".blockquote-wrapper .cm-quote": {
-      borderLeft: "none",
     },
     ".cm-mention-tag": {
       color: colors.mentionTag ?? (colors.isDark ? "#facc15" : "#ca8a04"),
@@ -708,7 +704,6 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
     `.code-block-wrapper .cm-monospace { padding: 0 !important; border-radius: 0 !important; background: transparent !important; } ` +
     `.blockquote-wrapper { font-style: italic !important; } ` +
     `.blockquote-wrapper .cm-line { opacity: 0.58 !important; } ` +
-    `.blockquote-wrapper .cm-quote { border-left: none !important; } ` +
     `.cm-mention-tag { color: ${colors.mentionTag ?? (colors.isDark ? "#facc15" : "#ca8a04")} !important; font-weight: 500 !important; } ` +
     scrollbarCss
   );
