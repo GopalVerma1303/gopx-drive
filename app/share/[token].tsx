@@ -391,10 +391,88 @@ export default function SharedNoteScreen() {
                 removeClippedSubviews={false}
                 nestedScrollEnabled
               >
+                <View style={{ flexGrow: 1, width: "100%", maxWidth: 672, alignSelf: "center", backgroundColor: colors.muted }}>
+                  {note.content ? (
+                    <MarkdownPreview
+                      content={note.content}
+                      placeholder="Start writing in markdown..."
+                    />
+                  ) : (
+                    <Text style={{ color: colors.mutedForeground, fontStyle: "italic", fontSize: 16 }}>
+                      No content
+                    </Text>
+                  )}
+
+                  <View
+                    style={{
+                      marginTop: 24,
+                      paddingTop: 24,
+                      alignItems: "center",
+                      flexDirection: "column",
+                      gap: 8,
+                      paddingBottom: 72 + insets.bottom,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: colors.mutedForeground,
+                        fontSize: 13,
+                      }}
+                    >
+                      Note taken on
+                    </Text>
+                    <Pressable
+                      onPress={openGopxDrive}
+                      style={({ pressed }) => ({
+                        opacity: pressed ? 0.7 : 1,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                      })}
+                    >
+                      <Image
+                        source={GopxDriveIcon}
+                        style={{ width: 16, height: 16 }}
+                        resizeMode="contain"
+                        className="filter dark:invert rounded-[2px]"
+                      />
+                      <Text
+                        style={{
+                          color: colors.primary,
+                          fontSize: 13,
+                          fontWeight: "600",
+                        }}
+                      >
+                        Gopx Drive
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        ) : (
+          <View
+            style={{
+              flex: 1,
+              width: "100%",
+              backgroundColor: colors.background,
+            }}
+            className="flex-1 w-full bg-background"
+          >
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1 }}
+              removeClippedSubviews={false}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+            >
+              <View style={{ flexGrow: 1, width: "100%", maxWidth: 672, alignSelf: "center", backgroundColor: colors.muted }}>
                 {note.content ? (
                   <MarkdownPreview
                     content={note.content}
                     placeholder="Start writing in markdown..."
+                    contentContainerStyle={{ flex: 1, width: "100%" }}
                   />
                 ) : (
                   <Text style={{ color: colors.mutedForeground, fontStyle: "italic", fontSize: 16 }}>
@@ -446,80 +524,6 @@ export default function SharedNoteScreen() {
                     </Text>
                   </Pressable>
                 </View>
-              </ScrollView>
-            </View>
-          </View>
-        ) : (
-          <View
-            style={{
-              flex: 1,
-              width: "100%",
-              backgroundColor: colors.background,
-            }}
-            className="flex-1 w-full bg-background"
-          >
-            <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1 }}
-              removeClippedSubviews={false}
-              nestedScrollEnabled
-              showsVerticalScrollIndicator
-            >
-              {note.content ? (
-                <MarkdownPreview
-                  content={note.content}
-                  placeholder="Start writing in markdown..."
-                  contentContainerStyle={{ flex: 1, width: "100%" }}
-                />
-              ) : (
-                <Text style={{ color: colors.mutedForeground, fontStyle: "italic", fontSize: 16 }}>
-                  No content
-                </Text>
-              )}
-
-              <View
-                style={{
-                  marginTop: 24,
-                  paddingTop: 24,
-                  alignItems: "center",
-                  flexDirection: "column",
-                  gap: 8,
-                  paddingBottom: 72 + insets.bottom,
-                }}
-              >
-                <Text
-                  style={{
-                    color: colors.mutedForeground,
-                    fontSize: 13,
-                  }}
-                >
-                  Note taken on
-                </Text>
-                <Pressable
-                  onPress={openGopxDrive}
-                  style={({ pressed }) => ({
-                    opacity: pressed ? 0.7 : 1,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 6,
-                  })}
-                >
-                  <Image
-                    source={GopxDriveIcon}
-                    style={{ width: 16, height: 16 }}
-                    resizeMode="contain"
-                    className="filter dark:invert rounded-[2px]"
-                  />
-                  <Text
-                    style={{
-                      color: colors.primary,
-                      fontSize: 13,
-                      fontWeight: "600",
-                    }}
-                  >
-                    Gopx Drive
-                  </Text>
-                </Pressable>
               </View>
             </ScrollView>
           </View>

@@ -592,12 +592,14 @@ export default function NoteEditorScreen() {
                   contentContainerStyle={{ flexGrow: 1, minHeight: "100%" }}
                   showsVerticalScrollIndicator
                 >
-                  <MarkdownPreview
-                    content={content}
-                    onToggleCheckbox={setContent}
-                    placeholder="Start writing in markdown..."
-                    onFirstHtmlRendered={() => setPreviewReady(true)}
-                  />
+                  <View style={{ flexGrow: 1, width: "100%", maxWidth: 672, alignSelf: "center", backgroundColor: colors.muted }}>
+                    <MarkdownPreview
+                      content={content}
+                      onToggleCheckbox={setContent}
+                      placeholder="Start writing in markdown..."
+                      onFirstHtmlRendered={() => setPreviewReady(true)}
+                    />
+                  </View>
                 </ScrollView>
               </View>
               {/* Editor: always mounted, hidden when previewing for instant switch */}
@@ -691,13 +693,15 @@ export default function NoteEditorScreen() {
                     contentContainerStyle={{ flexGrow: 1 }}
                     showsVerticalScrollIndicator
                   >
-                    <MarkdownPreview
-                      content={content}
-                      onToggleCheckbox={setContent}
-                      placeholder="Start writing in markdown..."
-                      contentContainerStyle={{ flex: 1, width: "100%", height: "100%" }}
-                      onFirstHtmlRendered={() => setPreviewReady(true)}
-                    />
+                    <View style={{ flexGrow: 1, width: "100%", maxWidth: 672, alignSelf: "center", backgroundColor: colors.muted }}>
+                      <MarkdownPreview
+                        content={content}
+                        onToggleCheckbox={setContent}
+                        placeholder="Start writing in markdown..."
+                        contentContainerStyle={{ flex: 1, width: "100%" }}
+                        onFirstHtmlRendered={() => setPreviewReady(true)}
+                      />
+                    </View>
                   </ScrollView>
                 </View>
                 {/* Editor: always mounted, hidden when previewing for instant switch */}
@@ -735,6 +739,9 @@ export default function NoteEditorScreen() {
                     style={{
                       flex: 1,
                       width: "100%",
+                      maxWidth: 672,
+                      alignSelf: "center",
+                      backgroundColor: colors.muted,
                       minHeight: nativeEditorContentMinHeight,
                     }}
                   >

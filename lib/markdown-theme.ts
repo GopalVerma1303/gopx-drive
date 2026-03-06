@@ -714,6 +714,9 @@ export function getCodeMirrorThemeConfig(
       margin: "0 auto",
       maxWidth: "672px",
       width: "100%",
+      minHeight: "100%",
+      display: "flex",
+      flexDirection: "column",
     },
     ".cm-line": {
       lineHeight: `calc(${MARKDOWN_LINE_HEIGHT_CSS} * ${editorFontScale})`,
@@ -804,6 +807,7 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
   const codeBlockBg = hexToRgba(colors.background, colors.isDark ? 0.22 : 0.06);
   return (
     `body, #codemirror-root, .cm-editor, .cm-scroller { background: ${bg} !important; } ` +
+    `.cm-content { background: ${colors.muted} !important; margin: 0 auto !important; max-width: 672px !important; width: 100% !important; min-height: 100% !important; display: flex !important; flex-direction: column !important; } ` +
     `.cm-content, .cm-line { color: ${fg} !important; caret-color: ${fg} !important; } ` +
     `.cm-cursor, .cm-cursorLayer .cm-cursor { border-left: 1.2px solid ${fg} !important; border-left-color: ${fg} !important; } ` +
     `.cm-scroller { -webkit-overflow-scrolling: touch !important; overflow-y: scroll !important; height: 100% !important; max-height: 100% !important; touch-action: pan-y !important; } ` +
