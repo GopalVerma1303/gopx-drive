@@ -748,6 +748,9 @@ export function getCodeMirrorThemeConfig(
       color: colors.mentionTag ?? (colors.isDark ? "#facc15" : "#ca8a04"),
       fontWeight: "500",
     },
+    ".cm-math-marker": {
+      opacity: "0.5",
+    },
   };
 }
 
@@ -784,6 +787,7 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
     `.cm-alert-warning { border-left-color: ${getAlertColors(colors.isDark).warning} !important; } .cm-alert-warning .cm-alert-title { color: ${getAlertColors(colors.isDark).warning} !important; } ` +
     `.cm-alert-caution { border-left-color: ${getAlertColors(colors.isDark).caution} !important; } .cm-alert-caution .cm-alert-title { color: ${getAlertColors(colors.isDark).caution} !important; } ` +
     `.cm-mention-tag { color: ${colors.mentionTag ?? (colors.isDark ? "#facc15" : "#ca8a04")} !important; font-weight: 500 !important; } ` +
+    `.cm-math-marker { opacity: 0.5 !important; } ` +
     scrollbarCss
   );
 }

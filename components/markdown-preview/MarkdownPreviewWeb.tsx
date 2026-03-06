@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
 import { getMarkdownThemeFromPalette, getPreviewCss } from "@/lib/markdown-theme";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import React, { useEffect, useRef } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 interface MarkdownPreviewWebProps {
   html: string;
@@ -381,6 +381,28 @@ function replaceCheckboxesWithDom(
   });
 }
 
+/**
+ * Uses KaTeX's auto-render extension to parse text nodes for $, $$, \(\), and \[\]
+ * and replaces them with rendered math HTML.
+ */
+function enhanceMathBlocks(container: HTMLDivElement) {
+  if (typeof window === "undefined" || !(window as any).renderMathInElement) return;
+
+  try {
+    (window as any).renderMathInElement(container, {
+      delimiters: [
+        { left: "$$", right: "$$", display: true },
+        { left: "$", right: "$", display: false },
+        { left: "\\(", right: "\\)", display: false },
+        { left: "\\[", right: "\\]", display: true },
+      ],
+      throwOnError: false,
+    });
+  } catch (e) {
+    console.warn("KaTeX render error:", e);
+  }
+}
+
 export function MarkdownPreviewWeb({
   html,
   onToggleCheckbox,
@@ -414,6 +436,50 @@ export function MarkdownPreviewWeb({
         // If mermaid fails to load, skip diagrams but keep the rest of preview working.
       }
     })();
+
+    // Dynamically inject KaTeX
+    (async () => {
+      try {
+        if (!document.getElementById("katex-css")) {
+          const link = document.createElement("link");
+          link.id = "katex-css";
+          link.rel = "stylesheet";
+          link.href = "https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css";
+          link.crossOrigin = "anonymous";
+          document.head.appendChild(link);
+        }
+
+        if (!document.getElementById("katex-js")) {
+          const script = document.createElement("script");
+          script.id = "katex-js";
+          script.src = "https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js";
+          script.crossOrigin = "anonymous";
+          script.onload = () => {
+            if (!document.getElementById("katex-auto-render-js")) {
+              const script2 = document.createElement("script");
+              script2.id = "katex-auto-render-js";
+              script2.src = "https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js";
+              script2.crossOrigin = "anonymous";
+              script2.onload = () => {
+                // Force a re-run of DOM enhancers so math is rendered once script loads.
+                if (containerRef.current) {
+                  enhanceMathBlocks(containerRef.current);
+                }
+              };
+              document.head.appendChild(script2);
+            } else if (containerRef.current) {
+              enhanceMathBlocks(containerRef.current);
+            }
+          };
+          document.head.appendChild(script);
+        } else if (document.getElementById("katex-auto-render-js") && containerRef.current) {
+          enhanceMathBlocks(containerRef.current);
+        }
+      } catch {
+        // Ignore failures
+      }
+    })();
+
     return () => {
       cancelled = true;
     };
@@ -453,6 +519,9 @@ export function MarkdownPreviewWeb({
       }
       // After diagrams are rendered into SVG, wrap them in a block with controls.
       enhanceMermaidBlocks(container);
+
+      // Render Math
+      enhanceMathBlocks(container);
     };
 
     runEnhancers();

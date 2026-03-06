@@ -295,6 +295,29 @@ const ENHANCE_MERMAID_SCRIPT = `
 })(); true;
 `;
 
+/** Injected into WebView: find math delimited by $ or $$ and evaluate using auto-render. */
+const RENDER_MATH_SCRIPT = `
+(function(){
+  try {
+    if (!window.renderMathInElement) return;
+    var container = document.getElementById('content');
+    if (!container) return;
+    
+    window.renderMathInElement(container, {
+      delimiters: [
+        {left: "$$", right: "$$", display: true},
+        {left: "$", right: "$", display: false},
+        {left: "\\\\(", right: "\\\\)", display: false},
+        {left: "\\\\[", right: "\\\\]", display: true}
+      ],
+      throwOnError: false
+    });
+  } catch (e) {
+    // Ignore failures
+  }
+})(); true;
+`;
+
 interface MarkdownPreviewWebViewProps {
   html: string;
   contentContainerStyle?: object;
@@ -339,6 +362,7 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle, onCheckbox
         }
         ${RENDER_MERMAID_SCRIPT}
         ${ENHANCE_MERMAID_SCRIPT}
+        ${RENDER_MATH_SCRIPT}
       } catch(e) {}
     })(); true;`;
     webViewRef.current?.injectJavaScript(script);
@@ -366,7 +390,7 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle, onCheckbox
         var el = document.getElementById('content');
         if(el) {
           el.innerHTML = html;
-          var run = function() { ${REPLACE_CHECKBOXES_SCRIPT} ${ADD_CODE_COPY_BUTTONS_SCRIPT} ${WRAP_TABLES_SCRIPT} ${WRAP_IMAGES_SCRIPT} ${RENDER_MERMAID_SCRIPT} ${ENHANCE_MERMAID_SCRIPT} };
+          var run = function() { ${REPLACE_CHECKBOXES_SCRIPT} ${ADD_CODE_COPY_BUTTONS_SCRIPT} ${WRAP_TABLES_SCRIPT} ${WRAP_IMAGES_SCRIPT} ${RENDER_MERMAID_SCRIPT} ${ENHANCE_MERMAID_SCRIPT} ${RENDER_MATH_SCRIPT} };
           setTimeout(run, 0);
           setTimeout(run, 80);
           setTimeout(run, 250);

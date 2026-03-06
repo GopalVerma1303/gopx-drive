@@ -20,6 +20,9 @@ export function getPreviewFullHtml(bodyHtml: string, colors: PreviewThemeColors)
     html, body { margin: 0; padding: 0; min-height: 100%; background-color: transparent; }
     ${css}
   </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
   <!-- Mermaid runtime for native WebView; diagrams are rendered on-demand after content injection. -->
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <script>
