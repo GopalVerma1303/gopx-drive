@@ -495,11 +495,16 @@ export function MarkdownPreviewWeb({
     const container = containerRef.current;
     if (!container || !html) return;
 
-    const runEnhancers = () => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const runImmediateEnhancers = () => {
       replaceCheckboxesWithDom(container, (taskIndex) => onToggleRef.current?.(taskIndex));
       addCodeCopyButtons(container);
       wrapWideTables(container);
       wrapImagesWithCaptions(container);
+    };
+
+    const runHeavyEnhancers = () => {
       // After structural enhancers run, render any Mermaid diagrams present.
       if (mermaidRef.current) {
         try {
@@ -524,12 +529,28 @@ export function MarkdownPreviewWeb({
       enhanceMathBlocks(container);
     };
 
-    runEnhancers();
+    const debouncedHeavyEnhancers = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(runHeavyEnhancers, 150);
+    };
 
-    const observer = new MutationObserver(() => {
-      // Batch multiple mutations; helpers are idempotent and cheap for
-      // typical note sizes, so we can safely re-run.
-      runEnhancers();
+    // Run structural changes IMMEDIATELY to prevent flickering
+    runImmediateEnhancers();
+    // Use debounced version for expensive rendering
+    debouncedHeavyEnhancers();
+
+    const observer = new MutationObserver((mutations) => {
+      // Filter out mutations that happen inside KaTeX or Mermaid elements to prevent infinite loops.
+      const hasOutsideMutations = mutations.some((mutation) => {
+        const target = mutation.target as HTMLElement;
+        return !target.closest?.(".katex") && !target.closest?.(".mermaid-block");
+      });
+
+      if (hasOutsideMutations) {
+        // Even for mutations, we can run immediate fixes instantly
+        runImmediateEnhancers();
+        debouncedHeavyEnhancers();
+      }
     });
 
     observer.observe(container, {
@@ -538,6 +559,7 @@ export function MarkdownPreviewWeb({
     });
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       observer.disconnect();
     };
   }, [html]);
