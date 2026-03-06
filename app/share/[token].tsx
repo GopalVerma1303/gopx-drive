@@ -380,11 +380,9 @@ export default function SharedNoteScreen() {
                 flex: 1,
                 minHeight: 0,
                 width: "100%",
-                maxWidth: 672,
-                alignSelf: "center",
-                backgroundColor: colors.muted,
+                backgroundColor: colors.background,
               }}
-              className="w-full max-w-2xl mx-auto bg-muted"
+              className="w-full bg-background"
             >
               <ScrollView
                 style={{ flex: 1 }}
@@ -456,11 +454,9 @@ export default function SharedNoteScreen() {
             style={{
               flex: 1,
               width: "100%",
-              maxWidth: 672,
-              alignSelf: "center",
-              backgroundColor: colors.muted,
+              backgroundColor: colors.background,
             }}
-            className="flex-1 w-full max-w-2xl mx-auto bg-muted"
+            className="flex-1 w-full bg-background"
           >
             <ScrollView
               style={{ flex: 1 }}

@@ -515,9 +515,7 @@ export default function NoteEditorScreen() {
       flex: 1,
       minHeight: 0,
       width: "100%",
-      maxWidth: 672,
-      alignSelf: "center" as const,
-      backgroundColor: colors.muted,
+      backgroundColor: colors.background,
       position: "relative" as const,
     },
     screenContentNative: {
@@ -669,9 +667,7 @@ export default function NoteEditorScreen() {
                 style={{
                   flex: 1,
                   width: "100%",
-                  maxWidth: isPreview ? undefined : 672,
-                  alignSelf: "center",
-                  backgroundColor: colors.muted,
+                  backgroundColor: colors.background,
                   position: "relative",
                 }}
               >

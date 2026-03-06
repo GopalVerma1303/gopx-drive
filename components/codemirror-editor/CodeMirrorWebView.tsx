@@ -161,7 +161,7 @@ export const CodeMirrorWebView = React.forwardRef<CodeMirrorEditorHandle, CodeMi
         <WebView
           ref={webViewRef}
           source={{ html: CODEMIRROR_EDITOR_HTML }}
-          style={[styles.webview, { minHeight: minEditorHeight, backgroundColor: theme.muted ?? theme.background }]}
+          style={[styles.webview, { minHeight: minEditorHeight, backgroundColor: theme.background }]}
           scrollEnabled={true}
           nestedScrollEnabled={true}
           keyboardDisplayRequiresUserAction={false}

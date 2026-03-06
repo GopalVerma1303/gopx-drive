@@ -447,7 +447,7 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle, onCheckbox
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.muted }, contentContainerStyle]}>
+    <View style={[styles.container, { backgroundColor: theme.background }, contentContainerStyle]}>
       <WebView
         ref={webViewRef}
         source={{ html: sourceHtml }}

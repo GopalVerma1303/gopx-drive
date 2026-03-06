@@ -791,7 +791,7 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
     const heightPx =
       containerHeight != null && containerHeight > 0 ? containerHeight : fallbackPx;
 
-    const bg = theme.muted ?? theme.background;
+    const bg = theme.background;
     const fg = theme.foreground;
 
     return (

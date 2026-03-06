@@ -502,21 +502,22 @@ export function MarkdownToolbar({
 
   return (
     <View
-      className="absolute bottom-0 left-0 right-0 rounded-full bg-background border border-border w-full"
+      className="absolute bottom-0 left-0 right-0 w-full bg-background border-t border-border"
       style={{
         position: "absolute",
         bottom: 0,
         left: 0,
         right: 0,
+        width: "100%",
         zIndex: 9999,
-        borderRadius: 0,
-        borderWidth: 0,
-        borderColor: colors.border,
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
         backgroundColor: colors.background,
       }}
     >
-      <ScrollView
-        horizontal
+      <View style={{ alignSelf: "center", maxWidth: "100%" }}>
+        <ScrollView
+          horizontal
         showsHorizontalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={true}
@@ -549,7 +550,8 @@ export function MarkdownToolbar({
             />
           );
         })}
-      </ScrollView>
+        </ScrollView>
+      </View>
     </View>
   );
 }

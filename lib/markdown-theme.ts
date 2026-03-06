@@ -182,13 +182,15 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
 /* Long URLs and unbreakable strings: wrap so content stays visible (no horizontal cut-off). */
 .markdown-preview {
   color: ${colors.foreground};
+  background-color: ${colors.muted};
   font-size: ${MARKDOWN_FONT_SIZE}px;
   line-height: ${MARKDOWN_LINE_HEIGHT}px;
   font-family: ${MARKDOWN_FONT_FAMILY_BODY};
   box-sizing: border-box;
-  margin: 0;
+  margin: 0 auto;
   padding: ${MARKDOWN_CONTENT_PADDING_PX.paddingTop}px ${MARKDOWN_CONTENT_PADDING_PX.paddingRight}px ${MARKDOWN_CONTENT_PADDING_PX.paddingBottom}px ${MARKDOWN_CONTENT_PADDING_PX.paddingLeft}px;
   width: 100%;
+  max-width: 672px;
   min-height: 100%;
   overflow-x: hidden;
   overflow-wrap: break-word;
@@ -685,7 +687,7 @@ export function getCodeMirrorThemeConfig(
   // Slightly smaller than preview to account for different font rendering in the editor.
   const editorFontScale = 0.94;
   const contentPadding = options?.contentPadding !== false;
-  const bg = colors.muted ?? colors.background;
+  const bg = colors.background;
   const fg = colors.foreground;
   const codeBg = colors.codeBackground ?? DEFAULT_CODE_BG;
   const quoteBorder = colors.blockquoteBorder ?? DEFAULT_QUOTE_BORDER;
@@ -707,7 +709,11 @@ export function getCodeMirrorThemeConfig(
         ? `${MARKDOWN_EDITOR_CONTENT_PADDING_PX_WEB.paddingTop}px ${MARKDOWN_EDITOR_CONTENT_PADDING_PX_WEB.paddingRight}px ${MARKDOWN_EDITOR_CONTENT_PADDING_PX_WEB.paddingBottom}px ${MARKDOWN_EDITOR_CONTENT_PADDING_PX_WEB.paddingLeft}px`
         : "0",
       color: fg,
+      backgroundColor: colors.muted,
       caretColor: fg,
+      margin: "0 auto",
+      maxWidth: "672px",
+      width: "100%",
     },
     ".cm-line": {
       lineHeight: `calc(${MARKDOWN_LINE_HEIGHT_CSS} * ${editorFontScale})`,
@@ -788,7 +794,7 @@ export function getCodeMirrorThemeConfig(
 // ---------------------------------------------------------------------------
 
 export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): string {
-  const bg = colors.muted ?? colors.background;
+  const bg = colors.background;
   const fg = colors.foreground;
   const muted = colors.muted ?? bg;
   const mutedFg = colors.mutedForeground;
