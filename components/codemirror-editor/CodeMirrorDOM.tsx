@@ -200,11 +200,58 @@ const mathMarkerPlugin = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
+function getMarkHighlights(state: EditorState) {
+  const text = state.doc.toString();
+  const tree = syntaxTree(state);
+  const decos: Array<{ from: number, to: number, decoration: any }> = [];
+  const deco = Decoration.mark({ class: "cm-highlight" });
+
+  const maskedChars = text.split("");
+  tree.iterate({
+    enter: (node: any) => {
+      if (node.name === "InlineCode" || node.name === "FencedCode" || node.name === "CodeBlock") {
+        for (let i = node.from; i < node.to; i++) {
+          maskedChars[i] = "X";
+        }
+      }
+    }
+  });
+  const maskedText = maskedChars.join("");
+
+  const MARK_REGEX = /==([^ \s](?:[^]*?[^ \s])?)==/g;
+  let match;
+  const markerDeco = Decoration.mark({ class: "cm-math-marker" });
+  while ((match = MARK_REGEX.exec(maskedText)) !== null) {
+    const start = match.index;
+    const content = match[1];
+    const end = start + match[0].length;
+
+    // Delimiters
+    decos.push({ from: start, to: start + 2, decoration: markerDeco });
+    decos.push({ from: end - 2, to: end, decoration: markerDeco });
+    // Content
+    decos.push({ from: start + 2, to: end - 2, decoration: deco });
+  }
+
+  if (decos.length === 0) return Decoration.none;
+  return Decoration.set(decos.sort((a, b) => a.from - b.from).map(d => d.decoration.range(d.from, d.to)), true);
+}
+
+const markHighlightPlugin = StateField.define<DecorationSet>({
+  create(state) { return getMarkHighlights(state); },
+  update(value, tr) {
+    if (tr.docChanged) return getMarkHighlights(tr.state);
+    return value;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
 const codeBlockAndBlockquotePlugins = [
   blockWrapperField,
   EditorView.blockWrappers.of((view: EditorView) => view.state.field(blockWrapperField)),
   alertTextPlugin,
   mathMarkerPlugin,
+  markHighlightPlugin,
 ];
 
 function buildThemeFromProps(props: {

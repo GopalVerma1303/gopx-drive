@@ -191,6 +191,60 @@ function rehypeMentions() {
   };
 }
 
+/**
+ * Rehype plugin: turn ==text== into <mark>text</mark>
+ * Applies to text nodes only.
+ */
+function rehypeMark() {
+  return (tree: HastNode) => {
+    visit(tree as any, "text", (node: HastNode, index: number | undefined, parent: HastNode | undefined) => {
+      // Don't parse inside code blocks or already styled elements
+      if (parent && (parent.tagName === "code" || parent.tagName === "pre" || parent.tagName === "a")) {
+        return;
+      }
+
+      if (node.value && typeof node.value === "string") {
+        const text = node.value;
+        const MARK_REGEX = /==([^ \s](?:[^]*?[^ \s])?)==/g;
+
+        if (!MARK_REGEX.test(text)) return;
+        MARK_REGEX.lastIndex = 0;
+
+        const newChildren: HastNode[] = [];
+        let lastIndex = 0;
+        let match;
+
+        while ((match = MARK_REGEX.exec(text)) !== null) {
+          const mText = match[1];
+          const matchStart = match.index;
+
+          if (matchStart > lastIndex) {
+            newChildren.push({ type: "text", value: text.slice(lastIndex, matchStart) });
+          }
+
+          newChildren.push({
+            type: "element",
+            tagName: "mark",
+            properties: {},
+            children: [{ type: "text", value: mText }]
+          });
+
+          lastIndex = matchStart + match[0].length;
+        }
+
+        if (lastIndex < text.length) {
+          newChildren.push({ type: "text", value: text.slice(lastIndex) });
+        }
+
+        if (parent && Array.isArray(parent.children) && typeof index === "number") {
+          parent.children.splice(index, 1, ...newChildren);
+          return index + newChildren.length;
+        }
+      }
+    });
+  };
+}
+
 function getAlertIcon(type: string): HastNode {
   const children: HastNode[] = [];
   if (type === "note") {
@@ -289,7 +343,7 @@ const sanitizeSchema = {
   ...defaultSchema,
   tagNames: [
     ...(defaultSchema.tagNames || []),
-    "svg", "path", "circle", "polygon", "line"
+    "svg", "path", "circle", "polygon", "line", "mark"
   ],
   attributes: {
     ...defaultSchema.attributes,
@@ -324,6 +378,7 @@ function createProcessor() {
     .use(remarkRehype, { allowDangerousHtml: false })
     .use(rehypeMermaidBlocks)
     .use(rehypeMentions)
+    .use(rehypeMark)
     .use(rehypeAlerts)
     .use(rehypeHighlight as any, { subset: false })
     .use(rehypeSanitize as any, sanitizeSchema)

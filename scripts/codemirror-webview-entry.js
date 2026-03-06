@@ -189,17 +189,54 @@ function getMathMarkers(state) {
     decos.push({ from: match.index + match[0].length - 2, to: match.index + match[0].length, decoration: deco });
   }
 
-  const obscured = maskedText.replace(blockRegex, (m) => "X".repeat(m.length));
-  const inlineRegex = /(^|[^$])\$([^$\n]+?)\$(?!$)/g;
-  while ((match = inlineRegex.exec(obscured)) !== null) {
-    const start = match.index + match[1].length;
-    const end = start + 1 + match[2].length;
-    decos.push({ from: start, to: start + 1, decoration: deco });
-    decos.push({ from: end, to: end + 1, decoration: deco });
+  if (decos.length === 0) return Decoration.none;
+  return Decoration.set(decos.sort((a, b) => a.from - b.from).map(d => d.decoration.range(d.from, d.to)), true);
+}
+
+function getMarkHighlights(state) {
+  const text = state.doc.toString();
+  const tree = syntaxTree(state);
+  const decos = [];
+  const deco = Decoration.mark({ class: "cm-highlight" });
+
+  const maskedChars = text.split("");
+  tree.iterate({
+    enter: (node) => {
+      if (node.name === "InlineCode" || node.name === "FencedCode" || node.name === "CodeBlock") {
+        for (let i = node.from; i < node.to; i++) {
+          maskedChars[i] = "X";
+        }
+      }
+    }
+  });
+  const maskedText = maskedChars.join("");
+
+  const MARK_REGEX = /==([^ \s](?:[^]*?[^ \s])?)==/g;
+  let match;
+  const markerDeco = Decoration.mark({ class: "cm-math-marker" });
+  while ((match = MARK_REGEX.exec(maskedText)) !== null) {
+    const start = match.index;
+    const end = start + match[0].length;
+    
+    // Delimiters
+    decos.push({ from: start, to: start + 2, decoration: markerDeco });
+    decos.push({ from: end - 2, to: end, decoration: markerDeco });
+    // Content
+    decos.push({ from: start + 2, to: end - 2, decoration: deco });
   }
 
   if (decos.length === 0) return Decoration.none;
+  return Decoration.set(decos.sort((a, b) => a.from - b.from).map(d => d.decoration.range(d.from, d.to)), true);
 }
+
+const markHighlightPlugin = StateField.define({
+  create(state) { return getMarkHighlights(state); },
+  update(value, tr) {
+    if (tr.docChanged) return getMarkHighlights(tr.state);
+    return value;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
 
 const mathMarkerPlugin = StateField.define({
   create(state) { return getMathMarkers(state); },
@@ -221,6 +258,7 @@ function createEditor(container, initialValue, placeholder) {
       EditorView.blockWrappers.of((view) => view.state.field(blockWrapperField)),
       alertTextPlugin,
       mathMarkerPlugin,
+      markHighlightPlugin,
       keymap.of([...defaultKeymap, indentWithTab]),
       EditorView.updateListener.of((update) => {
         if (update.docChanged && window.ReactNativeWebView) {
