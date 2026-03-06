@@ -690,7 +690,21 @@ export default function CodeMirrorDOM({
           view.dispatch({
             changes: { from: sel.from, to: sel.to, insert },
             selection: { anchor: newPos, head: newPos },
+            userEvent: "input.toolbar",
+            scrollIntoView: true,
           });
+
+          // Re-focus after toolbar click
+          const dom: any = (view as any).dom;
+          if (dom && typeof dom.focus === "function") {
+            try {
+              dom.focus({ preventScroll: true });
+            } catch {
+              dom.focus();
+            }
+          } else {
+            view.focus();
+          }
         },
         wrapSelection: (...args: JSONValue[]) => {
           const [before, after, cursorOffset] = args as [
@@ -706,12 +720,34 @@ export default function CodeMirrorDOM({
           const prefix = before ?? "";
           const suffix = after ?? "";
           const insert = prefix + selected + suffix;
-          const defaultOffset = selected.length > 0 ? prefix.length + selected.length + suffix.length : prefix.length;
+          const defaultOffset =
+            selected.length > 0
+              ? prefix.length + selected.length + suffix.length
+              : prefix.length;
           const newPos =
             sel.from + (typeof cursorOffset === "number" ? cursorOffset : defaultOffset);
           view.dispatch({
             changes: { from: sel.from, to: sel.to, insert },
             selection: { anchor: newPos, head: newPos },
+            userEvent: "input.toolbar",
+            scrollIntoView: true,
+          });
+
+          // Re-focus after toolbar click
+          const dom: any = (view as any).dom;
+          if (dom && typeof dom.focus === "function") {
+            try {
+              dom.focus({ preventScroll: true });
+            } catch {
+              dom.focus();
+            }
+          } else {
+            view.focus();
+          }
+
+          // Ensure it sticks (helps on some browsers/WebView versions)
+          requestAnimationFrame(() => {
+            view.focus();
           });
         },
       }) as DOMImperativeFactory,

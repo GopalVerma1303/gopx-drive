@@ -469,6 +469,15 @@ export function MarkdownToolbar({
     return (
       <Pressable
         onPress={onPress}
+        {...Platform.select({
+          web: {
+            onPointerDown: (e: any) => {
+              // Prevent focus loss on web
+              e.preventDefault();
+            },
+          } as any,
+          default: {},
+        })}
         disabled={disabled}
         className={cn(
           "h-10 w-10 items-center justify-center rounded-md active:bg-accent",

@@ -390,6 +390,7 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
     const highlightCompartmentRef = useRef<any>(null);
     const { colors, isDark } = useThemeColors();
     const theme = getMarkdownThemeFromPalette(colors, isDark);
+    const prevValueRef = useRef(value);
     const onChangeRef = useRef(onChangeText);
     const onSelectionRef = useRef(onSelectionChange);
     onChangeRef.current = onChangeText;
@@ -613,10 +614,15 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
     ]);
 
     // Sync value from parent (e.g. after undo/redo or list logic)
+    // Only overwrite editor when editor content still matches the previous value we had
+    // (i.e. no typing or toolbar action happened in the meantime).
     useEffect(() => {
       if (!viewRef.current || Platform.OS !== "web") return;
       const current = viewRef.current.state.doc.toString();
-      if (value !== current) {
+      const prevValue = prevValueRef.current;
+      prevValueRef.current = value;
+
+      if (value !== current && current === prevValue) {
         // Find common prefix
         let prefixLen = 0;
         const minLength = Math.min(current.length, value.length);
@@ -685,15 +691,27 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
           const view = viewRef.current;
           if (!view) return;
 
-          const tr = view.state.replaceSelection(text);
-          view.dispatch(tr);
+          const sel = view.state.selection.main;
+          const insert = text ?? "";
+          const newPos = sel.from + (typeof cursorOffset === "number" ? cursorOffset : insert.length);
 
-          if (typeof cursorOffset === "number") {
-            const sel = view.state.selection.main;
-            const from = sel.from - text.length + cursorOffset;
-            view.dispatch({
-              selection: { anchor: from, head: from },
-            });
+          view.dispatch({
+            changes: { from: sel.from, to: sel.to, insert },
+            selection: { anchor: newPos, head: newPos },
+            scrollIntoView: true,
+            userEvent: "input.toolbar",
+          });
+
+          // Re-focus after toolbar click
+          const dom: any = view.dom;
+          if (dom && typeof dom.focus === "function") {
+            try {
+              dom.focus({ preventScroll: true });
+            } catch {
+              dom.focus();
+            }
+          } else {
+            view.focus();
           }
         },
         wrapSelection: (before: string, after: string, cursorOffset?: number) => {
@@ -711,6 +729,8 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
                 anchor: sel.from + replacement.length,
                 head: sel.from + replacement.length,
               },
+              scrollIntoView: true,
+              userEvent: "input.toolbar",
             });
           } else {
             const replacement = before + after;
@@ -719,7 +739,21 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
             view.dispatch({
               changes: { from: sel.from, to: sel.to, insert: replacement },
               selection: { anchor: cursorPos, head: cursorPos },
+              scrollIntoView: true,
+              userEvent: "input.toolbar",
             });
+          }
+
+          // Re-focus after toolbar click
+          const dom: any = view.dom;
+          if (dom && typeof dom.focus === "function") {
+            try {
+              dom.focus({ preventScroll: true });
+            } catch {
+              dom.focus();
+            }
+          } else {
+            view.focus();
           }
         },
         focus: () => {
