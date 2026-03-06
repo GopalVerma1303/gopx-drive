@@ -376,10 +376,15 @@ export default function CodeMirrorDOM({
           if (update.selectionSet) {
             const sel = update.state.selection.main;
 
-            // Skip explicit scrolling if the selection was changed by a pointer (e.g. tapping an empty line)
-            const isPointer = update.transactions.some(tr => tr.isUserEvent("select.pointer"));
+            // Only apply custom scrolling (with yMargin) when the document changes (typing, pasting, buttons)
+            // or when the user explicitly moves the cursor with the keyboard.
+            // This prevents unwanted screen jumps when tapping lines, where native selection syncs might
+            // lack the "select.pointer" user event.
+            const shouldScroll = update.docChanged || update.transactions.some(tr =>
+              tr.isUserEvent("keyboard") || tr.isUserEvent("select.keyboard")
+            );
 
-            if (!isPointer) {
+            if (shouldScroll) {
               // Keep caret line comfortably visible inside the editor viewport (helps when keyboard opens).
               const yMargin = typeof window !== "undefined" ? Math.floor(window.innerHeight * 0.2) : 48;
 
