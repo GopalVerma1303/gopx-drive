@@ -191,11 +191,113 @@ function rehypeMentions() {
   };
 }
 
-/** Sanitize schema that allows highlight.js classes and mermaid containers. */
+function getAlertIcon(type: string): HastNode {
+  const children: HastNode[] = [];
+  if (type === "note") {
+    children.push({ type: "element", tagName: "circle", properties: { cx: "12", cy: "12", r: "10" } });
+    children.push({ type: "element", tagName: "path", properties: { d: "M12 16v-4" } });
+    children.push({ type: "element", tagName: "path", properties: { d: "M12 8h.01" } });
+  } else if (type === "tip") {
+    children.push({ type: "element", tagName: "path", properties: { d: "M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.9 1.2 1.5 1.5 2.5" } });
+    children.push({ type: "element", tagName: "path", properties: { d: "M9 18h6" } });
+    children.push({ type: "element", tagName: "path", properties: { d: "M10 22h4" } });
+  } else if (type === "important") {
+    children.push({ type: "element", tagName: "path", properties: { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" } });
+    children.push({ type: "element", tagName: "path", properties: { d: "M12 7v2" } });
+    children.push({ type: "element", tagName: "path", properties: { d: "M12 13h.01" } });
+  } else if (type === "warning") {
+    children.push({ type: "element", tagName: "path", properties: { d: "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" } });
+    children.push({ type: "element", tagName: "path", properties: { d: "M12 9v4" } });
+    children.push({ type: "element", tagName: "path", properties: { d: "M12 17h.01" } });
+  } else if (type === "caution") {
+    children.push({ type: "element", tagName: "polygon", properties: { points: "7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" } });
+    children.push({ type: "element", tagName: "line", properties: { x1: "12", y1: "8", x2: "12", y2: "12" } });
+    children.push({ type: "element", tagName: "line", properties: { x1: "12", y1: "16", x2: "12.01", y2: "16" } });
+  }
+
+  children.forEach(c => {
+    c.properties = { stroke: "currentColor", strokeWidth: "2", fill: "none", strokeLinecap: "round", strokeLinejoin: "round", ...(c.properties || {}) };
+  });
+
+  return {
+    type: "element",
+    tagName: "svg",
+    properties: { viewBox: "0 0 24 24", width: "16", height: "16", className: ["lucide"] },
+    children
+  };
+}
+
+/**
+ * Rehype plugin: detect GitHub-style alerts `> [!NOTE]` and transform blockquotes into .markdown-alert divs.
+ */
+function rehypeAlerts() {
+  return (tree: HastNode) => {
+    visit(tree as any, "element", (node: HastNode) => {
+      if (node.tagName !== "blockquote" || !node.children) return;
+
+      const firstP = node.children.find((c) => c.type === "element" && c.tagName === "p");
+      if (!firstP || !firstP.children || firstP.children.length === 0) return;
+
+      const firstChild = firstP.children[0];
+      if (firstChild.type !== "text" || !firstChild.value) return;
+
+      const match = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i.exec(firstChild.value);
+      if (!match) return;
+
+      const alertType = match[1].toLowerCase();
+      
+      firstChild.value = firstChild.value.substring(match[0].length);
+
+      const leadingSpaceMatch = /^\s+/.exec(firstChild.value);
+      if (leadingSpaceMatch) {
+         firstChild.value = firstChild.value.substring(leadingSpaceMatch[0].length);
+      }
+
+      // Automatically remove trailing <br> exactly if text was immediately followed by a newline (GFM blockquote norm)
+      if (firstChild.value === "" && firstP.children[1]?.type === "element" && firstP.children[1].tagName === "br") {
+        firstP.children.splice(1, 1);
+        const next = firstP.children[1];
+        if (next && next.type === "text" && next.value) {
+           next.value = next.value.replace(/^\s+/, "");
+        }
+      }
+
+      const titleText = alertType.charAt(0).toUpperCase() + alertType.slice(1);
+
+      const titleNode: HastNode = {
+         type: "element",
+         tagName: "div",
+         properties: { className: ["markdown-alert-title"] },
+         children: [
+            getAlertIcon(alertType),
+            { type: "text", value: titleText }
+         ]
+      };
+
+      node.tagName = "div";
+      node.properties = {
+         ...(node.properties || {}),
+         className: ["markdown-alert", `markdown-alert-${alertType}`]
+      };
+
+      node.children.unshift(titleNode);
+    });
+  };
+}
+
 const sanitizeSchema = {
   ...defaultSchema,
+  tagNames: [
+    ...(defaultSchema.tagNames || []),
+    "svg", "path", "circle", "polygon", "line"
+  ],
   attributes: {
     ...defaultSchema.attributes,
+    svg: ["viewBox", "width", "height", "className", "fill", "stroke", "strokeWidth", "strokeLinecap", "strokeLinejoin"],
+    path: ["d", "fill", "stroke", "strokeWidth", "strokeLinecap", "strokeLinejoin"],
+    circle: ["cx", "cy", "r", "fill", "stroke", "strokeWidth", "strokeLinecap", "strokeLinejoin"],
+    polygon: ["points", "fill", "stroke", "strokeWidth", "strokeLinecap", "strokeLinejoin"],
+    line: ["x1", "y1", "x2", "y2", "fill", "stroke", "strokeWidth", "strokeLinecap", "strokeLinejoin"],
     code: [
       ...(defaultSchema.attributes?.code ?? []),
       ["className", "hljs", /^language-/],
@@ -206,8 +308,8 @@ const sanitizeSchema = {
     ],
     div: [
       ...(defaultSchema.attributes?.div ?? []),
-      // Allow <div class="mermaid" data-mermaid-source="...">…</div> wrappers for diagrams.
-      ["className", "mermaid"],
+      // Allow <div class="mermaid" data-mermaid-source="...">…</div> wrappers for diagrams and markdown alerts.
+      ["className", "mermaid", /^markdown-alert/, /^markdown-alert-/],
       ["data-mermaid-source"],
     ],
   },
@@ -222,6 +324,7 @@ function createProcessor() {
     .use(remarkRehype, { allowDangerousHtml: false })
     .use(rehypeMermaidBlocks)
     .use(rehypeMentions)
+    .use(rehypeAlerts)
     .use(rehypeHighlight as any, { subset: false })
     .use(rehypeSanitize as any, sanitizeSchema)
     .use(rehypeStringify);
