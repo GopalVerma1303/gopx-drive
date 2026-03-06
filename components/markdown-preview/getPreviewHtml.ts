@@ -17,7 +17,7 @@ export function getPreviewFullHtml(bodyHtml: string, colors: PreviewThemeColors)
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <style>
-    html, body { margin: 0; padding: 0; height: 100%; background-color: transparent; display: flex; flex-direction: column; }
+    html, body { margin: 0; padding: 0; height: 100%; background-color: transparent; }
     ${css}
   </style>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css" crossorigin="anonymous">
@@ -42,7 +42,7 @@ export function getPreviewFullHtml(bodyHtml: string, colors: PreviewThemeColors)
   </script>
 </head>
 <body>
-  <div id="content" class="markdown-preview" style="width:100%;flex:1;margin:0;display:flex;flex-direction:column;">${bodyHtml}</div>
+  <div id="content" class="markdown-preview" style="width:100%;min-height:100%;margin:0;">${bodyHtml}</div>
 </body>
 </html>`;
 }
