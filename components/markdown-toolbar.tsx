@@ -32,6 +32,7 @@ import {
   Sparkles,
   Strikethrough,
   Table,
+  Underline,
   Wrench,
 } from "lucide-react-native";
 import * as React from "react";
@@ -210,6 +211,11 @@ export function MarkdownToolbar({
     wrapOrInsert("~~", "~~", 2); // ~~|~~
   };
 
+  const handleUnderline = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    wrapOrInsert("__", "__", 2); // __|__
+  };
+
   const handleHeading1 = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onInsertText("# ", 2);
@@ -344,6 +350,7 @@ export function MarkdownToolbar({
     bold: handleBold,
     italic: handleItalic,
     strikethrough: handleStrikethrough,
+    underline: handleUnderline,
     heading1: handleHeading1,
     heading2: handleHeading2,
     heading3: handleHeading3,
@@ -372,6 +379,7 @@ export function MarkdownToolbar({
     bold: Bold,
     italic: Italic,
     strikethrough: Strikethrough,
+    underline: Underline,
     heading1: Heading1,
     heading2: Heading2,
     heading3: Heading3,
@@ -400,6 +408,7 @@ export function MarkdownToolbar({
     bold: "Bold",
     italic: "Italic",
     strikethrough: "Strikethrough",
+    underline: "Underline",
     heading1: "H1",
     heading2: "H2",
     heading3: "H3",
@@ -428,6 +437,7 @@ export function MarkdownToolbar({
     bold: false,
     italic: false,
     strikethrough: false,
+    underline: false,
     heading1: false,
     heading2: false,
     heading3: false,

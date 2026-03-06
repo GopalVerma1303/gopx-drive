@@ -181,6 +181,31 @@ if (typeof document !== "undefined") {
 
 
 
+  function getUnderlineDecorations(state: any) {
+    const decos: Array<{ from: number, to: number, decoration: any }> = [];
+    const text = state.doc.toString();
+    const UNDERLINE_REGEX = /__(?=[^ \s])(?:[^]*?[^ \s])?__/g;
+    let match;
+    while ((match = UNDERLINE_REGEX.exec(text)) !== null) {
+      decos.push({
+        from: match.index,
+        to: match.index + match[0].length,
+        decoration: Decoration.mark({ class: "cm-underline" })
+      });
+    }
+    if (decos.length === 0) return Decoration.none;
+    return Decoration.set(decos.sort((a, b) => a.from - b.from).map(d => d.decoration.range(d.from, d.to)), true);
+  }
+
+  const underlinePlugin = StateField.define({
+    create(state: any) { return getUnderlineDecorations(state); },
+    update(value: any, tr: any) {
+      if (tr.docChanged) return getUnderlineDecorations(tr.state);
+      return value.map(tr.changes);
+    },
+    provide: (f: any) => EditorView.decorations.from(f),
+  });
+
   function getMathMarkers(state: any) {
     const text = state.doc.toString();
     const tree = syntaxTree(state);
@@ -277,6 +302,7 @@ if (typeof document !== "undefined") {
   getCodeBlockLinePlugin = () => [
     blockWrapperField,
     EditorView.blockWrappers.of((view: any) => view.state.field(blockWrapperField)),
+    underlinePlugin,
     mathMarkerPlugin,
     markHighlightPlugin,
   ];

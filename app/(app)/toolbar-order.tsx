@@ -41,6 +41,7 @@ import {
   Sparkles,
   Strikethrough,
   Table,
+  Underline,
   Wrench,
   X,
 } from "lucide-react-native";
@@ -65,6 +66,7 @@ const TOOLBAR_ITEMS: Record<ToolbarItemId, ToolbarItem> = {
   bold: { id: "bold", label: "Bold", icon: Bold },
   italic: { id: "italic", label: "Italic", icon: Italic },
   strikethrough: { id: "strikethrough", label: "Strikethrough", icon: Strikethrough },
+  underline: { id: "underline", label: "Underline", icon: Underline },
   heading1: { id: "heading1", label: "H1", icon: Heading1 },
   heading2: { id: "heading2", label: "H2", icon: Heading2 },
   heading3: { id: "heading3", label: "H3", icon: Heading3 },

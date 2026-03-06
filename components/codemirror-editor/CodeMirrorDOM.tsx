@@ -81,6 +81,32 @@ const blockWrapperField = StateField.define<any>({
 
 
 
+function getUnderlineDecorations(state: EditorState) {
+  const decos: Array<{ from: number, to: number, decoration: any }> = [];
+  const text = state.doc.toString();
+  // Regex for __abc__
+  const UNDERLINE_REGEX = /__(?=[^ \s])(?:[^]*?[^ \s])?__/g;
+  let match;
+  while ((match = UNDERLINE_REGEX.exec(text)) !== null) {
+    decos.push({
+      from: match.index,
+      to: match.index + match[0].length,
+      decoration: Decoration.mark({ class: "cm-underline" })
+    });
+  }
+  if (decos.length === 0) return Decoration.none;
+  return Decoration.set(decos.sort((a, b) => a.from - b.from).map(d => d.decoration.range(d.from, d.to)), true);
+}
+
+const underlinePlugin = StateField.define<DecorationSet>({
+  create(state) { return getUnderlineDecorations(state); },
+  update(value, tr) {
+    if (tr.docChanged) return getUnderlineDecorations(tr.state);
+    return value.map(tr.changes);
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
 function getMathMarkers(state: EditorState) {
   const text = state.doc.toString();
   const tree = syntaxTree(state);
@@ -177,6 +203,7 @@ const markHighlightPlugin = StateField.define<DecorationSet>({
 const codeBlockAndBlockquotePlugins = [
   blockWrapperField,
   EditorView.blockWrappers.of((view: EditorView) => view.state.field(blockWrapperField)),
+  underlinePlugin,
   mathMarkerPlugin,
   markHighlightPlugin,
 ];

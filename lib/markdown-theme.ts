@@ -636,7 +636,7 @@ export function getMarkdownHighlightStyleMinimalConfig(colors: MarkdownThemeColo
       // Match preview: pink inline code
       color: "#ec4899",
     },
-    // Strikethrough
+    // Strikethrough / Underline
     { tag: [tags.strikethrough, tags.deleted], textDecoration: "line-through", textDecorationColor: "#ec4899" },
     // Blockquote + lists
     { tag: tags.quote, opacity: "0.7", fontStyle: "italic" },
@@ -754,6 +754,9 @@ export function getCodeMirrorThemeConfig(
     ".blockquote-wrapper .cm-line": {
       opacity: "0.7",
     },
+    ".cm-underline": {
+      textDecoration: "underline",
+    },
 
     ".cm-mention-tag": {
       color: colors.mentionTag ?? (colors.isDark ? "#2dd4bf" : "#0d9488"),
@@ -795,6 +798,7 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
     `.code-block-wrapper .cm-monospace { padding: 0 !important; border-radius: 0 !important; background: transparent !important; } ` +
     `.blockquote-wrapper { font-style: italic !important; } ` +
     `.blockquote-wrapper .cm-line { opacity: 0.7 !important; } ` +
+    `.cm-underline { text-decoration: underline !important; } ` +
 
     `.cm-mention-tag { color: ${colors.mentionTag ?? (colors.isDark ? "#facc15" : "#ca8a04")} !important; font-weight: 500 !important; } ` +
     `.cm-math-marker { opacity: 0.5 !important; } ` +

@@ -8,6 +8,7 @@ export type ToolbarItemId =
   | "bold"
   | "italic"
   | "strikethrough"
+  | "underline"
   | "heading1"
   | "heading2"
   | "heading3"
@@ -40,6 +41,7 @@ const DEFAULT_VISIBLE: ToolbarItemId[] = [
   "bold",
   "italic",
   "strikethrough",
+  "underline",
   "heading1",
   "heading2",
   "heading3",

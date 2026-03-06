@@ -245,6 +245,60 @@ function rehypeMark() {
   };
 }
 
+/**
+ * Rehype plugin: turn __text__ into <u>text</u>
+ * Applies to text nodes only.
+ */
+function rehypeUnderline() {
+  return (tree: HastNode) => {
+    visit(tree as any, "text", (node: HastNode, index: number | undefined, parent: HastNode | undefined) => {
+      // Don't parse inside code blocks or already styled elements
+      if (parent && (parent.tagName === "code" || parent.tagName === "pre" || parent.tagName === "a")) {
+        return;
+      }
+
+      if (node.value && typeof node.value === "string") {
+        const text = node.value;
+        const UNDERLINE_REGEX = /__(?=[^ \s])(?:[^]*?[^ \s])?__/g;
+
+        if (!UNDERLINE_REGEX.test(text)) return;
+        UNDERLINE_REGEX.lastIndex = 0;
+
+        const newChildren: HastNode[] = [];
+        let lastIndex = 0;
+        let match;
+
+        while ((match = UNDERLINE_REGEX.exec(text)) !== null) {
+          const mText = match[0].slice(2, -2);
+          const matchStart = match.index;
+
+          if (matchStart > lastIndex) {
+            newChildren.push({ type: "text", value: text.slice(lastIndex, matchStart) });
+          }
+
+          newChildren.push({
+            type: "element",
+            tagName: "u",
+            properties: {},
+            children: [{ type: "text", value: mText }]
+          });
+
+          lastIndex = matchStart + match[0].length;
+        }
+
+        if (lastIndex < text.length) {
+          newChildren.push({ type: "text", value: text.slice(lastIndex) });
+        }
+
+        if (parent && Array.isArray(parent.children) && typeof index === "number") {
+          parent.children.splice(index, 1, ...newChildren);
+          return index + newChildren.length;
+        }
+      }
+    });
+  };
+}
+
 function getAlertIcon(type: string): HastNode {
   const children: HastNode[] = [];
   if (type === "note") {
@@ -343,7 +397,7 @@ const sanitizeSchema = {
   ...defaultSchema,
   tagNames: [
     ...(defaultSchema.tagNames || []),
-    "svg", "path", "circle", "polygon", "line", "mark"
+    "svg", "path", "circle", "polygon", "line", "mark", "u"
   ],
   attributes: {
     ...defaultSchema.attributes,
@@ -379,6 +433,7 @@ function createProcessor() {
     .use(rehypeMermaidBlocks)
     .use(rehypeMentions)
     .use(rehypeMark)
+    .use(rehypeUnderline)
     .use(rehypeAlerts)
     .use(rehypeHighlight as any, { subset: false })
     .use(rehypeSanitize as any, sanitizeSchema)
@@ -395,7 +450,10 @@ function getProcessor() {
  */
 export async function markdownToHtml(markdown: string): Promise<string> {
   if (!markdown || !markdown.trim()) return "";
+  // Escape double underscores so they remain as text nodes for rehypeUnderline to find.
+  // This prevents remark-gfm from converting __abc__ into <strong>abc</strong>.
+  const escapedMarkdown = markdown.replace(/__(?=[^ \s])((?:[^]*?[^ \s])?)__/g, '\\_\\_$1\\_\\_');
   const proc = getProcessor();
-  const file = await proc.process(markdown);
+  const file = await proc.process(escapedMarkdown);
   return String(file);
 }
