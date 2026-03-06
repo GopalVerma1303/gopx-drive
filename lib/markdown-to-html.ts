@@ -17,6 +17,7 @@ import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
+import { visit } from "unist-util-visit";
 
 type HastNode = {
   type?: string;
@@ -133,6 +134,63 @@ function rehypeMermaidBlocks() {
   };
 }
 
+/**
+ * Rehype plugin: turn @tags into <span class="mention-tag">@tag</span>
+ * Applies to text nodes only.
+ */
+function rehypeMentions() {
+  return (tree: HastNode) => {
+    visit(tree as any, "text", (node: HastNode, index: number | undefined, parent: HastNode | undefined) => {
+      // Don't parse inside code blocks or already styled elements
+      if (parent && (parent.tagName === "code" || parent.tagName === "pre" || parent.tagName === "a")) {
+        return;
+      }
+
+      if (node.value && typeof node.value === "string") {
+        const text = node.value;
+        const MENTION_REGEX = /(^|\s)(@[\w-]+)(?=\b|\s|$)/g;
+
+        if (!MENTION_REGEX.test(text)) return;
+        MENTION_REGEX.lastIndex = 0; // Reset regex
+
+        const newChildren: HastNode[] = [];
+        let lastIndex = 0;
+        let match;
+
+        while ((match = MENTION_REGEX.exec(text)) !== null) {
+          const mSpace = match[1]; // Space or empty
+          const mTag = match[2]; // @tag
+          
+          const matchStart = match.index + mSpace.length;
+          
+          if (matchStart > lastIndex) {
+            newChildren.push({ type: "text", value: text.slice(lastIndex, matchStart) });
+          }
+
+          newChildren.push({
+            type: "element",
+            tagName: "span",
+            properties: { className: ["mention-tag"] },
+            children: [{ type: "text", value: mTag }]
+          });
+
+          lastIndex = matchStart + mTag.length;
+        }
+
+        if (lastIndex < text.length) {
+          newChildren.push({ type: "text", value: text.slice(lastIndex) });
+        }
+
+        if (parent && Array.isArray(parent.children) && typeof index === "number") {
+          parent.children.splice(index, 1, ...newChildren);
+          // Return the new index to continue parsing safely (skipped newly added nodes)
+          return index + newChildren.length;
+        }
+      }
+    });
+  };
+}
+
 /** Sanitize schema that allows highlight.js classes and mermaid containers. */
 const sanitizeSchema = {
   ...defaultSchema,
@@ -144,7 +202,7 @@ const sanitizeSchema = {
     ],
     span: [
       ...(defaultSchema.attributes?.span ?? []),
-      ["className", /^hljs-/],
+      ["className", /^hljs-/, "mention-tag"],
     ],
     div: [
       ...(defaultSchema.attributes?.div ?? []),
@@ -163,8 +221,9 @@ function createProcessor() {
     .use(remarkGfm)
     .use(remarkRehype, { allowDangerousHtml: false })
     .use(rehypeMermaidBlocks)
-    .use(rehypeHighlight, { subset: false })
-    .use(rehypeSanitize, sanitizeSchema)
+    .use(rehypeMentions)
+    .use(rehypeHighlight as any, { subset: false })
+    .use(rehypeSanitize as any, sanitizeSchema)
     .use(rehypeStringify);
 }
 

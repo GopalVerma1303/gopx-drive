@@ -38,34 +38,39 @@ export interface MarkdownThemeColors {
   ring: string;
   link?: string;
   linkUrl?: string;
-  codeBackground?: string;
-  blockquoteBorder?: string;
-  /** When true, use dark variant for code block syntax highlighting (e.g. GitHub dark). */
-  isDark?: boolean;
+    codeBackground?: string;
+    blockquoteBorder?: string;
+    /** The color for @tags like @dinner */
+    mentionTag?: string;
+    /** When true, use dark variant for code block syntax highlighting (e.g. GitHub dark). */
+    isDark?: boolean;
 }
 
 const DEFAULT_LINK = "#0969da";
 const DEFAULT_LINK_URL = "#0550ae";
 const DEFAULT_CODE_BG = "rgba(128,128,128,0.15)";
 const DEFAULT_QUOTE_BORDER = "rgba(128,128,128,0.5)";
+const DEFAULT_MENTION_TAG_LIGHT = "#ca8a04"; // yellow-600
+const DEFAULT_MENTION_TAG_DARK = "#facc15"; // yellow-400
 
 /** Build theme colors from app palette (useThemeColors). Pass isDark for code block syntax theme (e.g. GitHub dark). */
 export function getMarkdownThemeFromPalette(
-  palette: ThemePalette,
-  isDark?: boolean
+    palette: ThemePalette,
+    isDark?: boolean
 ): MarkdownThemeColors {
-  return {
-    foreground: palette.foreground,
-    background: palette.background,
-    muted: palette.muted,
-    mutedForeground: palette.mutedForeground,
-    ring: palette.ring,
-    link: palette.link ?? DEFAULT_LINK,
-    linkUrl: palette.linkUrl ?? DEFAULT_LINK_URL,
-    codeBackground: palette.codeBackground ?? DEFAULT_CODE_BG,
-    blockquoteBorder: palette.blockquoteBorder ?? DEFAULT_QUOTE_BORDER,
-    isDark,
-  };
+    return {
+        foreground: palette.foreground,
+        background: palette.background,
+        muted: palette.muted,
+        mutedForeground: palette.mutedForeground,
+        ring: palette.ring,
+        link: palette.link ?? DEFAULT_LINK,
+        linkUrl: palette.linkUrl ?? DEFAULT_LINK_URL,
+        codeBackground: palette.codeBackground ?? DEFAULT_CODE_BG,
+        blockquoteBorder: palette.blockquoteBorder ?? DEFAULT_QUOTE_BORDER,
+        mentionTag: isDark ? DEFAULT_MENTION_TAG_DARK : DEFAULT_MENTION_TAG_LIGHT,
+        isDark,
+    };
 }
 
 /** Resolve optional theme colors with fallbacks. */
@@ -251,6 +256,9 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
   box-shadow: 0 1px 2px rgba(0,0,0,0.25);
   -webkit-tap-highlight-color: transparent;
   outline: none;
+}
+.markdown-preview .mention-tag {
+  color: ${colors.mentionTag ?? (colors.isDark ? "#facc15" : "#ca8a04")};
 }
 .markdown-preview .mermaid-block .mermaid-copy-btn svg {
   width: 16px;
@@ -669,6 +677,10 @@ export function getCodeMirrorThemeConfig(
     ".blockquote-wrapper .cm-quote": {
       borderLeft: "none",
     },
+    ".cm-mention-tag": {
+      color: colors.mentionTag ?? (colors.isDark ? "#facc15" : "#ca8a04"),
+      fontWeight: "500",
+    },
   };
 }
 
@@ -697,6 +709,7 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
     `.blockquote-wrapper { font-style: italic !important; } ` +
     `.blockquote-wrapper .cm-line { opacity: 0.58 !important; } ` +
     `.blockquote-wrapper .cm-quote { border-left: none !important; } ` +
+    `.cm-mention-tag { color: ${colors.mentionTag ?? (colors.isDark ? "#facc15" : "#ca8a04")} !important; font-weight: 500 !important; } ` +
     scrollbarCss
   );
 }

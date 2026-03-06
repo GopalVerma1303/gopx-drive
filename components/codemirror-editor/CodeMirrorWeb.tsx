@@ -26,6 +26,8 @@ let syntaxHighlighting: any;
 let HighlightStyle: any;
 let syntaxTree: any;
 let BlockWrapper: any;
+let ViewPlugin: any;
+let Decoration: any;
 let getMarkdownCodeLanguages:
   | (() => {
     jsSupport: any;
@@ -66,6 +68,8 @@ if (typeof document !== "undefined") {
   syntaxHighlighting = cmLanguage.syntaxHighlighting;
   HighlightStyle = cmLanguage.HighlightStyle;
   syntaxTree = cmLanguage.syntaxTree;
+  ViewPlugin = cmView.ViewPlugin;
+  Decoration = cmView.Decoration;
   const jsSupport = cmLangJs.javascript();
   const tsSupport = cmLangJs.javascript({ typescript: true });
   const pythonSupport = cmLangPython.python();
@@ -138,7 +142,6 @@ if (typeof document !== "undefined") {
   getMarkdownCodeLanguages = () => ({ jsSupport, tsSupport, codeLanguageSpecs });
 
   // Inline code-block + blockquote wrapper plugin (same logic as code-block-line-plugin.ts) using this module's CodeMirror instances
-  const Decoration = cmView.Decoration;
   const WidgetType = cmView.WidgetType;
   const CODE_BLOCK_NODES = new Set(["FencedCode", "CodeBlock"]);
   const WRAPPER_CLASS = "code-block-wrapper";
@@ -361,12 +364,54 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
         },
       ];
 
+      const mentionPlugin = ViewPlugin.fromClass(
+        class {
+          decorations: any;
+
+          constructor(view: any) {
+            this.decorations = this.getMentions(view);
+          }
+
+          update(update: any) {
+            if (update.docChanged || update.viewportChanged) {
+              this.decorations = this.getMentions(update.view);
+            }
+          }
+
+          getMentions(view: any) {
+            let widgets: any[] = [];
+            const MENTION_REGEX = /(^|\s)(@[\w-]+)(?=\b|\s|$)/g;
+
+            for (let { from, to } of view.visibleRanges) {
+              const text: string = view.state.doc.sliceString(from, to);
+              let match;
+              MENTION_REGEX.lastIndex = 0;
+
+              while ((match = MENTION_REGEX.exec(text)) !== null) {
+                const mSpace = match[1];
+                const mTag = match[2];
+
+                const matchStart = from + match.index + mSpace.length;
+                const matchEnd = matchStart + mTag.length;
+
+                widgets.push(Decoration.mark({ class: "cm-mention-tag" }).range(matchStart, matchEnd));
+              }
+            }
+            return Decoration.set(widgets);
+          }
+        },
+        {
+          decorations: (v: any) => v.decorations,
+        }
+      );
+
       const state = EditorState.create({
         doc: initial,
         extensions: [
           markdown(markdownConfig ?? {}),
           highlightCompartment.of(syntaxHighlighting(markdownHighlightStyle)),
           ...(getCodeBlockLinePlugin?.() ?? []),
+          mentionPlugin,
           history(),
           keymap.of([...customMarkdownKeymap, ...defaultKeymap, indentWithTab]),
           EditorView.lineWrapping,

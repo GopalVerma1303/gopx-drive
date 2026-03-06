@@ -95,6 +95,7 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "unified": "^11.0.5",
+    "unist-util-visit": "^5.1.0",
     "zustand": "^5.0.2"
   },
   "devDependencies": {

@@ -31,7 +31,7 @@ import { sql } from "@codemirror/lang-sql";
 import { xml } from "@codemirror/lang-xml";
 import { HighlightStyle, syntaxHighlighting, syntaxTree } from "@codemirror/language";
 import { EditorState, StateField } from "@codemirror/state";
-import { BlockWrapper, Decoration, EditorView, keymap, WidgetType } from "@codemirror/view";
+import { BlockWrapper, Decoration, EditorView, keymap, ViewPlugin, WidgetType } from "@codemirror/view";
 import { useDOMImperativeHandle, type DOMImperativeFactory } from "expo/dom";
 import React, { useEffect, useRef, type Ref } from "react";
 
@@ -371,12 +371,54 @@ export default function CodeMirrorDOM({
       },
     ];
 
+    const mentionPlugin = ViewPlugin.fromClass(
+      class {
+        decorations: any;
+
+        constructor(view: EditorView) {
+          this.decorations = this.getMentions(view);
+        }
+
+        update(update: any) {
+          if (update.docChanged || update.viewportChanged) {
+            this.decorations = this.getMentions(update.view);
+          }
+        }
+
+        getMentions(view: EditorView) {
+          let widgets: any[] = [];
+          const MENTION_REGEX = /(^|\s)(@[\w-]+)(?=\b|\s|$)/g;
+
+          for (let { from, to } of view.visibleRanges) {
+            const text: string = view.state.doc.sliceString(from, to);
+            let match;
+            MENTION_REGEX.lastIndex = 0;
+
+            while ((match = MENTION_REGEX.exec(text)) !== null) {
+              const mSpace = match[1];
+              const mTag = match[2];
+
+              const matchStart = from + match.index + mSpace.length;
+              const matchEnd = matchStart + mTag.length;
+
+              widgets.push(Decoration.mark({ class: "cm-mention-tag" }).range(matchStart, matchEnd));
+            }
+          }
+          return Decoration.set(widgets);
+        }
+      },
+      {
+        decorations: (v: any) => v.decorations,
+      }
+    );
+
     const state = EditorState.create({
       doc: initial,
       extensions: [
         markdown(markdownConfig),
         syntaxHighlighting(highlightStyle),
         ...codeBlockAndBlockquotePlugins,
+        mentionPlugin,
         history(),
         keymap.of([...customMarkdownKeymap, ...defaultKeymap, indentWithTab]),
         EditorView.lineWrapping,

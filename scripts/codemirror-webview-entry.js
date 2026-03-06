@@ -6,8 +6,50 @@ const { EditorView, keymap } = require("@codemirror/view");
 const { EditorState } = require("@codemirror/state");
 const { defaultKeymap, indentWithTab, history, redo, undo } = require("@codemirror/commands");
 const { markdown } = require("@codemirror/lang-markdown");
+const { Decoration, ViewPlugin } = require("@codemirror/view");
 
 const TAB = "  ";
+
+const mentionPlugin = ViewPlugin.fromClass(
+  class {
+    decorations;
+
+    constructor(view) {
+      this.decorations = this.getMentions(view);
+    }
+
+    update(update) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = this.getMentions(update.view);
+      }
+    }
+
+    getMentions(view) {
+      let widgets = [];
+      const MENTION_REGEX = /(^|\s)(@[\w-]+)(?=\b|\s|$)/g;
+
+      for (let { from, to } of view.visibleRanges) {
+        const text = view.state.doc.sliceString(from, to);
+        let match;
+        MENTION_REGEX.lastIndex = 0;
+        
+        while ((match = MENTION_REGEX.exec(text)) !== null) {
+          const mSpace = match[1];
+          const mTag = match[2];
+          
+          const matchStart = from + match.index + mSpace.length;
+          const matchEnd = matchStart + mTag.length;
+          
+          widgets.push(Decoration.mark({ class: "cm-mention-tag" }).range(matchStart, matchEnd));
+        }
+      }
+      return Decoration.set(widgets);
+    }
+  },
+  {
+    decorations: (v) => v.decorations,
+  }
+);
 
 function createEditor(container, initialValue, placeholder) {
   const state = EditorState.create({
@@ -15,6 +57,7 @@ function createEditor(container, initialValue, placeholder) {
     extensions: [
       markdown(),
       history(),
+      mentionPlugin,
       keymap.of([...defaultKeymap, indentWithTab]),
       EditorView.updateListener.of((update) => {
         if (update.docChanged && window.ReactNativeWebView) {
