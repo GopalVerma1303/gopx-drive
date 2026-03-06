@@ -441,6 +441,23 @@ ${getScrollbarCss({ muted: colors.muted, mutedForeground: colors.mutedForeground
   padding: 0.1em 0.2em;
   border-radius: 4px;
 }
+/* KaTeX block math horizontal scroll */
+.markdown-preview .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5em 0;
+  -webkit-overflow-scrolling: touch;
+}
+.markdown-preview .katex-display::-webkit-scrollbar {
+  height: 4px;
+}
+.markdown-preview .katex-display::-webkit-scrollbar-thumb {
+  background: ${hexToRgba(colors.mutedForeground, 0.45)};
+  border-radius: 2px;
+}
+.markdown-preview .katex-display::-webkit-scrollbar-track {
+  background: transparent;
+}
 `.trim();
 }
 
