@@ -50,8 +50,8 @@ const DEFAULT_LINK = "#0969da";
 const DEFAULT_LINK_URL = "#0550ae";
 const DEFAULT_CODE_BG = "rgba(128,128,128,0.15)";
 const DEFAULT_QUOTE_BORDER = "rgba(128,128,128,0.5)";
-const DEFAULT_MENTION_TAG_LIGHT = "#ca8a04"; // yellow-600
-const DEFAULT_MENTION_TAG_DARK = "#facc15"; // yellow-400
+const DEFAULT_MENTION_TAG_LIGHT = "#0d9488"; // teal-600
+const DEFAULT_MENTION_TAG_DARK = "#2dd4bf"; // teal-400
 
 /** Build theme colors from app palette (useThemeColors). Pass isDark for code block syntax theme (e.g. GitHub dark). */
 export function getMarkdownThemeFromPalette(
@@ -438,7 +438,7 @@ ${getScrollbarCss({ muted: colors.muted, mutedForeground: colors.mutedForeground
 .markdown-preview mark {
   background-color: rgb(250 204 21 / 0.4);
   color: inherit;
-  padding: 0.1em 0.2em;
+  padding: 0;
 }
 /* KaTeX block math horizontal scroll */
 .markdown-preview .katex-display {
@@ -776,7 +776,7 @@ export function getCodeMirrorThemeConfig(
     },
     ".cm-highlight": {
       backgroundColor: "rgb(250 204 21 / 0.4)",
-      padding: "0.1em 0.2em",
+      padding: "0",
       borderRadius: "0px",
     },
   };
