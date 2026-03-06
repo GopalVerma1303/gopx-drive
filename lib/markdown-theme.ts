@@ -38,12 +38,12 @@ export interface MarkdownThemeColors {
   ring: string;
   link?: string;
   linkUrl?: string;
-    codeBackground?: string;
-    blockquoteBorder?: string;
-    /** The color for @tags like @dinner */
-    mentionTag?: string;
-    /** When true, use dark variant for code block syntax highlighting (e.g. GitHub dark). */
-    isDark?: boolean;
+  codeBackground?: string;
+  blockquoteBorder?: string;
+  /** The color for @tags like @dinner */
+  mentionTag?: string;
+  /** When true, use dark variant for code block syntax highlighting (e.g. GitHub dark). */
+  isDark?: boolean;
 }
 
 const DEFAULT_LINK = "#0969da";
@@ -80,6 +80,7 @@ function resolveColors(colors: MarkdownThemeColors) {
     linkUrl: colors.linkUrl ?? DEFAULT_LINK_URL,
     codeBg: colors.codeBackground ?? DEFAULT_CODE_BG,
     quoteBorder: colors.blockquoteBorder ?? DEFAULT_QUOTE_BORDER,
+    mentionTag: colors.mentionTag ?? (colors.isDark ? DEFAULT_MENTION_TAG_DARK : DEFAULT_MENTION_TAG_LIGHT),
   };
 }
 
@@ -768,7 +769,7 @@ export function getCodeMirrorThemeConfig(
     ".cm-alert-caution": { borderLeftColor: getAlertColors(colors.isDark).caution },
     ".cm-alert-caution .cm-alert-title": { color: getAlertColors(colors.isDark).caution },
     ".cm-mention-tag": {
-      color: colors.mentionTag ?? (colors.isDark ? "#facc15" : "#ca8a04"),
+      color: colors.mentionTag ?? (colors.isDark ? "#2dd4bf" : "#0d9488"),
       fontWeight: "500",
     },
     ".cm-math-marker": {

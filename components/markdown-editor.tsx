@@ -5,6 +5,7 @@ import { detectCheckboxInLine, toggleCheckboxInMarkdown } from "@/components/mar
 import { SyntaxHighlighter } from "@/components/syntax-highlighter";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Text } from "@/components/ui/text";
+import { getMarkdownThemeFromPalette } from "@/lib/markdown-theme";
 import { useThemeColors, type ThemePalette } from "@/lib/use-theme-colors";
 import { cn } from "@/lib/utils";
 import * as Clipboard from "expo-clipboard";
@@ -140,11 +141,12 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     ref
   ) {
     const { colors, isDark } = useThemeColors() as { colors: ThemePalette; isDark: boolean };
+    const theme = useMemo(() => getMarkdownThemeFromPalette(colors, isDark), [colors, isDark]);
     const { width: windowWidth } = useWindowDimensions();
     const inputRef = useRef<
       (import("@/components/codemirror-editor").CodeMirrorEditorHandle &
         Partial<import("@/components/codemirror-editor/CodeMirrorDOM").CodeMirrorDOMRef>) |
-        null
+      null
     >(null);
     const previousValueRef = useRef<string>(value);
     const isProcessingListRef = useRef<boolean>(false);
@@ -2878,6 +2880,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               codeBackground={colors.codeBackground}
               blockquoteBorder={colors.blockquoteBorder}
               ringColor={colors.ring}
+              mentionTag={theme.mentionTag}
               isDark={isDark}
             />
           </CodeMirrorNativeErrorBoundary>

@@ -253,7 +253,6 @@ const codeBlockAndBlockquotePlugins = [
   mathMarkerPlugin,
   markHighlightPlugin,
 ];
-
 function buildThemeFromProps(props: {
   backgroundColor: string;
   color: string;
@@ -264,6 +263,7 @@ function buildThemeFromProps(props: {
   codeBackground?: string;
   blockquoteBorder?: string;
   ringColor?: string;
+  mentionTag?: string;
   isDark?: boolean;
 }): MarkdownThemeColors {
   return {
@@ -276,6 +276,7 @@ function buildThemeFromProps(props: {
     linkUrl: props.linkUrlColor,
     codeBackground: props.codeBackground,
     blockquoteBorder: props.blockquoteBorder,
+    mentionTag: props.mentionTag,
     isDark: props.isDark,
   };
 }
@@ -304,6 +305,7 @@ interface CodeMirrorDOMProps {
   /** For scrollbar styling (match app theme). */
   muted?: string;
   mutedForeground?: string;
+  mentionTag?: string;
   isDark?: boolean;
   dom?: import("expo/dom").DOMProps;
   ref?: Ref<CodeMirrorDOMRef>;
@@ -323,6 +325,7 @@ export default function CodeMirrorDOM({
   ringColor,
   muted,
   mutedForeground,
+  mentionTag,
   isDark,
   ref: refProp,
 }: CodeMirrorDOMProps) {
@@ -351,6 +354,7 @@ export default function CodeMirrorDOM({
       linkUrlColor,
       codeBackground,
       blockquoteBorder,
+      mentionTag,
       ringColor,
       isDark,
     });
