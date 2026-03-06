@@ -439,7 +439,6 @@ ${getScrollbarCss({ muted: colors.muted, mutedForeground: colors.mutedForeground
   background-color: rgb(250 204 21 / 0.4);
   color: inherit;
   padding: 0.1em 0.2em;
-  border-radius: 4px;
 }
 /* KaTeX block math horizontal scroll */
 .markdown-preview .katex-display {
@@ -778,7 +777,7 @@ export function getCodeMirrorThemeConfig(
     ".cm-highlight": {
       backgroundColor: "rgb(250 204 21 / 0.4)",
       padding: "0.1em 0.2em",
-      borderRadius: "4px",
+      borderRadius: "0px",
     },
   };
 }
@@ -817,7 +816,7 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
     `.cm-alert-caution { border-left-color: ${getAlertColors(colors.isDark).caution} !important; } .cm-alert-caution .cm-alert-title { color: ${getAlertColors(colors.isDark).caution} !important; } ` +
     `.cm-mention-tag { color: ${colors.mentionTag ?? (colors.isDark ? "#facc15" : "#ca8a04")} !important; font-weight: 500 !important; } ` +
     `.cm-math-marker { opacity: 0.5 !important; } ` +
-    `.cm-highlight { background-color: rgb(250 204 21 / 0.4) !important; padding: 0.1em 0.2em !important; border-radius: 4px !important; } ` +
+    `.cm-highlight { background-color: rgb(250 204 21 / 0.4) !important; padding: 0.1em 0.2em !important; border-radius: 0px !important; } ` +
     scrollbarCss
   );
 }
