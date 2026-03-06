@@ -25,6 +25,8 @@ export type ToolbarItemId =
   | "horizontalRule"
   | "date"
   | "aiAssistant"
+  | "highlighter"
+  | "mention"
   | "toolbarSettings";
 
 export interface ToolbarPreferences {
@@ -53,8 +55,10 @@ const DEFAULT_VISIBLE: ToolbarItemId[] = [
   "codeBlock",
   "table",
   "horizontalRule",
-  "date",
   "aiAssistant",
+  "date",
+  "highlighter",
+  "mention",
   "toolbarSettings",
 ];
 

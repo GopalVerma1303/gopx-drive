@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import {
+  AtSign,
   Bold,
   Calendar,
   Code,
@@ -15,6 +16,7 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Highlighter,
   Image,
   IndentDecrease,
   IndentIncrease,
@@ -320,6 +322,16 @@ export function MarkdownToolbar({
     onAIAssistant?.();
   };
 
+  const handleHighlighter = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    wrapOrInsert("==", "==", 2);
+  };
+
+  const handleMention = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onInsertText("@", 1);
+  };
+
   const handleToolbarSettings = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push("/(app)/toolbar-order" as any);
@@ -349,6 +361,8 @@ export function MarkdownToolbar({
     horizontalRule: handleHorizontalRule,
     date: handleDate,
     aiAssistant: handleAIAssistant,
+    highlighter: handleHighlighter,
+    mention: handleMention,
     toolbarSettings: handleToolbarSettings,
   };
 
@@ -375,6 +389,8 @@ export function MarkdownToolbar({
     horizontalRule: Minus,
     date: Calendar,
     aiAssistant: Sparkles,
+    highlighter: Highlighter,
+    mention: AtSign,
     toolbarSettings: Wrench,
   };
 
@@ -401,6 +417,8 @@ export function MarkdownToolbar({
     horizontalRule: "Horizontal Rule",
     date: "Insert Date",
     aiAssistant: "AI Assistant",
+    highlighter: "Highlighter",
+    mention: "Mention",
     toolbarSettings: "Toolbar Settings",
   };
 
@@ -427,6 +445,8 @@ export function MarkdownToolbar({
     horizontalRule: false,
     date: false,
     aiAssistant: false,
+    highlighter: false,
+    mention: false,
     toolbarSettings: false,
   };
 

@@ -23,6 +23,8 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Highlighter,
+  AtSign,
   Image,
   IndentDecrease,
   IndentIncrease,
@@ -80,6 +82,8 @@ const TOOLBAR_ITEMS: Record<ToolbarItemId, ToolbarItem> = {
   horizontalRule: { id: "horizontalRule", label: "Horizontal Rule", icon: Minus },
   date: { id: "date", label: "Date", icon: Calendar },
   aiAssistant: { id: "aiAssistant", label: "AI Assistant", icon: Sparkles },
+  highlighter: { id: "highlighter", label: "Highlighter", icon: Highlighter },
+  mention: { id: "mention", label: "Mention", icon: AtSign },
   toolbarSettings: { id: "toolbarSettings", label: "Toolbar Settings", icon: Wrench },
 };
 
@@ -371,7 +375,6 @@ export default function ToolbarOrderScreen() {
             </View>
           )}
         </View>
-
         {/* Hidden Section */}
         <View className="w-full max-w-2xl mx-auto">
           <Text
