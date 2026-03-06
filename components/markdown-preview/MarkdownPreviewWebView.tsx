@@ -1,11 +1,11 @@
 "use client";
 
+import { getMarkdownThemeFromPalette, getPreviewCss } from "@/lib/markdown-theme";
+import { useThemeColors } from "@/lib/use-theme-colors";
+import * as Clipboard from "expo-clipboard";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import WebView from "react-native-webview";
-import * as Clipboard from "expo-clipboard";
-import { getMarkdownThemeFromPalette, getPreviewCss } from "@/lib/markdown-theme";
-import { useThemeColors } from "@/lib/use-theme-colors";
 import { getPreviewFullHtml } from "./getPreviewHtml";
 
 /** Injected into WebView: replace native checkboxes with custom ones; on tap toggle visual and postMessage so React can update markdown. */
@@ -106,6 +106,30 @@ const WRAP_TABLES_SCRIPT = `
     if (table.parentNode) {
       table.parentNode.insertBefore(wrapper, table);
       wrapper.appendChild(table);
+    }
+  }
+})(); true;
+`;
+
+/** Injected into WebView: wrap images with alt text in a <figure> and add <figcaption> to show alt text as caption under image. */
+const WRAP_IMAGES_SCRIPT = `
+(function(){
+  var container = document.getElementById('content');
+  if (!container) return;
+  var images = container.querySelectorAll('img[alt]');
+  for (var i = 0; i < images.length; i++) {
+    var img = images[i];
+    var alt = (img.getAttribute('alt') || '').trim();
+    if (!alt) continue;
+    if (img.parentElement && img.parentElement.tagName.toLowerCase() === 'figure') continue;
+    var figure = document.createElement('figure');
+    figure.className = 'image-with-caption';
+    var caption = document.createElement('figcaption');
+    caption.textContent = alt;
+    if (img.parentNode) {
+      img.parentNode.insertBefore(figure, img);
+      figure.appendChild(img);
+      figure.appendChild(caption);
     }
   }
 })(); true;
@@ -342,7 +366,7 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle, onCheckbox
         var el = document.getElementById('content');
         if(el) {
           el.innerHTML = html;
-          var run = function() { ${REPLACE_CHECKBOXES_SCRIPT} ${ADD_CODE_COPY_BUTTONS_SCRIPT} ${WRAP_TABLES_SCRIPT} ${RENDER_MERMAID_SCRIPT} ${ENHANCE_MERMAID_SCRIPT} };
+          var run = function() { ${REPLACE_CHECKBOXES_SCRIPT} ${ADD_CODE_COPY_BUTTONS_SCRIPT} ${WRAP_TABLES_SCRIPT} ${WRAP_IMAGES_SCRIPT} ${RENDER_MERMAID_SCRIPT} ${ENHANCE_MERMAID_SCRIPT} };
           setTimeout(run, 0);
           setTimeout(run, 80);
           setTimeout(run, 250);
