@@ -455,7 +455,6 @@ ${getScrollbarCss({ muted: colors.muted, mutedForeground: colors.mutedForeground
   background-color: rgba(255, 255, 0, 0.4);
   color: inherit;
   padding: 0;
-  border-radius: 2px;
 }
 .markdown-preview .search-highlight.active {
   background-color: #eab308; /* yellow-500 */
