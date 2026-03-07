@@ -784,7 +784,7 @@ export default function CodeMirrorDOM({
             }
             return matches.length;
           }
-          return 0;
+          return -1;
         },
         scrollToMatch: (...args: JSONValue[]) => {
           // Keep for backward compatibility but setSearch now handles it

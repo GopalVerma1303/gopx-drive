@@ -1405,7 +1405,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           ? () => (inputRef.current as any)?.getValueAsync?.() ?? Promise.resolve(value)
           : undefined,
       setSearch: (query: string, activeIndex: number, shouldScroll?: boolean) => {
-        return inputRef.current?.setSearch?.(query, activeIndex, shouldScroll ?? false) ?? 0;
+        // Return -1 if not ready so callers can avoid resetting match counts during transient states.
+        return inputRef.current?.setSearch?.(query, activeIndex, shouldScroll ?? false) ?? -1;
       },
       scrollToMatch: (query: string, activeIndex: number) => {
         inputRef.current?.scrollToMatch?.(query, activeIndex);

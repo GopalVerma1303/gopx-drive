@@ -25,7 +25,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronDown, ChevronUp, RefreshCcw, Replace, ReplaceAll, Search, X } from "lucide-react-native";
+import { ChevronDown, ChevronUp, Replace, ReplaceAll, Search, X } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -35,11 +35,11 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   View,
 } from "react-native";
 import { KeyboardController, useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import Animated, { useAnimatedStyle } from "react-native-reanimated";
+import { cn } from "@/lib/utils";
 
 export default function NoteEditorScreen() {
   const { id, edit: editParam, folderId } = useLocalSearchParams<{ id: string; edit?: string; folderId?: string }>();
@@ -447,14 +447,12 @@ export default function NoteEditorScreen() {
         // Editor search: setSearch returns match count and optionally handles scrolling.
         // Consolidation prevents race conditions and redundant bridge calls on mobile.
         const result = editorRef.current?.setSearch?.(searchQuery, currentMatchIndex, true);
-        if (result && typeof result === 'object' && 'then' in result) {
-          (result as Promise<number>).then(count => {
-            if (typeof count === 'number') setTotalMatches(count);
+        if (result && typeof result === "object" && "then" in (result as any)) {
+          (result as Promise<number>).then((count) => {
+            if (typeof count === "number" && count >= 0) setTotalMatches(count);
           });
-        } else if (typeof result === 'number') {
+        } else if (typeof result === "number" && result >= 0) {
           setTotalMatches(result);
-        } else {
-          setTotalMatches(0);
         }
       }
     } else {
@@ -573,30 +571,6 @@ export default function NoteEditorScreen() {
     }
   };
 
-  const styles = StyleSheet.create({
-    screenRoot: {
-      flex: 1,
-      flexDirection: "column",
-      minHeight: 0,
-    },
-    screenContentWeb: {
-      flex: 1,
-      minHeight: 0,
-      backgroundColor: colors.background,
-    },
-    editorColumnWeb: {
-      flex: 1,
-      minHeight: 0,
-      width: "100%",
-      backgroundColor: colors.background,
-      position: "relative" as const,
-    },
-    screenContentNative: {
-      flex: 1,
-      minHeight: 0,
-    },
-  });
-
   const [previewReady, setPreviewReady] = useState<boolean>(isNewNote);
 
   return (
@@ -607,7 +581,7 @@ export default function NoteEditorScreen() {
         }}
       />
       {/* Single flex column root so header + content get correct height; content area can scroll to bottom */}
-      <View style={styles.screenRoot}>
+      <View className="flex-1 flex-col min-h-0">
         <NoteDetailHeader
           title={title}
           onTitleChange={setTitle}
@@ -645,41 +619,12 @@ export default function NoteEditorScreen() {
           onReplaceOpen={() => handleSearchOpen('replace')}
         />
         {isSearchBarVisible && (
-          <View
-            style={{
-              flexDirection: "column",
-              backgroundColor: colors.background,
-              borderBottomWidth: 1,
-              borderBottomColor: colors.border,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                gap: 8,
-              }}
-            >
-              <View
-                style={{
-                  flex: 1,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  backgroundColor: colors.muted,
-                  borderRadius: 8,
-                  paddingHorizontal: 10,
-                  height: 36,
-                }}
-              >
+          <View className="flex-col bg-background border-b border-border">
+            <View className="flex-row items-center px-3 py-2 gap-6">
+              <View className="flex-1 flex-row items-center bg-muted rounded-lg px-[10px] h-9">
                 <Search size={18} color={colors.mutedForeground} />
-                <ScrollView
-                  horizontal
-                  scrollEnabled={false}
-                  contentContainerStyle={{ flex: 1 }}
-                >
-                  <View style={{ flex: 1, justifyContent: 'center' }}>
+                <ScrollView horizontal scrollEnabled={false} className="flex-1">
+                  <View className="flex-1 justify-center">
                     <Input
                       ref={searchInputRef}
                       value={searchQuery}
@@ -689,118 +634,68 @@ export default function NoteEditorScreen() {
                       }}
                       placeholder="Search note..."
                       placeholderTextColor={colors.mutedForeground}
-                      style={{
-                        paddingVertical: 0,
-                        height: 36,
-                        color: colors.foreground,
-                        backgroundColor: 'transparent',
-                        borderWidth: 0,
-                      }}
+                      className="py-0 h-9 text-foreground bg-transparent border-0"
                     />
                   </View>
                 </ScrollView>
                 {totalMatches > 0 && (
-                  <Text style={{ fontSize: 12, color: colors.mutedForeground, marginRight: 8 }}>
+                  <Text className="text-[12px] text-muted-foreground mr-2">
                     {currentMatchIndex + 1}/{totalMatches}
                   </Text>
                 )}
               </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View className="flex-row items-center gap-3">
                 <Pressable
                   onPress={handleSearchPrev}
                   disabled={totalMatches === 0}
-                  style={({ pressed }) => ({
-                    padding: 6,
-                    opacity: (totalMatches === 0) ? 0.4 : (pressed ? 0.7 : 1),
-                  })}
+                  className={cn("p-[6px]", totalMatches === 0 ? "opacity-40" : "active:opacity-70")}
                 >
                   <ChevronUp size={20} color={colors.foreground} />
                 </Pressable>
                 <Pressable
                   onPress={handleSearchNext}
                   disabled={totalMatches === 0}
-                  style={({ pressed }) => ({
-                    padding: 6,
-                    opacity: (totalMatches === 0) ? 0.4 : (pressed ? 0.7 : 1),
-                  })}
+                  className={cn("p-[6px]", totalMatches === 0 ? "opacity-40" : "active:opacity-70")}
                 >
                   <ChevronDown size={20} color={colors.foreground} />
                 </Pressable>
                 <Pressable
                   onPress={handleSearchClose}
-                  style={({ pressed }) => ({
-                    padding: 6,
-                    marginLeft: 4,
-                    opacity: pressed ? 0.7 : 1,
-                  })}
+                  className="p-[6px] ml-1 active:opacity-70"
                 >
                   <X size={20} color={colors.foreground} />
                 </Pressable>
               </View>
             </View>
-            
+
             {isReplaceVisible && (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  paddingHorizontal: 12,
-                  paddingBottom: 8,
-                  gap: 8,
-                }}
-              >
-                <View
-                  style={{
-                    flex: 1,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    backgroundColor: colors.muted,
-                    borderRadius: 8,
-                    paddingHorizontal: 10,
-                    height: 36,
-                  }}
-                >
+              <View className="flex-row items-center px-3 pb-2 gap-6">
+                <View className="flex-1 flex-row items-center bg-muted rounded-lg px-[10px] h-9">
                   <Replace size={18} color={colors.mutedForeground} />
-                  <ScrollView
-                    horizontal
-                    scrollEnabled={false}
-                    contentContainerStyle={{ flex: 1 }}
-                  >
-                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                  <ScrollView horizontal scrollEnabled={false} className="flex-1">
+                    <View className="flex-1 justify-center">
                       <Input
                         value={replaceQuery}
                         onChangeText={setReplaceQuery}
                         placeholder="Replace with..."
                         placeholderTextColor={colors.mutedForeground}
-                        style={{
-                          paddingVertical: 0,
-                          height: 36,
-                          color: colors.foreground,
-                          backgroundColor: 'transparent',
-                          borderWidth: 0,
-                        }}
+                        className="py-0 h-9 text-foreground bg-transparent border-0"
                       />
                     </View>
                   </ScrollView>
                 </View>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View className="flex-row items-center gap-3">
                   <Pressable
                     onPress={() => editorRef.current?.replace?.(searchQuery, replaceQuery, currentMatchIndex)}
                     disabled={totalMatches === 0 || !searchQuery}
-                    style={({ pressed }) => ({
-                      padding: 6,
-                      opacity: (totalMatches === 0 || !searchQuery) ? 0.4 : (pressed ? 0.7 : 1),
-                    })}
+                    className={cn("p-[6px]", (totalMatches === 0 || !searchQuery) ? "opacity-40" : "active:opacity-70")}
                   >
                     <Replace size={20} color={colors.foreground} />
                   </Pressable>
                   <Pressable
                     onPress={() => editorRef.current?.replaceAll?.(searchQuery, replaceQuery)}
                     disabled={totalMatches === 0 || !searchQuery}
-                    style={({ pressed }) => ({
-                      padding: 6,
-                      opacity: (totalMatches === 0 || !searchQuery) ? 0.4 : (pressed ? 0.7 : 1),
-                    })}
+                    className={cn("p-[6px]", (totalMatches === 0 || !searchQuery) ? "opacity-40" : "active:opacity-70")}
                   >
                     <ReplaceAll size={20} color={colors.foreground} />
                   </Pressable>
@@ -810,29 +705,21 @@ export default function NoteEditorScreen() {
           </View>
         )}
         {Platform.OS === "web" ? (
-          <View style={styles.screenContentWeb}>
-            <View style={styles.editorColumnWeb}>
+          <View className="flex-1 min-h-0 bg-background">
+            <View className="flex-1 min-h-0 w-full bg-background relative">
               {/* Preview: always mounted, hidden when editing for instant switch */}
               <View
-                style={[
-                  { flex: 1, minHeight: "100%" },
-                  !isPreview && {
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    opacity: 0,
-                    pointerEvents: "none",
-                  },
-                ]}
+                className={cn(
+                  "flex-1 min-h-full",
+                  !isPreview && "absolute inset-0 opacity-0 pointer-events-none"
+                )}
               >
                 <ScrollView
                   className="flex-1"
                   contentContainerStyle={{ flexGrow: 1, minHeight: "100%" }}
                   showsVerticalScrollIndicator
                 >
-                  <View style={{ flexGrow: 1, width: "100%", maxWidth: 672, alignSelf: "center", backgroundColor: colors.muted }}>
+                  <View className="flex-grow w-full max-w-[672px] self-center bg-muted">
                     <MarkdownPreview
                       content={content}
                       onToggleCheckbox={setContent}
@@ -845,101 +732,74 @@ export default function NoteEditorScreen() {
                   </View>
                 </ScrollView>
               </View>
-                {/* Editor: always mounted, hidden when previewing for instant switch */}
+              {/* Editor: always mounted, hidden when previewing for instant switch */}
+              <View
+                className={cn(
+                  "flex-1 min-h-0 flex-col",
+                  isPreview && "absolute inset-0 opacity-0 pointer-events-none"
+                )}
+              >
+                {/* Web: measure this area so we can give CodeMirror an explicit pixel height (first-principles: scroll needs a definite viewport size). */}
                 <View
-                  style={[
-                    { flex: 1, minHeight: 0, flexDirection: "column" },
-                    isPreview && {
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      opacity: 0,
-                      pointerEvents: "none",
-                    },
-                  ]}
+                  className="flex-1 min-h-0"
+                  onLayout={(e) => {
+                    const h = e.nativeEvent.layout.height;
+                    if (typeof h === "number" && h > 0) setEditorAreaHeightPx(h);
+                  }}
                 >
-                  {/* Web: measure this area so we can give CodeMirror an explicit pixel height (first-principles: scroll needs a definite viewport size). */}
-                  <View
-                    style={{
-                      flex: 1,
-                      minHeight: 0,
-                    }}
-                    onLayout={(e) => {
-                      const h = e.nativeEvent.layout.height;
-                      if (typeof h === "number" && h > 0) setEditorAreaHeightPx(h);
-                    }}
-                  >
-                    {(!isNewNote && isLoading) ? null : (
-                      <MarkdownEditor
-                        ref={editorRef}
-                        value={content}
-                        onChangeText={setContent}
-                        onSelectionChange={(sel) => {
-                          lastSelectionRef.current = sel;
-                        }}
-                        placeholder="Start writing in markdown..."
-                        isPreview={false}
-                        onSave={handleSave}
-                        editorAreaHeight={editorAreaHeightPx}
-                        searchQuery={isSearchBarVisible ? searchQuery : ""}
-                        currentMatchIndex={currentMatchIndex}
-                        onSearchMatchCount={setTotalMatches}
-                      />
-                    )}
-                  </View>
-                  <MarkdownToolbar
-                    onInsertText={(text, cursorOffset) => {
-                      editorRef.current?.insertText(text, cursorOffset);
-                    }}
-                    onWrapSelection={(before, after, cursorOffset) => {
-                      editorRef.current?.wrapSelection(before, after, cursorOffset);
-                    }}
-                    onIndent={() => editorRef.current?.indent()}
-                    onOutdent={() => editorRef.current?.outdent()}
-                    onUndo={() => editorRef.current?.undo()}
-                    onRedo={() => editorRef.current?.redo()}
-                    onAIAssistant={handleOpenAIModal}
-                    onImageInsert={() => setImageModalOpen(true)}
-                    isPreview={false}
-                  />
+                  {(!isNewNote && isLoading) ? null : (
+                    <MarkdownEditor
+                      ref={editorRef}
+                      value={content}
+                      onChangeText={setContent}
+                      onSelectionChange={(sel) => {
+                        lastSelectionRef.current = sel;
+                      }}
+                      placeholder="Start writing in markdown..."
+                      isPreview={false}
+                      onSave={handleSave}
+                      editorAreaHeight={editorAreaHeightPx}
+                      searchQuery={isSearchBarVisible ? searchQuery : ""}
+                      currentMatchIndex={currentMatchIndex}
+                      onSearchMatchCount={setTotalMatches}
+                    />
+                  )}
                 </View>
+                <MarkdownToolbar
+                  onInsertText={(text, cursorOffset) => {
+                    editorRef.current?.insertText(text, cursorOffset);
+                  }}
+                  onWrapSelection={(before, after, cursorOffset) => {
+                    editorRef.current?.wrapSelection(before, after, cursorOffset);
+                  }}
+                  onIndent={() => editorRef.current?.indent()}
+                  onOutdent={() => editorRef.current?.outdent()}
+                  onUndo={() => editorRef.current?.undo()}
+                  onRedo={() => editorRef.current?.redo()}
+                  onAIAssistant={handleOpenAIModal}
+                  onImageInsert={() => setImageModalOpen(true)}
+                  isPreview={false}
+                />
+              </View>
             </View>
           </View>
         ) : (
-          <Animated.View className="flex-1" style={[containerAnimatedStyle, styles.screenContentNative]}>
-            <View className="flex-1" style={{ backgroundColor: colors.background }}>
-              <View
-                className="flex-1 w-full"
-                style={{
-                  flex: 1,
-                  width: "100%",
-                  backgroundColor: colors.background,
-                  position: "relative",
-                }}
-              >
+          <Animated.View className="flex-1" style={containerAnimatedStyle}>
+            <View className="flex-1 bg-background">
+              <View className="flex-1 w-full relative">
                 {/* Preview: always mounted, hidden when editing for instant switch */}
                 <View
-                  style={[
-                    { flex: 1, width: "100%", height: "100%" },
-                    !isPreview && {
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      opacity: 0,
-                      pointerEvents: "none",
-                    },
-                  ]}
+                  className={cn(
+                    "flex-1 w-full h-full",
+                    !isPreview && "absolute inset-0 opacity-0 pointer-events-none"
+                  )}
                 >
                   <ScrollView
-                    style={{ flex: 1, width: "100%", height: "100%" }}
+                    className="flex-1 w-full h-full"
                     contentContainerStyle={{ flexGrow: 1 }}
                     showsVerticalScrollIndicator
                   >
-                    <View style={{ flexGrow: 1, width: "100%", maxWidth: 672, alignSelf: "center", backgroundColor: colors.muted }}>
+                    <View className="flex-grow w-full max-w-[672px] self-center bg-muted">
                       <MarkdownPreview
                         content={content}
                         onToggleCheckbox={setContent}
@@ -955,26 +815,14 @@ export default function NoteEditorScreen() {
                 </View>
                 {/* Editor: always mounted, hidden when previewing for instant switch */}
                 <View
-                  style={[
-                    { flex: 1, width: "100%", flexDirection: "column" },
-                    isPreview && {
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      opacity: 0,
-                      pointerEvents: "none",
-                    },
-                  ]}
+                  className={cn(
+                    "flex-1 w-full flex-col",
+                    isPreview && "absolute inset-0 opacity-0 pointer-events-none"
+                  )}
                 >
                   <View
+                    className="flex-1 w-full max-w-[672px] self-center bg-muted"
                     style={{
-                      flex: 1,
-                      width: "100%",
-                      maxWidth: 672,
-                      alignSelf: "center",
-                      backgroundColor: colors.muted,
                       minHeight: nativeEditorContentMinHeight,
                     }}
                   >
@@ -996,16 +844,7 @@ export default function NoteEditorScreen() {
                       />
                     )}
                   </View>
-                  <View
-                    style={{
-                      position: "absolute",
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      zIndex: 10,
-                      backgroundColor: colors.background,
-                    }}
-                  >
+                  <View className="absolute bottom-0 left-0 right-0 z-10 bg-background">
                     <MarkdownToolbar
                       onInsertText={(text, cursorOffset) => {
                         editorRef.current?.insertText(text, cursorOffset);
@@ -1030,18 +869,7 @@ export default function NoteEditorScreen() {
         {/* Overlay loader while the note is loading or initial preview HTML is being generated,
             so the user does not see a blank note screen. */}
         {!isNewNote && (isLoading || !previewReady) && (
-          <View
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: colors.background,
-            }}
-          >
+          <View className="absolute inset-0 items-center justify-center bg-background">
             <ActivityIndicator size="large" color={colors.foreground} />
           </View>
         )}
@@ -1144,36 +972,25 @@ export default function NoteEditorScreen() {
           animationType="fade"
           onRequestClose={closeMoveModal}
         >
-          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.4)", padding: 24 }}>
-            <Pressable style={StyleSheet.absoluteFillObject} onPress={closeMoveModal} />
-            <View style={{ width: "100%", maxWidth: 400, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.muted, padding: 24 }}>
-              <Text style={{ marginBottom: 8, fontSize: 18, fontWeight: "600", color: colors.foreground }}>
+          <View className="flex-1 justify-center items-center bg-black/40 p-6">
+            <Pressable className="absolute inset-0" onPress={closeMoveModal} />
+            <View className="w-full max-w-[400px] rounded-xl border border-border bg-muted p-6">
+              <Text className="mb-2 text-[18px] font-semibold text-foreground">
                 Move to
               </Text>
-              <Text style={{ marginBottom: 16, fontSize: 14, color: colors.mutedForeground }}>
+              <Text className="mb-4 text-sm text-muted-foreground">
                 Choose a folder for "{note.title || "Untitled"}"
               </Text>
               <View
-                style={{ marginBottom: 24, width: "100%" }}
+                className="mb-6 w-full"
                 onLayout={(e) => setDropdownTriggerWidth(e.nativeEvent.layout.width)}
               >
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Pressable
-                      style={{
-                        width: "100%",
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        borderRadius: 6,
-                        borderWidth: 1,
-                        borderColor: colors.border,
-                        backgroundColor: colors.background,
-                        paddingHorizontal: 12,
-                        paddingVertical: 10,
-                      }}
+                      className="w-full flex-row items-center justify-between rounded-md border border-border bg-background px-3 py-[10px]"
                     >
-                      <Text style={{ fontSize: 14, color: colors.foreground }}>
+                      <Text className="text-sm text-foreground">
                         {selectedFolderId == null
                           ? "No folder"
                           : folders.find((f) => f.id === selectedFolderId)?.name ?? "Select folder"}
@@ -1198,16 +1015,16 @@ export default function NoteEditorScreen() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </View>
-              <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 12 }}>
-                <Pressable style={{ paddingHorizontal: 16, paddingVertical: 8 }} onPress={closeMoveModal}>
-                  <Text style={{ color: colors.foreground }}>Cancel</Text>
+              <View className="flex-row justify-end gap-3">
+                <Pressable className="px-4 py-2" onPress={closeMoveModal}>
+                  <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
-                  style={{ borderRadius: 6, paddingHorizontal: 16, paddingVertical: 8 }}
+                  className="rounded-md px-4 py-2"
                   onPress={handleMoveConfirm}
                   disabled={moveNoteMutation.isPending}
                 >
-                  <Text style={{ fontWeight: "600", color: "#3b82f6" }}>
+                  <Text className="font-semibold text-blue-500">
                     {moveNoteMutation.isPending ? "Moving…" : "Move"}
                   </Text>
                 </Pressable>

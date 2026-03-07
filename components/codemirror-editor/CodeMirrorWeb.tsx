@@ -830,7 +830,7 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
               return matches.length;
             }
           }
-          return 0;
+          return -1;
         },
         scrollToMatch: (query: string, activeIndex: number) => {
           // Keep for backward compatibility
