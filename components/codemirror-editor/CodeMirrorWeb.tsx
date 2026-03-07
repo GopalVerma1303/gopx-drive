@@ -808,8 +808,21 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
           const match = res?.matches[activeIndex];
           if (match) {
             view.dispatch({
-              effects: EditorView.scrollIntoView(match.from, { y: "center" }),
               selection: { anchor: match.from, head: match.to }
+            });
+
+            // Smooth scroll implementation
+            requestAnimationFrame(() => {
+              const coords = view.coordsAtPos(match.from);
+              if (coords) {
+                const dom = view.scrollDOM;
+                const rect = dom.getBoundingClientRect();
+                const top = coords.top - rect.top + dom.scrollTop - (dom.clientHeight / 2);
+                dom.scrollTo({
+                  top,
+                  behavior: 'smooth'
+                });
+              }
             });
           }
         }

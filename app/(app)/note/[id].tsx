@@ -13,10 +13,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
-import { Input } from "@/components/ui/input";
 import { generateAIContent } from "@/lib/ai-providers";
 import { listFolders } from "@/lib/folders";
 import { createNote, getNoteById, syncNotesFromSupabase, updateNote } from "@/lib/notes";
@@ -26,7 +26,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronDown, ChevronUp, Search, X } from "lucide-react-native";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   BackHandler,
@@ -79,6 +79,7 @@ export default function NoteEditorScreen() {
   /** Range to replace with AI output when modal was opened with a selection (so we don't rely on getSelection() after focus is lost). */
   const [aiReplaceRange, setAiReplaceRange] = useState<{ start: number; end: number } | null>(null);
   const editorRef = useRef<MarkdownEditorRef>(null);
+  const searchInputRef = useRef<any>(null);
   /** Guards against double submission (e.g. double-tap save) before isPending updates. */
   const saveInProgressRef = useRef(false);
   /** Note id we last synced from. Used to avoid overwriting unsaved editor content when note refetches (e.g. on preview toggle or focus). */
@@ -461,10 +462,15 @@ export default function NoteEditorScreen() {
       editorRef.current?.scrollToMatch?.(searchQuery, currentMatchIndex);
     }
   }, [currentMatchIndex, searchQuery, isPreview, isSearchBarVisible]);
-  
+
   const handleSearchOpen = () => {
     setIsSearchBarVisible(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Auto-focus the search bar
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 100);
   };
 
   const handleSearchClose = () => {
@@ -661,25 +667,25 @@ export default function NoteEditorScreen() {
                 scrollEnabled={false}
                 contentContainerStyle={{ flex: 1 }}
               >
-                  <View style={{ flex: 1, justifyContent: 'center' }}>
-                    <Input
-                      value={searchQuery}
-                      onChangeText={(text: string) => {
-                        setSearchQuery(text);
-                        setCurrentMatchIndex(0);
-                      }}
-                      placeholder="Search note..."
-                      placeholderTextColor={colors.mutedForeground}
-                      style={{
-                        paddingVertical: 0,
-                        height: 36,
-                        color: colors.foreground,
-                        backgroundColor: 'transparent',
-                        borderWidth: 0,
-                      }}
-                      autoFocus
-                    />
-                  </View>
+                <View style={{ flex: 1, justifyContent: 'center' }}>
+                  <Input
+                    ref={searchInputRef}
+                    value={searchQuery}
+                    onChangeText={(text: string) => {
+                      setSearchQuery(text);
+                      setCurrentMatchIndex(0);
+                    }}
+                    placeholder="Search note..."
+                    placeholderTextColor={colors.mutedForeground}
+                    style={{
+                      paddingVertical: 0,
+                      height: 36,
+                      color: colors.foreground,
+                      backgroundColor: 'transparent',
+                      borderWidth: 0,
+                    }}
+                  />
+                </View>
               </ScrollView>
               {totalMatches > 0 && (
                 <Text style={{ fontSize: 12, color: colors.mutedForeground, marginRight: 8 }}>
@@ -799,21 +805,21 @@ export default function NoteEditorScreen() {
                   }}
                 >
                   {(!isNewNote && isLoading) ? null : (
-                      <MarkdownEditor
-                        ref={editorRef}
-                        value={content}
-                        onChangeText={setContent}
-                        onSelectionChange={(sel) => {
-                          lastSelectionRef.current = sel;
-                        }}
-                        placeholder="Start writing in markdown..."
-                        isPreview={false}
-                        onSave={handleSave}
-                        editorAreaHeight={editorAreaHeightPx}
-                        searchQuery={isSearchBarVisible ? searchQuery : ""}
-                        currentMatchIndex={currentMatchIndex}
-                        onSearchMatchCount={setTotalMatches}
-                      />
+                    <MarkdownEditor
+                      ref={editorRef}
+                      value={content}
+                      onChangeText={setContent}
+                      onSelectionChange={(sel) => {
+                        lastSelectionRef.current = sel;
+                      }}
+                      placeholder="Start writing in markdown..."
+                      isPreview={false}
+                      onSave={handleSave}
+                      editorAreaHeight={editorAreaHeightPx}
+                      searchQuery={isSearchBarVisible ? searchQuery : ""}
+                      currentMatchIndex={currentMatchIndex}
+                      onSearchMatchCount={setTotalMatches}
+                    />
                   )}
                 </View>
               </View>
