@@ -22,6 +22,7 @@ import { listFolders } from "@/lib/folders";
 import { createNote, getNoteById, syncNotesFromSupabase, updateNote } from "@/lib/notes";
 import { invalidateFoldersQueries, invalidateNotesListQueries } from "@/lib/query-utils";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import { cn } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -39,7 +40,6 @@ import {
 } from "react-native";
 import { KeyboardController, useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import Animated, { useAnimatedStyle } from "react-native-reanimated";
-import { cn } from "@/lib/utils";
 
 export default function NoteEditorScreen() {
   const { id, edit: editParam, folderId } = useLocalSearchParams<{ id: string; edit?: string; folderId?: string }>();
@@ -619,25 +619,21 @@ export default function NoteEditorScreen() {
           onReplaceOpen={() => handleSearchOpen('replace')}
         />
         {isSearchBarVisible && (
-          <View className="flex-col bg-background border-b border-border">
+          <View className="flex-col bg-background border-b border-muted">
             <View className="flex-row items-center px-3 py-2 gap-6">
               <View className="flex-1 flex-row items-center bg-muted rounded-lg px-[10px] h-9">
                 <Search size={18} color={colors.mutedForeground} />
-                <ScrollView horizontal scrollEnabled={false} className="flex-1">
-                  <View className="flex-1 justify-center">
-                    <Input
-                      ref={searchInputRef}
-                      value={searchQuery}
-                      onChangeText={(text: string) => {
-                        setSearchQuery(text);
-                        setCurrentMatchIndex(0);
-                      }}
-                      placeholder="Search note..."
-                      placeholderTextColor={colors.mutedForeground}
-                      className="py-0 h-9 text-foreground bg-transparent border-0"
-                    />
-                  </View>
-                </ScrollView>
+                <Input
+                  ref={searchInputRef}
+                  value={searchQuery}
+                  onChangeText={(text: string) => {
+                    setSearchQuery(text);
+                    setCurrentMatchIndex(0);
+                  }}
+                  placeholder="Search note..."
+                  placeholderTextColor={colors.mutedForeground}
+                  className="flex-1 py-0 h-9 text-foreground bg-transparent border-0"
+                />
                 {totalMatches > 0 && (
                   <Text className="text-[12px] text-muted-foreground mr-2">
                     {currentMatchIndex + 1}/{totalMatches}
@@ -672,17 +668,13 @@ export default function NoteEditorScreen() {
               <View className="flex-row items-center px-3 pb-2 gap-6">
                 <View className="flex-1 flex-row items-center bg-muted rounded-lg px-[10px] h-9">
                   <Replace size={18} color={colors.mutedForeground} />
-                  <ScrollView horizontal scrollEnabled={false} className="flex-1">
-                    <View className="flex-1 justify-center">
-                      <Input
-                        value={replaceQuery}
-                        onChangeText={setReplaceQuery}
-                        placeholder="Replace with..."
-                        placeholderTextColor={colors.mutedForeground}
-                        className="py-0 h-9 text-foreground bg-transparent border-0"
-                      />
-                    </View>
-                  </ScrollView>
+                  <Input
+                    value={replaceQuery}
+                    onChangeText={setReplaceQuery}
+                    placeholder="Replace with..."
+                    placeholderTextColor={colors.mutedForeground}
+                    className="flex-1 py-0 h-9 text-foreground bg-transparent border-0"
+                  />
                 </View>
                 <View className="flex-row items-center gap-3">
                   <Pressable
