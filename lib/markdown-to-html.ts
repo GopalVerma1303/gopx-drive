@@ -453,7 +453,11 @@ export async function markdownToHtml(markdown: string): Promise<string> {
   // Escape double underscores so they remain as text nodes for rehypeUnderline to find.
   // This prevents remark-gfm from converting __abc__ into <strong>abc</strong>.
   const escapedMarkdown = markdown.replace(/__(?=[^ \s])((?:[^]*?[^ \s])?)__/g, '\\_\\_$1\\_\\_');
+  
+  // Strip <!-- comments --> so they do not appear in preview
+  const strippedMarkdown = escapedMarkdown.replace(/<!--[\s\S]*?-->/g, '');
+
   const proc = getProcessor();
-  const file = await proc.process(escapedMarkdown);
+  const file = await proc.process(strippedMarkdown);
   return String(file);
 }

@@ -11,6 +11,8 @@ import {
   AtSign,
   Bold,
   Calendar,
+  CircleAlert,
+  Clock,
   Code,
   Code2,
   Heading1,
@@ -26,10 +28,12 @@ import {
   ListChecks,
   ListOrdered,
   Minus,
+  Percent,
   Quote,
   RotateCcw,
   RotateCw,
   Sparkles,
+  SquareSigma,
   Strikethrough,
   Table,
   Underline,
@@ -323,6 +327,27 @@ export function MarkdownToolbar({
     onInsertText(dateString, dateString.length);
   };
 
+  const handleTimeStamp = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    onInsertText(timeString, timeString.length);
+  };
+
+  const handleComments = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    wrapOrInsert("<!-- ", " -->", 5);
+  };
+
+  const handleMathBlock = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onInsertText("$$\n\n$$", 3);
+  };
+
+  const handleInsertAlert = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onInsertText("> [!NOTE]\n> ", 12);
+  };
+
   const handleAIAssistant = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onAIAssistant?.();
@@ -367,6 +392,10 @@ export function MarkdownToolbar({
     table: handleTable,
     horizontalRule: handleHorizontalRule,
     date: handleDate,
+    timeStamp: handleTimeStamp,
+    comments: handleComments,
+    mathBlock: handleMathBlock,
+    insertAlert: handleInsertAlert,
     aiAssistant: handleAIAssistant,
     highlighter: handleHighlighter,
     mention: handleMention,
@@ -396,6 +425,10 @@ export function MarkdownToolbar({
     table: Table,
     horizontalRule: Minus,
     date: Calendar,
+    timeStamp: Clock,
+    comments: Percent,
+    mathBlock: SquareSigma,
+    insertAlert: CircleAlert,
     aiAssistant: Sparkles,
     highlighter: Highlighter,
     mention: AtSign,
@@ -425,6 +458,10 @@ export function MarkdownToolbar({
     table: "Table",
     horizontalRule: "Horizontal Rule",
     date: "Insert Date",
+    timeStamp: "Time Stamp",
+    comments: "Comments",
+    mathBlock: "Math Block",
+    insertAlert: "Insert Alert",
     aiAssistant: "AI Assistant",
     highlighter: "Highlighter",
     mention: "Mention",
@@ -454,6 +491,10 @@ export function MarkdownToolbar({
     table: false,
     horizontalRule: false,
     date: false,
+    timeStamp: false,
+    comments: false,
+    mathBlock: false,
+    insertAlert: false,
     aiAssistant: false,
     highlighter: false,
     mention: false,

@@ -28,7 +28,11 @@ export type ToolbarItemId =
   | "aiAssistant"
   | "highlighter"
   | "mention"
-  | "toolbarSettings";
+  | "toolbarSettings"
+  | "timeStamp"
+  | "comments"
+  | "mathBlock"
+  | "insertAlert";
 
 export interface ToolbarPreferences {
   visible: ToolbarItemId[];
@@ -57,9 +61,13 @@ const DEFAULT_VISIBLE: ToolbarItemId[] = [
   "indent",
   "outdent",
   "horizontalRule",
+  "timeStamp",
+  "date",
+  "mathBlock",
+  "insertAlert",
+  "comments",
   "highlighter",
   "mention",
-  "date",
   "aiAssistant",
   "toolbarSettings",
 ];
