@@ -1404,8 +1404,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         Platform.OS !== "web"
           ? () => (inputRef.current as any)?.getValueAsync?.() ?? Promise.resolve(value)
           : undefined,
-      setSearch: (query: string, activeIndex: number) => {
-        return inputRef.current?.setSearch?.(query, activeIndex) ?? 0;
+      setSearch: (query: string, activeIndex: number, shouldScroll?: boolean) => {
+        return inputRef.current?.setSearch?.(query, activeIndex, shouldScroll ?? false) ?? 0;
       },
       scrollToMatch: (query: string, activeIndex: number) => {
         inputRef.current?.scrollToMatch?.(query, activeIndex);

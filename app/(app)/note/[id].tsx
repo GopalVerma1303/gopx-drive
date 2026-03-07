@@ -444,8 +444,9 @@ export default function NoteEditorScreen() {
       if (isPreview) {
         // Handled by MarkdownPreview component sync
       } else {
-        // Editor search
-        const result = editorRef.current?.setSearch?.(searchQuery, currentMatchIndex);
+        // Editor search: setSearch returns match count and optionally handles scrolling.
+        // Consolidation prevents race conditions and redundant bridge calls on mobile.
+        const result = editorRef.current?.setSearch?.(searchQuery, currentMatchIndex, true);
         if (result && typeof result === 'object' && 'then' in result) {
           (result as Promise<number>).then(count => {
             if (typeof count === 'number') setTotalMatches(count);
@@ -464,12 +465,6 @@ export default function NoteEditorScreen() {
       }
     }
   }, [searchQuery, currentMatchIndex, isPreview, isSearchBarVisible]);
-
-  useEffect(() => {
-    if (isSearchBarVisible && searchQuery && !isPreview) {
-      editorRef.current?.scrollToMatch?.(searchQuery, currentMatchIndex);
-    }
-  }, [currentMatchIndex, searchQuery, isPreview, isSearchBarVisible]);
 
   const handleSearchOpen = (mode: 'search' | 'replace' = 'search') => {
     setIsSearchBarVisible(true);
@@ -710,7 +705,7 @@ export default function NoteEditorScreen() {
                   </Text>
                 )}
               </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                 <Pressable
                   onPress={handleSearchPrev}
                   disabled={totalMatches === 0}
@@ -788,7 +783,7 @@ export default function NoteEditorScreen() {
                     </View>
                   </ScrollView>
                 </View>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                   <Pressable
                     onPress={() => editorRef.current?.replace?.(searchQuery, replaceQuery, currentMatchIndex)}
                     disabled={totalMatches === 0 || !searchQuery}
@@ -1001,21 +996,32 @@ export default function NoteEditorScreen() {
                       />
                     )}
                   </View>
-                  <MarkdownToolbar
-                    onInsertText={(text, cursorOffset) => {
-                      editorRef.current?.insertText(text, cursorOffset);
+                  <View
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      zIndex: 10,
+                      backgroundColor: colors.background,
                     }}
-                    onWrapSelection={(before, after, cursorOffset) => {
-                      editorRef.current?.wrapSelection(before, after, cursorOffset);
-                    }}
-                    onIndent={() => editorRef.current?.indent()}
-                    onOutdent={() => editorRef.current?.outdent()}
-                    onUndo={() => editorRef.current?.undo()}
-                    onRedo={() => editorRef.current?.redo()}
-                    onAIAssistant={handleOpenAIModal}
-                    onImageInsert={() => setImageModalOpen(true)}
-                    isPreview={false}
-                  />
+                  >
+                    <MarkdownToolbar
+                      onInsertText={(text, cursorOffset) => {
+                        editorRef.current?.insertText(text, cursorOffset);
+                      }}
+                      onWrapSelection={(before, after, cursorOffset) => {
+                        editorRef.current?.wrapSelection(before, after, cursorOffset);
+                      }}
+                      onIndent={() => editorRef.current?.indent()}
+                      onOutdent={() => editorRef.current?.outdent()}
+                      onUndo={() => editorRef.current?.undo()}
+                      onRedo={() => editorRef.current?.redo()}
+                      onAIAssistant={handleOpenAIModal}
+                      onImageInsert={() => setImageModalOpen(true)}
+                      isPreview={false}
+                    />
+                  </View>
                 </View>
               </View>
             </View>

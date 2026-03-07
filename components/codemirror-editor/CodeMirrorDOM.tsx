@@ -764,41 +764,41 @@ export default function CodeMirrorDOM({
           });
         },
         setSearch: (...args: JSONValue[]) => {
-          const [query, activeIndex] = args as [string, number];
+          const [query, activeIndex, shouldScroll] = args as [string, number, boolean | undefined];
           const newState = { query: query ?? "", activeIndex: activeIndex ?? 0 };
           setSearchState(newState);
           searchStateRef.current = newState;
-          if (viewRef.current) {
-            // Dispatch an empty transaction to force ViewPlugin to update decorations
-            viewRef.current.dispatch({});
-            const { matches } = getSearchDecorations(viewRef.current.state, query ?? "", activeIndex ?? 0);
+          
+          const view = viewRef.current;
+          if (view) {
+            // Dispatch to update decorations
+            view.dispatch({});
+            const { matches } = getSearchDecorations(view.state, query ?? "", activeIndex ?? 0);
+            
+            if (shouldScroll && matches[activeIndex ?? 0]) {
+              const match = matches[activeIndex ?? 0];
+              view.dispatch({
+                selection: { anchor: match.from, head: match.to },
+                scrollIntoView: true,
+              });
+            }
             return matches.length;
           }
           return 0;
         },
         scrollToMatch: (...args: JSONValue[]) => {
+          // Keep for backward compatibility but setSearch now handles it
           const [query, activeIndex] = args as [string, number];
           const view = viewRef.current;
           if (!view || !query) return;
+          
           const { matches } = getSearchDecorations(view.state, query, activeIndex);
           const match = matches[activeIndex];
+          
           if (match) {
             view.dispatch({
-              selection: { anchor: match.from, head: match.to }
-            });
-
-            // Smooth scroll implementation
-            requestAnimationFrame(() => {
-              const coords = view.coordsAtPos(match.from);
-              if (coords) {
-                const dom = view.scrollDOM;
-                const rect = dom.getBoundingClientRect();
-                const top = coords.top - rect.top + dom.scrollTop - (dom.clientHeight / 2);
-                dom.scrollTo({
-                  top,
-                  behavior: 'smooth'
-                });
-              }
+              selection: { anchor: match.from, head: match.to },
+              scrollIntoView: true,
             });
           }
         },
