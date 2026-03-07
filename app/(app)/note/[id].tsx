@@ -763,66 +763,66 @@ export default function NoteEditorScreen() {
                   </View>
                 </ScrollView>
               </View>
-              {/* Editor: always mounted, hidden when previewing for instant switch */}
-              <View
-                style={[
-                  { flex: 1, minHeight: 0, flexDirection: "column" },
-                  isPreview && {
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    opacity: 0,
-                    pointerEvents: "none",
-                  },
-                ]}
-              >
-                <MarkdownToolbar
-                  onInsertText={(text, cursorOffset) => {
-                    editorRef.current?.insertText(text, cursorOffset);
-                  }}
-                  onWrapSelection={(before, after, cursorOffset) => {
-                    editorRef.current?.wrapSelection(before, after, cursorOffset);
-                  }}
-                  onIndent={() => editorRef.current?.indent()}
-                  onOutdent={() => editorRef.current?.outdent()}
-                  onUndo={() => editorRef.current?.undo()}
-                  onRedo={() => editorRef.current?.redo()}
-                  onAIAssistant={handleOpenAIModal}
-                  onImageInsert={() => setImageModalOpen(true)}
-                  isPreview={false}
-                />
-                {/* Web: measure this area so we can give CodeMirror an explicit pixel height (first-principles: scroll needs a definite viewport size). */}
+                {/* Editor: always mounted, hidden when previewing for instant switch */}
                 <View
-                  style={{
-                    flex: 1,
-                    minHeight: 0,
-                  }}
-                  onLayout={(e) => {
-                    const h = e.nativeEvent.layout.height;
-                    if (typeof h === "number" && h > 0) setEditorAreaHeightPx(h);
-                  }}
+                  style={[
+                    { flex: 1, minHeight: 0, flexDirection: "column" },
+                    isPreview && {
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      opacity: 0,
+                      pointerEvents: "none",
+                    },
+                  ]}
                 >
-                  {(!isNewNote && isLoading) ? null : (
-                    <MarkdownEditor
-                      ref={editorRef}
-                      value={content}
-                      onChangeText={setContent}
-                      onSelectionChange={(sel) => {
-                        lastSelectionRef.current = sel;
-                      }}
-                      placeholder="Start writing in markdown..."
-                      isPreview={false}
-                      onSave={handleSave}
-                      editorAreaHeight={editorAreaHeightPx}
-                      searchQuery={isSearchBarVisible ? searchQuery : ""}
-                      currentMatchIndex={currentMatchIndex}
-                      onSearchMatchCount={setTotalMatches}
-                    />
-                  )}
+                  {/* Web: measure this area so we can give CodeMirror an explicit pixel height (first-principles: scroll needs a definite viewport size). */}
+                  <View
+                    style={{
+                      flex: 1,
+                      minHeight: 0,
+                    }}
+                    onLayout={(e) => {
+                      const h = e.nativeEvent.layout.height;
+                      if (typeof h === "number" && h > 0) setEditorAreaHeightPx(h);
+                    }}
+                  >
+                    {(!isNewNote && isLoading) ? null : (
+                      <MarkdownEditor
+                        ref={editorRef}
+                        value={content}
+                        onChangeText={setContent}
+                        onSelectionChange={(sel) => {
+                          lastSelectionRef.current = sel;
+                        }}
+                        placeholder="Start writing in markdown..."
+                        isPreview={false}
+                        onSave={handleSave}
+                        editorAreaHeight={editorAreaHeightPx}
+                        searchQuery={isSearchBarVisible ? searchQuery : ""}
+                        currentMatchIndex={currentMatchIndex}
+                        onSearchMatchCount={setTotalMatches}
+                      />
+                    )}
+                  </View>
+                  <MarkdownToolbar
+                    onInsertText={(text, cursorOffset) => {
+                      editorRef.current?.insertText(text, cursorOffset);
+                    }}
+                    onWrapSelection={(before, after, cursorOffset) => {
+                      editorRef.current?.wrapSelection(before, after, cursorOffset);
+                    }}
+                    onIndent={() => editorRef.current?.indent()}
+                    onOutdent={() => editorRef.current?.outdent()}
+                    onUndo={() => editorRef.current?.undo()}
+                    onRedo={() => editorRef.current?.redo()}
+                    onAIAssistant={handleOpenAIModal}
+                    onImageInsert={() => setImageModalOpen(true)}
+                    isPreview={false}
+                  />
                 </View>
-              </View>
             </View>
           </View>
         ) : (
@@ -886,22 +886,6 @@ export default function NoteEditorScreen() {
                     },
                   ]}
                 >
-                  <MarkdownToolbar
-                    onInsertText={(text, cursorOffset) => {
-                      editorRef.current?.insertText(text, cursorOffset);
-                    }}
-                    onWrapSelection={(before, after, cursorOffset) => {
-                      editorRef.current?.wrapSelection(before, after, cursorOffset);
-                    }}
-                    onIndent={() => editorRef.current?.indent()}
-                    onOutdent={() => editorRef.current?.outdent()}
-                    onUndo={() => editorRef.current?.undo()}
-                    onRedo={() => editorRef.current?.redo()}
-                    onAIAssistant={handleOpenAIModal}
-                    onImageInsert={() => setImageModalOpen(true)}
-                    isPreview={false}
-                  />
-                  {/* No ScrollView: WebView/DOM editor handles its own scroll. No Pressable wrapper: Pressable intercepts touch and blocks finger-scroll in WebView (see react-native-webview#2226). */}
                   <View
                     style={{
                       flex: 1,
@@ -930,6 +914,21 @@ export default function NoteEditorScreen() {
                       />
                     )}
                   </View>
+                  <MarkdownToolbar
+                    onInsertText={(text, cursorOffset) => {
+                      editorRef.current?.insertText(text, cursorOffset);
+                    }}
+                    onWrapSelection={(before, after, cursorOffset) => {
+                      editorRef.current?.wrapSelection(before, after, cursorOffset);
+                    }}
+                    onIndent={() => editorRef.current?.indent()}
+                    onOutdent={() => editorRef.current?.outdent()}
+                    onUndo={() => editorRef.current?.undo()}
+                    onRedo={() => editorRef.current?.redo()}
+                    onAIAssistant={handleOpenAIModal}
+                    onImageInsert={() => setImageModalOpen(true)}
+                    isPreview={false}
+                  />
                 </View>
               </View>
             </View>

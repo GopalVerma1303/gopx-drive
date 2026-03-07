@@ -553,14 +553,10 @@ export function MarkdownToolbar({
 
   return (
     <View
-      className="absolute bottom-0 left-0 right-0 w-full bg-background border-t border-border"
+      className="w-full bg-background border-t border-border"
       style={{
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
+        position: "relative",
         width: "100%",
-        zIndex: 9999,
         borderTopWidth: 1,
         borderTopColor: colors.border,
         backgroundColor: colors.background,
