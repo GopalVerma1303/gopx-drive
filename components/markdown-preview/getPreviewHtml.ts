@@ -35,9 +35,122 @@ export function getPreviewFullHtml(bodyHtml: string, colors: PreviewThemeColors)
             theme: ${colors.isDark ? '"dark"' : '"default"'}
           });
         }
-      } catch (e) {
-        // Fail silently; markdown preview should continue to work without diagrams.
+      } catch (e) {}
+    })();
+
+    (function() {
+      var _q = "", _idx = 0, _obs = null, _t = null, _busy = false, _last = -1;
+
+      function report(c) {
+        if (_last !== c) {
+          _last = c;
+          if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({type:'searchCount', count:c}));
+        }
       }
+
+      function highlight(el, queryChanged, qOverride, idxOverride) {
+        if (!el || _busy) return;
+        _busy = true;
+        
+        var q = (qOverride !== undefined) ? qOverride : _q;
+        var idx = (idxOverride !== undefined) ? idxOverride : _idx;
+        
+        try {
+          var spans = el.querySelectorAll('span.search-highlight');
+          
+          // Smart Navigation
+          if (!queryChanged && q && spans.length > 0) {
+            for (var i = 0; i < spans.length; i++) {
+              var s = spans[i];
+              var isActive = (i === idx);
+              var cls = isActive ? 'search-highlight active' : 'search-highlight';
+              if (s.className !== cls) s.className = cls;
+              if (isActive && el.id === 'content') s.scrollIntoView({ behavior: 'auto', block: 'center' });
+            }
+            report(spans.length);
+            return;
+          }
+
+          // Full Highlight
+          for (var i = 0; i < spans.length; i++) {
+            var s = spans[i];
+            var t = document.createTextNode(s.textContent);
+            if (s.parentNode) s.parentNode.replaceChild(t, s);
+          }
+          el.normalize();
+
+          if (!q) {
+            report(0);
+            return;
+          }
+
+          var matches = [], walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+          var n, lq = q.toLowerCase();
+          while(n = walker.nextNode()) {
+            var p = n.parentNode;
+            if (p && /(style|script|button|svg|code)/i.test(p.tagName)) continue;
+            var txt = n.textContent, ltxt = txt.toLowerCase(), start = 0, hit;
+            while((hit = ltxt.indexOf(lq, start)) !== -1) {
+              matches.push({ node: n, index: hit });
+              start = hit + lq.length;
+            }
+          }
+
+          for (var i = matches.length - 1; i >= 0; i--) {
+            var m = matches[i], node = m.node, text = node.textContent;
+            var b = text.substring(0, m.index), mid = text.substring(m.index, m.index + q.length), a = text.substring(m.index + q.length);
+            var span = document.createElement('span');
+            span.className = (i === idx) ? 'search-highlight active' : 'search-highlight';
+            span.textContent = mid;
+            node.textContent = b;
+            var next = document.createTextNode(a);
+            node.parentNode.insertBefore(next, node.nextSibling);
+            node.parentNode.insertBefore(span, next);
+            if (i === idx && el.id === 'content') span.scrollIntoView({ behavior: 'auto', block: 'center' });
+          }
+          report(matches.length);
+        } finally {
+          _busy = false;
+        }
+      }
+
+      window.searchNote = function(q, i) {
+        var queryChanged = (_q !== (q || ""));
+        _q = q || "";
+        _idx = i || 0;
+        var el = document.getElementById('content');
+        if (el) {
+          if (_obs) _obs.disconnect();
+          highlight(el, queryChanged);
+          if (_obs) _obs.observe(el, { childList: true, subtree: true, characterData: true });
+        }
+      };
+
+      var init = function() {
+        var el = document.getElementById('content');
+        if (el && !_obs) {
+          _obs = new MutationObserver(function(mutations) {
+            var isOurSpan = mutations.some(function(m) { 
+               return (m.target.classList && m.target.classList.contains('search-highlight')) || 
+                      (m.target.parentNode && m.target.parentNode.classList && m.target.parentNode.classList.contains('search-highlight'));
+            });
+            if (isOurSpan) return;
+            
+            clearTimeout(_t);
+            _t = setTimeout(function() {
+               if (_obs) _obs.disconnect();
+               highlight(el, true);
+               if (_obs) _obs.observe(el, { childList: true, subtree: true, characterData: true });
+            }, 50);
+          });
+          _obs.observe(el, { childList: true, subtree: true, characterData: true });
+        }
+      };
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+      else init();
+      
+      // Export for use in pre-rendering
+      window.__highlightElement = highlight;
     })();
   </script>
 </head>

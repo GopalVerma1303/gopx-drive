@@ -137,6 +137,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       noScrollView = false,
       onContentSync,
       editorAreaHeight,
+      searchQuery,
+      currentMatchIndex,
+      onSearchMatchCount,
     },
     ref
   ) {
@@ -1401,6 +1404,12 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         Platform.OS !== "web"
           ? () => (inputRef.current as any)?.getValueAsync?.() ?? Promise.resolve(value)
           : undefined,
+      setSearch: (query: string, activeIndex: number) => {
+        return inputRef.current?.setSearch?.(query, activeIndex) ?? 0;
+      },
+      scrollToMatch: (query: string, activeIndex: number) => {
+        inputRef.current?.scrollToMatch?.(query, activeIndex);
+      },
     }));
 
     const markdownStyles = {
@@ -2836,12 +2845,18 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             content={value}
             placeholder={placeholder}
             className={className}
+            searchQuery={searchQuery}
+            currentMatchIndex={currentMatchIndex}
+            onSearchMatchCount={onSearchMatchCount}
           />
         ) : Platform.OS === "web" ? (
           <CodeMirrorWeb
             ref={inputRef as React.Ref<import("@/components/codemirror-editor").CodeMirrorEditorHandle>}
             value={value}
             onChangeText={handleTextChange}
+            searchQuery={searchQuery}
+            currentMatchIndex={currentMatchIndex}
+            onSearchMatchCount={onSearchMatchCount}
             onSelectionChange={(sel) => {
               const pending = pendingSelectionRef.current;
               if (isProcessingListRef.current || suppressSelectionUpdatesRef.current > 0) {

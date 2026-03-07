@@ -10,7 +10,7 @@ import { Text } from "@/components/ui/text";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { ArrowLeft, Check, Edit, Eye, Folder, MoreVertical, RefreshCcw, Share2 } from "lucide-react-native";
+import { ArrowLeft, Check, Edit, Eye, Folder, MoreVertical, RefreshCcw, Search, Share2 } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, View } from "react-native";
 import { KeyboardController } from "react-native-keyboard-controller";
@@ -33,6 +33,7 @@ interface NoteDetailHeaderProps {
   /** Current folder name for the note (e.g. "Work" or "No folder"). When set, shows a "Folder" menu item that opens the Move to modal. */
   folderName?: string;
   onOpenMoveModal?: () => void;
+  onSearchOpen?: () => void;
 }
 
 export function NoteDetailHeader({
@@ -50,6 +51,7 @@ export function NoteDetailHeader({
   onOpenShareModal,
   folderName,
   onOpenMoveModal,
+  onSearchOpen,
 }: NoteDetailHeaderProps) {
   const router = useRouter();
   const { colors } = useThemeColors();
@@ -232,6 +234,18 @@ export function NoteDetailHeader({
                   >
                     <Icon as={RefreshCcw} className="size-4 text-foreground" />
                     <Text style={{ color: colors.foreground }}>Sync</Text>
+                  </DropdownMenuItem>
+                )}
+                {onSearchOpen && (
+                  <DropdownMenuItem
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      onSearchOpen();
+                    }}
+                    className="flex flex-row items-center gap-2"
+                  >
+                    <Icon as={Search} className="size-4 text-foreground" />
+                    <Text style={{ color: colors.foreground }}>Search</Text>
                   </DropdownMenuItem>
                 )}
                 {onOpenShareModal && (

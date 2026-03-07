@@ -38,6 +38,9 @@ export interface MarkdownPreviewProps {
   onToggleCheckbox?: (newMarkdown: string) => void;
   /** Called once when non-empty HTML has been rendered for the first time. Useful for outer screens to hide a loading state. */
   onFirstHtmlRendered?: () => void;
+  searchQuery?: string;
+  currentMatchIndex?: number;
+  onSearchMatchCount?: (count: number) => void;
 }
 
 /**
@@ -51,6 +54,9 @@ export function MarkdownPreview({
   placeholder = "Nothing to preview.",
   onToggleCheckbox,
   onFirstHtmlRendered,
+  searchQuery,
+  currentMatchIndex,
+  onSearchMatchCount,
 }: MarkdownPreviewProps) {
   const [html, setHtml] = useState("");
   const generationRef = useRef(0);
@@ -138,6 +144,9 @@ export function MarkdownPreview({
         onToggleCheckbox={onToggleCheckbox ? handleCheckboxToggle : undefined}
         contentContainerStyle={contentContainerStyle}
         className={className}
+        searchQuery={searchQuery}
+        currentMatchIndex={currentMatchIndex}
+        onSearchMatchCount={onSearchMatchCount}
       />
     );
   }
@@ -147,6 +156,9 @@ export function MarkdownPreview({
       html={displayHtml}
       contentContainerStyle={contentContainerStyle}
       onCheckboxToggle={onToggleCheckbox ? handleCheckboxToggle : undefined}
+      searchQuery={searchQuery}
+      currentMatchIndex={currentMatchIndex}
+      onSearchMatchCount={onSearchMatchCount}
     />
   );
 }

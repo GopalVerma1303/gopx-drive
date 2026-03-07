@@ -318,14 +318,26 @@ const RENDER_MATH_SCRIPT = `
 })(); true;
 `;
 
+
+
 interface MarkdownPreviewWebViewProps {
   html: string;
   contentContainerStyle?: object;
   /** Called with task index when user toggles a checkbox in the WebView. Parent should update markdown. */
   onCheckboxToggle?: (taskIndex: number) => void;
+  searchQuery?: string;
+  currentMatchIndex?: number;
+  onSearchMatchCount?: (count: number) => void;
 }
 
-export function MarkdownPreviewWebView({ html, contentContainerStyle, onCheckboxToggle }: MarkdownPreviewWebViewProps) {
+export function MarkdownPreviewWebView({ 
+  html, 
+  contentContainerStyle, 
+  onCheckboxToggle,
+  searchQuery,
+  currentMatchIndex,
+  onSearchMatchCount
+}: MarkdownPreviewWebViewProps) {
   const webViewRef = useRef<WebView>(null);
   const [loaded, setLoaded] = useState(false);
   const onCheckboxToggleRef = useRef(onCheckboxToggle);
@@ -384,16 +396,40 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle, onCheckbox
     (bodyHtml: string) => {
       if (Platform.OS === "web") return;
       const escaped = JSON.stringify(bodyHtml || "");
-      // Set content then replace checkboxes at staggered delays so DOM is ready (WebView can be slow)
       const script = `(function(){
-        var html = ${escaped};
-        var el = document.getElementById('content');
-        if(el) {
-          el.innerHTML = html;
-          var run = function() { ${REPLACE_CHECKBOXES_SCRIPT} ${ADD_CODE_COPY_BUTTONS_SCRIPT} ${WRAP_TABLES_SCRIPT} ${WRAP_IMAGES_SCRIPT} ${RENDER_MERMAID_SCRIPT} ${ENHANCE_MERMAID_SCRIPT} ${RENDER_MATH_SCRIPT} };
-          setTimeout(run, 0);
-          setTimeout(run, 80);
-          setTimeout(run, 250);
+        try {
+          var container = document.getElementById('content');
+          if(!container) return;
+          
+          // Create off-screen buffer
+          var buffer = document.createElement('div');
+          buffer.innerHTML = ${escaped};
+          
+          // Pre-apply Search
+          if (window.__highlightElement) {
+            window.__highlightElement(buffer, true, ${JSON.stringify(searchQuery || "")}, ${currentMatchIndex || 0});
+          }
+          
+          // Run Enhancers on buffer
+          var run = function(target) { 
+            ${REPLACE_CHECKBOXES_SCRIPT.replace(/document\.getElementById\('content'\)/g, "target")} 
+            ${ADD_CODE_COPY_BUTTONS_SCRIPT.replace(/document\.getElementById\('content'\)/g, "target")} 
+            ${WRAP_TABLES_SCRIPT.replace(/document\.getElementById\('content'\)/g, "target")} 
+            ${WRAP_IMAGES_SCRIPT.replace(/document\.getElementById\('content'\)/g, "target")} 
+          };
+          run(buffer);
+          
+          // Atomic Swap
+          container.innerHTML = buffer.innerHTML;
+          
+          // Post-processing (Heavy stuff should run on the live DOM)
+          ${RENDER_MERMAID_SCRIPT} 
+          ${ENHANCE_MERMAID_SCRIPT} 
+          ${RENDER_MATH_SCRIPT}
+        } catch(e) { 
+           console.error("Injection error:", e);
+           var el = document.getElementById('content');
+           if(el) el.innerHTML = ${escaped};
         }
       })(); true;`;
       webViewRef.current?.injectJavaScript(script);
@@ -401,10 +437,22 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle, onCheckbox
     []
   );
 
+  // Unified Effect for Content and Search
   useEffect(() => {
     if (!loaded) return;
     injectContent(html || "");
-  }, [loaded, html, injectContent]);
+  }, [loaded, html, searchQuery, injectContent]);
+
+  // Separate Effect for Search-only Updates (Navigation)
+  useEffect(() => {
+    if (!loaded) return;
+    const script = `(function(){
+      if (window.searchNote) {
+        window.searchNote(${JSON.stringify(searchQuery || "")}, ${currentMatchIndex || 0});
+      }
+    })(); true;`;
+    webViewRef.current?.injectJavaScript(script);
+  }, [loaded, searchQuery, currentMatchIndex]);
 
   const onLoadEnd = useCallback(() => {
     setLoaded(true);
@@ -429,7 +477,12 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle, onCheckbox
           taskIndex?: number;
           text?: string;
           index?: number;
+          count?: number;
         };
+        if (data?.type === "searchCount" && typeof data.count === "number") {
+          onSearchMatchCount?.(data.count);
+          return;
+        }
         if (data?.type === "toggleCheckbox" && typeof data.taskIndex === "number") {
           onCheckboxToggleRef.current?.(data.taskIndex);
           return;
@@ -443,7 +496,7 @@ export function MarkdownPreviewWebView({ html, contentContainerStyle, onCheckbox
         // ignore non-JSON or invalid messages
       }
     },
-    [showCopyCheckmarkScript]
+    [showCopyCheckmarkScript, onSearchMatchCount]
   );
 
   return (

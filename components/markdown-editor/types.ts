@@ -15,6 +15,9 @@ export interface MarkdownEditorProps {
   onContentSync?: (text: string) => void;
   /** (Web only) Measured height in px for the editor area. When set, CodeMirror wrapper uses this so the scroll viewport has a definite size. */
   editorAreaHeight?: number;
+  searchQuery?: string;
+  currentMatchIndex?: number;
+  onSearchMatchCount?: (count: number) => void;
 }
 
 export interface MarkdownEditorRef {
@@ -32,6 +35,8 @@ export interface MarkdownEditorRef {
   replaceRange: (start: number, end: number, text: string) => void;
   /** (Native only) Flush WebView content to parent. Returns a promise that resolves with current editor text. Use before switching to preview so typed content is not lost. */
   getContentAsync?: () => Promise<string>;
+  setSearch?: (query: string, activeIndex: number) => number;
+  scrollToMatch?: (query: string, activeIndex: number) => void;
 }
 
 export type Snapshot = {

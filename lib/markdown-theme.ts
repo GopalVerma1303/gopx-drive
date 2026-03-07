@@ -450,6 +450,17 @@ ${getScrollbarCss({ muted: colors.muted, mutedForeground: colors.mutedForeground
   color: inherit;
   padding: 0;
 }
+/* Search highlight in preview */
+.markdown-preview .search-highlight {
+  background-color: rgba(255, 255, 0, 0.4);
+  color: inherit;
+  padding: 0;
+  border-radius: 2px;
+}
+.markdown-preview .search-highlight.active {
+  background-color: #eab308; /* yellow-500 */
+  color: #000;
+}
 /* KaTeX block math horizontal scroll */
 .markdown-preview .katex-display {
   overflow-x: auto;
@@ -770,6 +781,15 @@ export function getCodeMirrorThemeConfig(
       padding: "0",
       borderRadius: "0px",
     },
+
+    /* Search Highlighting */
+    ".cm-search-match": {
+      backgroundColor: colors.isDark ? "rgba(255, 255, 0, 0.25)" : "rgba(255, 255, 0, 0.2)"
+    },
+    ".cm-search-match-active": {
+      backgroundColor: "#eab308", // yellow-500
+      color: "#000"
+    }
   };
 }
 
@@ -803,6 +823,8 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
     `.cm-mention-tag { color: ${colors.mentionTag ?? (colors.isDark ? "#facc15" : "#ca8a04")} !important; font-weight: 500 !important; } ` +
     `.cm-math-marker { opacity: 0.5 !important; } ` +
     `.cm-highlight { background-color: rgb(250 204 21 / 0.4) !important; padding: 0.1em 0.2em !important; border-radius: 0px !important; } ` +
+    `.cm-search-match { background-color: ${colors.isDark ? "rgba(255, 255, 0, 0.25)" : "rgba(255, 255, 0, 0.2)"} !important; } ` +
+    `.cm-search-match-active { background-color: #eab308 !important; color: #000 !important; } ` +
     scrollbarCss
   );
 }

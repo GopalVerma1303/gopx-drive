@@ -16,6 +16,7 @@ import {
 import { Text } from "@/components/ui/text";
 import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
+import { Input } from "@/components/ui/input";
 import { generateAIContent } from "@/lib/ai-providers";
 import { listFolders } from "@/lib/folders";
 import { createNote, getNoteById, syncNotesFromSupabase, updateNote } from "@/lib/notes";
@@ -24,8 +25,8 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronDown } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, Search, X } from "lucide-react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   BackHandler,
@@ -82,6 +83,12 @@ export default function NoteEditorScreen() {
   const saveInProgressRef = useRef(false);
   /** Note id we last synced from. Used to avoid overwriting unsaved editor content when note refetches (e.g. on preview toggle or focus). */
   const lastSyncedNoteIdRef = useRef<string | null>(null);
+
+  // Search state
+  const [isSearchBarVisible, setIsSearchBarVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  const [totalMatches, setTotalMatches] = useState(0);
 
   const isDirty = title !== lastSavedTitle || content !== lastSavedContent;
 
@@ -428,6 +435,60 @@ export default function NoteEditorScreen() {
 
   const canSave = isDirty && !saveMutation.isPending;
 
+  // Sync search with editor/preview
+  useEffect(() => {
+    if (isSearchBarVisible && searchQuery) {
+      if (isPreview) {
+        // Handled by MarkdownPreview component sync
+      } else {
+        // Editor search
+        const count = editorRef.current?.setSearch?.(searchQuery, currentMatchIndex);
+        if (typeof count === 'number') {
+          setTotalMatches(count);
+        }
+      }
+    } else {
+      setTotalMatches(0);
+      setCurrentMatchIndex(0);
+      if (!isPreview) {
+        editorRef.current?.setSearch?.("", 0);
+      }
+    }
+  }, [searchQuery, currentMatchIndex, isPreview, isSearchBarVisible]);
+
+  useEffect(() => {
+    if (isSearchBarVisible && searchQuery && !isPreview) {
+      editorRef.current?.scrollToMatch?.(searchQuery, currentMatchIndex);
+    }
+  }, [currentMatchIndex, searchQuery, isPreview, isSearchBarVisible]);
+  
+  const handleSearchOpen = () => {
+    setIsSearchBarVisible(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleSearchClose = () => {
+    setIsSearchBarVisible(false);
+    setSearchQuery("");
+    setCurrentMatchIndex(0);
+    setTotalMatches(0);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleSearchNext = () => {
+    if (totalMatches === 0) return;
+    const nextIndex = (currentMatchIndex + 1) % totalMatches;
+    setCurrentMatchIndex(nextIndex);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleSearchPrev = () => {
+    if (totalMatches === 0) return;
+    const prevIndex = (currentMatchIndex - 1 + totalMatches) % totalMatches;
+    setCurrentMatchIndex(prevIndex);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
   const handleOpenAIModal = () => {
     // Use last known selection (from onSelectionChange); getSelection() is already collapsed once the toolbar button takes focus.
     const { start, end } = lastSelectionRef.current;
@@ -568,7 +629,98 @@ export default function NoteEditorScreen() {
               : undefined
           }
           onOpenMoveModal={!isNewNote && note ? openMoveModal : undefined}
+          onSearchOpen={handleSearchOpen}
         />
+        {isSearchBarVisible && (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              backgroundColor: colors.background,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+              gap: 8,
+            }}
+          >
+            <View
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: colors.muted,
+                borderRadius: 8,
+                paddingHorizontal: 10,
+                height: 36,
+              }}
+            >
+              <Search size={18} color={colors.mutedForeground} />
+              <ScrollView
+                horizontal
+                scrollEnabled={false}
+                contentContainerStyle={{ flex: 1 }}
+              >
+                  <View style={{ flex: 1, justifyContent: 'center' }}>
+                    <Input
+                      value={searchQuery}
+                      onChangeText={(text: string) => {
+                        setSearchQuery(text);
+                        setCurrentMatchIndex(0);
+                      }}
+                      placeholder="Search note..."
+                      placeholderTextColor={colors.mutedForeground}
+                      style={{
+                        paddingVertical: 0,
+                        height: 36,
+                        color: colors.foreground,
+                        backgroundColor: 'transparent',
+                        borderWidth: 0,
+                      }}
+                      autoFocus
+                    />
+                  </View>
+              </ScrollView>
+              {totalMatches > 0 && (
+                <Text style={{ fontSize: 12, color: colors.mutedForeground, marginRight: 8 }}>
+                  {currentMatchIndex + 1}/{totalMatches}
+                </Text>
+              )}
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <Pressable
+                onPress={handleSearchPrev}
+                disabled={totalMatches === 0}
+                style={({ pressed }) => ({
+                  padding: 6,
+                  opacity: (totalMatches === 0) ? 0.4 : (pressed ? 0.7 : 1),
+                })}
+              >
+                <ChevronUp size={20} color={colors.foreground} />
+              </Pressable>
+              <Pressable
+                onPress={handleSearchNext}
+                disabled={totalMatches === 0}
+                style={({ pressed }) => ({
+                  padding: 6,
+                  opacity: (totalMatches === 0) ? 0.4 : (pressed ? 0.7 : 1),
+                })}
+              >
+                <ChevronDown size={20} color={colors.foreground} />
+              </Pressable>
+              <Pressable
+                onPress={handleSearchClose}
+                style={({ pressed }) => ({
+                  padding: 6,
+                  marginLeft: 4,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <X size={20} color={colors.foreground} />
+              </Pressable>
+            </View>
+          </View>
+        )}
         {Platform.OS === "web" ? (
           <View style={styles.screenContentWeb}>
             <View style={styles.editorColumnWeb}>
@@ -598,6 +750,9 @@ export default function NoteEditorScreen() {
                       onToggleCheckbox={setContent}
                       placeholder="Start writing in markdown..."
                       onFirstHtmlRendered={() => setPreviewReady(true)}
+                      searchQuery={isSearchBarVisible ? searchQuery : ""}
+                      currentMatchIndex={currentMatchIndex}
+                      onSearchMatchCount={setTotalMatches}
                     />
                   </View>
                 </ScrollView>
@@ -644,18 +799,21 @@ export default function NoteEditorScreen() {
                   }}
                 >
                   {(!isNewNote && isLoading) ? null : (
-                    <MarkdownEditor
-                      ref={editorRef}
-                      value={content}
-                      onChangeText={setContent}
-                      onSelectionChange={(sel) => {
-                        lastSelectionRef.current = sel;
-                      }}
-                      placeholder="Start writing in markdown..."
-                      isPreview={false}
-                      onSave={handleSave}
-                      editorAreaHeight={editorAreaHeightPx}
-                    />
+                      <MarkdownEditor
+                        ref={editorRef}
+                        value={content}
+                        onChangeText={setContent}
+                        onSelectionChange={(sel) => {
+                          lastSelectionRef.current = sel;
+                        }}
+                        placeholder="Start writing in markdown..."
+                        isPreview={false}
+                        onSave={handleSave}
+                        editorAreaHeight={editorAreaHeightPx}
+                        searchQuery={isSearchBarVisible ? searchQuery : ""}
+                        currentMatchIndex={currentMatchIndex}
+                        onSearchMatchCount={setTotalMatches}
+                      />
                   )}
                 </View>
               </View>
@@ -700,6 +858,9 @@ export default function NoteEditorScreen() {
                         placeholder="Start writing in markdown..."
                         contentContainerStyle={{ flex: 1, width: "100%" }}
                         onFirstHtmlRendered={() => setPreviewReady(true)}
+                        searchQuery={isSearchBarVisible ? searchQuery : ""}
+                        currentMatchIndex={currentMatchIndex}
+                        onSearchMatchCount={setTotalMatches}
                       />
                     </View>
                   </ScrollView>
@@ -757,6 +918,9 @@ export default function NoteEditorScreen() {
                         }}
                         placeholder="Start writing in markdown..."
                         isPreview={false}
+                        searchQuery={isSearchBarVisible ? searchQuery : ""}
+                        currentMatchIndex={currentMatchIndex}
+                        onSearchMatchCount={setTotalMatches}
                       />
                     )}
                   </View>

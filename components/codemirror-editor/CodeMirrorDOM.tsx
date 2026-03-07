@@ -200,6 +200,35 @@ const markHighlightPlugin = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
+// Search Highlighting
+const searchDecoration = Decoration.mark({ class: "cm-search-match" });
+const activeSearchDecoration = Decoration.mark({ class: "cm-search-match-active" });
+
+function getSearchDecorations(state: EditorState, query: string, activeIndex: number) {
+  if (!query) return { decorations: Decoration.none, matches: [] };
+  const decos: any[] = [];
+  const matches: Array<{ from: number, to: number }> = [];
+  const text = state.doc.toString().toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  let pos = 0;
+  while ((pos = text.indexOf(lowerQuery, pos)) !== -1) {
+    const range = { from: pos, to: pos + lowerQuery.length };
+    matches.push(range);
+    pos += lowerQuery.length;
+  }
+
+  matches.forEach((m, i) => {
+    decos.push((i === activeIndex ? activeSearchDecoration : searchDecoration).range(m.from, m.to));
+  });
+
+  return {
+    decorations: Decoration.set(decos, true),
+    matches
+  };
+}
+
+const searchQueryEffect = React.createContext<{ query: string, activeIndex: number }>({ query: "", activeIndex: 0 });
+
 const codeBlockAndBlockquotePlugins = [
   blockWrapperField,
   EditorView.blockWrappers.of((view: EditorView) => view.state.field(blockWrapperField)),
@@ -238,6 +267,8 @@ function buildThemeFromProps(props: {
 export interface CodeMirrorDOMRef extends DOMImperativeFactory {
   focus: (...args: JSONValue[]) => void;
   setSelection: (...args: JSONValue[]) => void;
+  setSearch: (...args: JSONValue[]) => void;
+  scrollToMatch: (...args: JSONValue[]) => void;
 }
 
 interface CodeMirrorDOMProps {
@@ -292,6 +323,10 @@ export default function CodeMirrorDOM({
   const onSelectionChangeRef = useRef(onSelectionChange);
   onContentChangeRef.current = onContentChange;
   onSelectionChangeRef.current = onSelectionChange;
+
+  const [searchState, setSearchState] = React.useState({ query: "", activeIndex: 0 });
+  const searchStateRef = useRef(searchState);
+  searchStateRef.current = searchState;
 
   // Create CodeMirror instance once (theme colors from props so light/dark render correctly)
   useEffect(() => {
@@ -493,6 +528,17 @@ export default function CodeMirrorDOM({
         syntaxHighlighting(highlightStyle),
         ...codeBlockAndBlockquotePlugins,
         mentionPlugin,
+        ViewPlugin.fromClass(class {
+          decorations: DecorationSet;
+          constructor(view: EditorView) {
+            this.decorations = getSearchDecorations(view.state, searchStateRef.current.query, searchStateRef.current.activeIndex).decorations;
+          }
+          update(update: any) {
+            this.decorations = getSearchDecorations(update.view.state, searchStateRef.current.query, searchStateRef.current.activeIndex).decorations;
+          }
+        }, {
+          decorations: v => v.decorations
+        }),
         history(),
         keymap.of([...customMarkdownKeymap, ...defaultKeymap, indentWithTab]),
         EditorView.lineWrapping,
@@ -554,6 +600,13 @@ export default function CodeMirrorDOM({
             maxHeight: "100%",
             WebkitOverflowScrolling: "touch",
             touchAction: "pan-y",
+          },
+          ".cm-search-match": {
+            backgroundColor: isDark ? "rgba(255, 255, 0, 0.25)" : "rgba(255, 255, 0, 0.4)",
+          },
+          ".cm-search-match-active": {
+            backgroundColor: "#eab308", // yellow-500
+            color: "#000",
           },
         }),
       ],
@@ -708,6 +761,32 @@ export default function CodeMirrorDOM({
             view.focus();
           });
         },
+        setSearch: (...args: JSONValue[]) => {
+          const [query, activeIndex] = args as [string, number];
+          const newState = { query: query ?? "", activeIndex: activeIndex ?? 0 };
+          setSearchState(newState);
+          searchStateRef.current = newState;
+          if (viewRef.current) {
+            // Dispatch an empty transaction to force ViewPlugin to update decorations
+            viewRef.current.dispatch({});
+            const { matches } = getSearchDecorations(viewRef.current.state, query ?? "", activeIndex ?? 0);
+            return matches.length;
+          }
+          return 0;
+        },
+        scrollToMatch: (...args: JSONValue[]) => {
+          const [query, activeIndex] = args as [string, number];
+          const view = viewRef.current;
+          if (!view || !query) return;
+          const { matches } = getSearchDecorations(view.state, query, activeIndex);
+          const match = matches[activeIndex];
+          if (match) {
+            view.dispatch({
+              effects: EditorView.scrollIntoView(match.from, { y: "center" }),
+              selection: { anchor: match.from, head: match.to }
+            });
+          }
+        }
       }) as DOMImperativeFactory,
     []
   );

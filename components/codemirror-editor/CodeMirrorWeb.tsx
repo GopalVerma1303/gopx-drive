@@ -28,6 +28,7 @@ let syntaxTree: any;
 let BlockWrapper: any;
 let ViewPlugin: any;
 let Decoration: any;
+let getSearchDecorations: ((state: any, query: string, activeIndex: number) => { decorations: any; matches: any[] }) | null = null;
 let getMarkdownCodeLanguages:
   | (() => {
     jsSupport: any;
@@ -197,6 +198,32 @@ if (typeof document !== "undefined") {
     return Decoration.set(decos.sort((a, b) => a.from - b.from).map(d => d.decoration.range(d.from, d.to)), true);
   }
 
+  const searchDecoration = Decoration.mark({ class: "cm-search-match" });
+  const activeSearchDecoration = Decoration.mark({ class: "cm-search-match-active" });
+
+  getSearchDecorations = (state: any, query: string, activeIndex: number) => {
+    if (!query) return { decorations: Decoration.none, matches: [] };
+    const decos: any[] = [];
+    const matches: Array<{ from: number, to: number }> = [];
+    const text = state.doc.toString().toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    let pos = 0;
+    while ((pos = text.indexOf(lowerQuery, pos)) !== -1) {
+      const range = { from: pos, to: pos + lowerQuery.length };
+      matches.push(range);
+      pos += lowerQuery.length;
+    }
+
+    matches.forEach((m, i) => {
+      decos.push((i === activeIndex ? activeSearchDecoration : searchDecoration).range(m.from, m.to));
+    });
+
+    return {
+      decorations: Decoration.set(decos, true),
+      matches
+    };
+  };
+
   const underlinePlugin = StateField.define({
     create(state: any) { return getUnderlineDecorations(state); },
     update(value: any, tr: any) {
@@ -328,11 +355,14 @@ interface CodeMirrorWebProps {
   style?: any;
   /** When set, wrapper gets this exact height in px so CodeMirror has a definite viewport and can scroll to the last line. */
   containerHeight?: number;
+  searchQuery?: string;
+  currentMatchIndex?: number;
+  onSearchMatchCount?: (count: number) => void;
 }
 
 export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirrorWebProps>(
   function CodeMirrorWeb(
-    { value, onChangeText, onSelectionChange, placeholder, containerHeight },
+    { value, onChangeText, onSelectionChange, placeholder, containerHeight, searchQuery, currentMatchIndex, onSearchMatchCount },
     ref
   ) {
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -348,6 +378,10 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
     const onSelectionRef = useRef(onSelectionChange);
     onChangeRef.current = onChangeText;
     onSelectionRef.current = onSelectionChange;
+    
+    const [searchState, setSearchState] = React.useState({ query: "", activeIndex: 0 });
+    const searchStateRef = useRef(searchState);
+    searchStateRef.current = searchState;
 
     useEffect(() => {
       if (Platform.OS !== "web" || !EditorView || !Compartment) return;
@@ -485,6 +519,17 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
           markdown(markdownConfig ?? {}),
           highlightCompartment.of(syntaxHighlighting(markdownHighlightStyle)),
           ...(getCodeBlockLinePlugin?.() ?? []),
+          ViewPlugin.fromClass(class {
+            decorations: any;
+            constructor(view: any) {
+              this.decorations = getSearchDecorations?.(view.state, searchStateRef.current.query, searchStateRef.current.activeIndex).decorations || Decoration.none;
+            }
+            update(update: any) {
+              this.decorations = getSearchDecorations?.(update.view.state, searchStateRef.current.query, searchStateRef.current.activeIndex).decorations || Decoration.none;
+            }
+          }, {
+            decorations: (v: any) => v.decorations
+          }),
           mentionPlugin,
           history(),
           keymap.of([...customMarkdownKeymap, ...defaultKeymap, indentWithTab]),
@@ -502,6 +547,13 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
           heightCompartment.of(
             EditorView.theme({
               "&": { height: "100%", maxHeight: "100%", minHeight: 0 },
+              ".cm-search-match": {
+                backgroundColor: isDark ? "rgba(255, 255, 0, 0.25)" : "rgba(255, 255, 0, 0.4)",
+              },
+              ".cm-search-match-active": {
+                backgroundColor: "#eab308", // yellow-500
+                color: "#000",
+              },
             })
           ),
           themeColorsCompartment.of(EditorView.theme(getCodeMirrorThemeConfig(theme))),
@@ -615,6 +667,13 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
           effects: comp.reconfigure(
             EditorView.theme({
               "&": { height: `${h}px`, maxHeight: `${h}px`, minHeight: 0 },
+              ".cm-search-match": {
+                backgroundColor: isDark ? "rgba(255, 255, 0, 0.25)" : "rgba(255, 255, 0, 0.4)",
+              },
+              ".cm-search-match-active": {
+                backgroundColor: "#eab308", // yellow-500
+                color: "#000",
+              },
             })
           ),
         });
@@ -731,6 +790,29 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
           view.focus();
         },
         getDomNode: () => containerRef.current,
+        setSearch: (query: string, activeIndex: number) => {
+          const newState = { query: query ?? "", activeIndex: activeIndex ?? 0 };
+          setSearchState(newState);
+          searchStateRef.current = newState;
+          if (viewRef.current) {
+            viewRef.current.dispatch({}); // Force decoration update
+            const res = getSearchDecorations?.(viewRef.current.state, query ?? "", activeIndex ?? 0);
+            return res ? res.matches.length : 0;
+          }
+          return 0;
+        },
+        scrollToMatch: (query: string, activeIndex: number) => {
+          const view = viewRef.current;
+          if (!view || !query) return;
+          const res = getSearchDecorations?.(view.state, query, activeIndex);
+          const match = res?.matches[activeIndex];
+          if (match) {
+            view.dispatch({
+              effects: EditorView.scrollIntoView(match.from, { y: "center" }),
+              selection: { anchor: match.from, head: match.to }
+            });
+          }
+        }
       }),
       []
     );

@@ -11,6 +11,9 @@ interface MarkdownPreviewWebProps {
   onToggleCheckbox?: (taskIndex: number) => void;
   contentContainerStyle?: object;
   className?: string;
+  searchQuery?: string;
+  currentMatchIndex?: number;
+  onSearchMatchCount?: (count: number) => void;
 }
 
 const CHECKBOX_WRAPPER_CLASS = "markdown-preview-checkbox-wrapper";
@@ -408,6 +411,9 @@ export function MarkdownPreviewWeb({
   onToggleCheckbox,
   contentContainerStyle,
   className,
+  searchQuery,
+  currentMatchIndex,
+  onSearchMatchCount,
 }: MarkdownPreviewWebProps) {
   const { colors, isDark } = useThemeColors() as { colors: any; isDark: boolean };
   const theme = getMarkdownThemeFromPalette(colors, isDark);
@@ -416,153 +422,129 @@ export function MarkdownPreviewWeb({
   const onToggleRef = useRef(onToggleCheckbox);
   onToggleRef.current = onToggleCheckbox;
   const mermaidRef = useRef<any | null>(null);
+  const searchStateRef = useRef({ query: searchQuery || "", index: currentMatchIndex || 0 });
+  searchStateRef.current = { query: searchQuery || "", index: currentMatchIndex || 0 };
 
-  // Initialize Mermaid lazily in the browser so bundlers / SSR never import it on the server.
+  // Pre-render search highlighting to prevent flickering
+  const highlightedHtml = React.useMemo(() => {
+    if (!html || !searchQuery) return html;
+    if (typeof DOMParser === "undefined") return html;
+
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      const container = doc.body;
+
+      const matches: Array<{ node: Text; index: number }> = [];
+      const lowerQuery = searchQuery.toLowerCase();
+      const walker = doc.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+      let n: Node | null;
+      while ((n = walker.nextNode())) {
+        const p = n.parentNode as HTMLElement;
+        if (p && /(style|script|button|svg|code)/i.test(p.tagName)) continue;
+        const text = n.textContent || "";
+        const lowerText = text.toLowerCase();
+        let start = 0, hit;
+        while ((hit = lowerText.indexOf(lowerQuery, start)) !== -1) {
+          matches.push({ node: n as Text, index: hit });
+          start = hit + searchQuery.length;
+        }
+      }
+
+      for (let i = matches.length - 1; i >= 0; i--) {
+        const { node, index: hitIdx } = matches[i];
+        const text = node.textContent || "";
+        const before = text.substring(0, hitIdx);
+        const mid = text.substring(hitIdx, hitIdx + searchQuery.length);
+        const after = text.substring(hitIdx + searchQuery.length);
+
+        const span = doc.createElement("span");
+        span.className = i === currentMatchIndex ? "search-highlight active" : "search-highlight";
+        span.textContent = mid;
+
+        const parent = node.parentNode;
+        if (parent) {
+          const afterNode = doc.createTextNode(after);
+          parent.insertBefore(afterNode, node.nextSibling);
+          parent.insertBefore(span, afterNode);
+          node.textContent = before;
+        }
+      }
+      return doc.body.innerHTML;
+    } catch (e) {
+      console.error("Highlighting error:", e);
+      return html;
+    }
+  }, [html, searchQuery, currentMatchIndex]);
+
+  // Handle Search Count Reporting
   useEffect(() => {
-    let cancelled = false;
-    if (typeof window === "undefined") return;
-    (async () => {
-      try {
-        const mod = await import("mermaid");
-        const m: any = (mod as any).default ?? mod;
-        if (cancelled || !m) return;
-        m.initialize({
-          startOnLoad: false,
-          securityLevel: "loose",
-          theme: isDark ? "dark" : "default",
-        });
-        mermaidRef.current = m;
-      } catch {
-        // If mermaid fails to load, skip diagrams but keep the rest of preview working.
-      }
-    })();
+    if (!highlightedHtml || !searchQuery) {
+      onSearchMatchCount?.(0);
+      return;
+    }
+    // Efficiently count matches
+    const count = (highlightedHtml.match(/class="search-highlight/gi) || []).length;
+    onSearchMatchCount?.(count);
+  }, [highlightedHtml, searchQuery]);
 
-    // Dynamically inject KaTeX
-    (async () => {
-      try {
-        if (!document.getElementById("katex-css")) {
-          const link = document.createElement("link");
-          link.id = "katex-css";
-          link.rel = "stylesheet";
-          link.href = "https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css";
-          link.crossOrigin = "anonymous";
-          document.head.appendChild(link);
-        }
-
-        if (!document.getElementById("katex-js")) {
-          const script = document.createElement("script");
-          script.id = "katex-js";
-          script.src = "https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js";
-          script.crossOrigin = "anonymous";
-          script.onload = () => {
-            if (!document.getElementById("katex-auto-render-js")) {
-              const script2 = document.createElement("script");
-              script2.id = "katex-auto-render-js";
-              script2.src = "https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js";
-              script2.crossOrigin = "anonymous";
-              script2.onload = () => {
-                // Force a re-run of DOM enhancers so math is rendered once script loads.
-                if (containerRef.current) {
-                  enhanceMathBlocks(containerRef.current);
-                }
-              };
-              document.head.appendChild(script2);
-            } else if (containerRef.current) {
-              enhanceMathBlocks(containerRef.current);
-            }
-          };
-          document.head.appendChild(script);
-        } else if (document.getElementById("katex-auto-render-js") && containerRef.current) {
-          enhanceMathBlocks(containerRef.current);
-        }
-      } catch {
-        // Ignore failures
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isDark]);
-
-  // Best-effort "post-processing" for innerHTML content: we:
-  // - enhance checkboxes
-  // - attach copy buttons to code blocks
-  // - wrap tables/images
-  // and keep those enhancements in place across React re-renders by
-  // observing DOM mutations and re-running idempotent helpers.
+  // Best-effort "post-processing"
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !html) return;
+    if (!container || !highlightedHtml) return;
 
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-
     const runImmediateEnhancers = () => {
       replaceCheckboxesWithDom(container, (taskIndex) => onToggleRef.current?.(taskIndex));
       addCodeCopyButtons(container);
       wrapWideTables(container);
       wrapImagesWithCaptions(container);
     };
-
     const runHeavyEnhancers = () => {
-      // After structural enhancers run, render any Mermaid diagrams present.
       if (mermaidRef.current) {
         try {
           const mermaid: any = mermaidRef.current;
           const mermaidNodes = container.querySelectorAll<HTMLElement>(".mermaid");
           if (mermaidNodes.length > 0) {
-            // Mermaid v10+ exposes run; fall back to init if needed.
-            if (typeof mermaid.run === "function") {
-              mermaid.run({ nodes: mermaidNodes });
-            } else if (typeof mermaid.init === "function") {
-              mermaid.init(undefined, mermaidNodes);
-            }
+            if (typeof mermaid.run === "function") mermaid.run({ nodes: mermaidNodes });
+            else if (typeof mermaid.init === "function") mermaid.init(undefined, mermaidNodes);
           }
-        } catch {
-          // Ignore mermaid failures so preview never breaks other content.
-        }
+        } catch {}
       }
-      // After diagrams are rendered into SVG, wrap them in a block with controls.
       enhanceMermaidBlocks(container);
-
-      // Render Math
       enhanceMathBlocks(container);
     };
-
     const debouncedHeavyEnhancers = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(runHeavyEnhancers, 150);
     };
 
-    // Run structural changes IMMEDIATELY to prevent flickering
     runImmediateEnhancers();
-    // Use debounced version for expensive rendering
     debouncedHeavyEnhancers();
 
     const observer = new MutationObserver((mutations) => {
-      // Filter out mutations that happen inside KaTeX or Mermaid elements to prevent infinite loops.
       const hasOutsideMutations = mutations.some((mutation) => {
         const target = mutation.target as HTMLElement;
-        return !target.closest?.(".katex") && !target.closest?.(".mermaid-block");
+        return !target.closest?.(".katex") && !target.closest?.(".mermaid-block") && !target.classList?.contains("search-highlight");
       });
-
       if (hasOutsideMutations) {
-        // Even for mutations, we can run immediate fixes instantly
         runImmediateEnhancers();
         debouncedHeavyEnhancers();
       }
     });
 
-    observer.observe(container, {
-      childList: true,
-      subtree: true,
-    });
-
+    observer.observe(container, { childList: true, subtree: true });
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       observer.disconnect();
     };
-  }, [html]);
+  }, [highlightedHtml]);
+
+  // Handle Scroll to Active
+  useEffect(() => {
+    const active = containerRef.current?.querySelector(".search-highlight.active");
+    active?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [currentMatchIndex, highlightedHtml]);
 
   if (!html) {
     return (
@@ -587,7 +569,7 @@ export function MarkdownPreviewWeb({
       <div
         ref={containerRef}
         className={`markdown-preview ${className ?? ""}`}
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{ __html: highlightedHtml }}
       />
     </ScrollView>
   );
