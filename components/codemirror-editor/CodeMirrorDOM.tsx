@@ -269,6 +269,8 @@ export interface CodeMirrorDOMRef extends DOMImperativeFactory {
   setSelection: (...args: JSONValue[]) => void;
   setSearch: (...args: JSONValue[]) => void;
   scrollToMatch: (...args: JSONValue[]) => void;
+  replace: (...args: JSONValue[]) => void;
+  replaceAll: (...args: JSONValue[]) => void;
 }
 
 interface CodeMirrorDOMProps {
@@ -797,6 +799,37 @@ export default function CodeMirrorDOM({
                   behavior: 'smooth'
                 });
               }
+            });
+          }
+        },
+        replace: (...args: JSONValue[]) => {
+          const [query, replacement, activeIndex] = args as [string, string, number];
+          const view = viewRef.current;
+          if (!view || !query) return;
+          const { matches } = getSearchDecorations(view.state, query, activeIndex);
+          const match = matches[activeIndex];
+          if (match) {
+            view.dispatch({
+              changes: { from: match.from, to: match.to, insert: replacement },
+              selection: { anchor: match.from + replacement.length },
+              userEvent: "input.replace",
+            });
+          }
+        },
+        replaceAll: (...args: JSONValue[]) => {
+          const [query, replacement] = args as [string, string];
+          const view = viewRef.current;
+          if (!view || !query) return;
+          
+          const changes = [];
+          const { matches } = getSearchDecorations(view.state, query, 0);
+          if (matches.length > 0) {
+            for (const match of matches) {
+              changes.push({ from: match.from, to: match.to, insert: replacement });
+            }
+            view.dispatch({
+              changes,
+              userEvent: "input.replace.all",
             });
           }
         }

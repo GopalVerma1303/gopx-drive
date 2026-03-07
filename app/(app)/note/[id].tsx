@@ -25,7 +25,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronDown, ChevronUp, Search, X } from "lucide-react-native";
+import { ChevronDown, ChevronUp, RefreshCcw, Replace, ReplaceAll, Search, X } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -87,7 +87,9 @@ export default function NoteEditorScreen() {
 
   // Search state
   const [isSearchBarVisible, setIsSearchBarVisible] = useState(false);
+  const [isReplaceVisible, setIsReplaceVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [replaceQuery, setReplaceQuery] = useState("");
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [totalMatches, setTotalMatches] = useState(0);
 
@@ -443,9 +445,15 @@ export default function NoteEditorScreen() {
         // Handled by MarkdownPreview component sync
       } else {
         // Editor search
-        const count = editorRef.current?.setSearch?.(searchQuery, currentMatchIndex);
-        if (typeof count === 'number') {
-          setTotalMatches(count);
+        const result = editorRef.current?.setSearch?.(searchQuery, currentMatchIndex);
+        if (result && typeof result === 'object' && 'then' in result) {
+          (result as Promise<number>).then(count => {
+            if (typeof count === 'number') setTotalMatches(count);
+          });
+        } else if (typeof result === 'number') {
+          setTotalMatches(result);
+        } else {
+          setTotalMatches(0);
         }
       }
     } else {
@@ -463,8 +471,9 @@ export default function NoteEditorScreen() {
     }
   }, [currentMatchIndex, searchQuery, isPreview, isSearchBarVisible]);
 
-  const handleSearchOpen = () => {
+  const handleSearchOpen = (mode: 'search' | 'replace' = 'search') => {
     setIsSearchBarVisible(true);
+    setIsReplaceVisible(mode === 'replace');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     // Auto-focus the search bar
@@ -475,7 +484,9 @@ export default function NoteEditorScreen() {
 
   const handleSearchClose = () => {
     setIsSearchBarVisible(false);
+    setIsReplaceVisible(false);
     setSearchQuery("");
+    setReplaceQuery("");
     setCurrentMatchIndex(0);
     setTotalMatches(0);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -635,96 +646,172 @@ export default function NoteEditorScreen() {
               : undefined
           }
           onOpenMoveModal={!isNewNote && note ? openMoveModal : undefined}
-          onSearchOpen={handleSearchOpen}
+          onSearchOpen={() => handleSearchOpen('search')}
+          onReplaceOpen={() => handleSearchOpen('replace')}
         />
         {isSearchBarVisible && (
           <View
             style={{
-              flexDirection: "row",
-              alignItems: "center",
-              paddingHorizontal: 12,
-              paddingVertical: 8,
+              flexDirection: "column",
               backgroundColor: colors.background,
               borderBottomWidth: 1,
               borderBottomColor: colors.border,
-              gap: 8,
             }}
           >
             <View
               style={{
-                flex: 1,
                 flexDirection: "row",
                 alignItems: "center",
-                backgroundColor: colors.muted,
-                borderRadius: 8,
-                paddingHorizontal: 10,
-                height: 36,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                gap: 8,
               }}
             >
-              <Search size={18} color={colors.mutedForeground} />
-              <ScrollView
-                horizontal
-                scrollEnabled={false}
-                contentContainerStyle={{ flex: 1 }}
+              <View
+                style={{
+                  flex: 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: colors.muted,
+                  borderRadius: 8,
+                  paddingHorizontal: 10,
+                  height: 36,
+                }}
               >
-                <View style={{ flex: 1, justifyContent: 'center' }}>
-                  <Input
-                    ref={searchInputRef}
-                    value={searchQuery}
-                    onChangeText={(text: string) => {
-                      setSearchQuery(text);
-                      setCurrentMatchIndex(0);
-                    }}
-                    placeholder="Search note..."
-                    placeholderTextColor={colors.mutedForeground}
-                    style={{
-                      paddingVertical: 0,
-                      height: 36,
-                      color: colors.foreground,
-                      backgroundColor: 'transparent',
-                      borderWidth: 0,
-                    }}
-                  />
+                <Search size={18} color={colors.mutedForeground} />
+                <ScrollView
+                  horizontal
+                  scrollEnabled={false}
+                  contentContainerStyle={{ flex: 1 }}
+                >
+                  <View style={{ flex: 1, justifyContent: 'center' }}>
+                    <Input
+                      ref={searchInputRef}
+                      value={searchQuery}
+                      onChangeText={(text: string) => {
+                        setSearchQuery(text);
+                        setCurrentMatchIndex(0);
+                      }}
+                      placeholder="Search note..."
+                      placeholderTextColor={colors.mutedForeground}
+                      style={{
+                        paddingVertical: 0,
+                        height: 36,
+                        color: colors.foreground,
+                        backgroundColor: 'transparent',
+                        borderWidth: 0,
+                      }}
+                    />
+                  </View>
+                </ScrollView>
+                {totalMatches > 0 && (
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground, marginRight: 8 }}>
+                    {currentMatchIndex + 1}/{totalMatches}
+                  </Text>
+                )}
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Pressable
+                  onPress={handleSearchPrev}
+                  disabled={totalMatches === 0}
+                  style={({ pressed }) => ({
+                    padding: 6,
+                    opacity: (totalMatches === 0) ? 0.4 : (pressed ? 0.7 : 1),
+                  })}
+                >
+                  <ChevronUp size={20} color={colors.foreground} />
+                </Pressable>
+                <Pressable
+                  onPress={handleSearchNext}
+                  disabled={totalMatches === 0}
+                  style={({ pressed }) => ({
+                    padding: 6,
+                    opacity: (totalMatches === 0) ? 0.4 : (pressed ? 0.7 : 1),
+                  })}
+                >
+                  <ChevronDown size={20} color={colors.foreground} />
+                </Pressable>
+                <Pressable
+                  onPress={handleSearchClose}
+                  style={({ pressed }) => ({
+                    padding: 6,
+                    marginLeft: 4,
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                >
+                  <X size={20} color={colors.foreground} />
+                </Pressable>
+              </View>
+            </View>
+            
+            {isReplaceVisible && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingHorizontal: 12,
+                  paddingBottom: 8,
+                  gap: 8,
+                }}
+              >
+                <View
+                  style={{
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: colors.muted,
+                    borderRadius: 8,
+                    paddingHorizontal: 10,
+                    height: 36,
+                  }}
+                >
+                  <Replace size={18} color={colors.mutedForeground} />
+                  <ScrollView
+                    horizontal
+                    scrollEnabled={false}
+                    contentContainerStyle={{ flex: 1 }}
+                  >
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                      <Input
+                        value={replaceQuery}
+                        onChangeText={setReplaceQuery}
+                        placeholder="Replace with..."
+                        placeholderTextColor={colors.mutedForeground}
+                        style={{
+                          paddingVertical: 0,
+                          height: 36,
+                          color: colors.foreground,
+                          backgroundColor: 'transparent',
+                          borderWidth: 0,
+                        }}
+                      />
+                    </View>
+                  </ScrollView>
                 </View>
-              </ScrollView>
-              {totalMatches > 0 && (
-                <Text style={{ fontSize: 12, color: colors.mutedForeground, marginRight: 8 }}>
-                  {currentMatchIndex + 1}/{totalMatches}
-                </Text>
-              )}
-            </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <Pressable
-                onPress={handleSearchPrev}
-                disabled={totalMatches === 0}
-                style={({ pressed }) => ({
-                  padding: 6,
-                  opacity: (totalMatches === 0) ? 0.4 : (pressed ? 0.7 : 1),
-                })}
-              >
-                <ChevronUp size={20} color={colors.foreground} />
-              </Pressable>
-              <Pressable
-                onPress={handleSearchNext}
-                disabled={totalMatches === 0}
-                style={({ pressed }) => ({
-                  padding: 6,
-                  opacity: (totalMatches === 0) ? 0.4 : (pressed ? 0.7 : 1),
-                })}
-              >
-                <ChevronDown size={20} color={colors.foreground} />
-              </Pressable>
-              <Pressable
-                onPress={handleSearchClose}
-                style={({ pressed }) => ({
-                  padding: 6,
-                  marginLeft: 4,
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <X size={20} color={colors.foreground} />
-              </Pressable>
-            </View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Pressable
+                    onPress={() => editorRef.current?.replace?.(searchQuery, replaceQuery, currentMatchIndex)}
+                    disabled={totalMatches === 0 || !searchQuery}
+                    style={({ pressed }) => ({
+                      padding: 6,
+                      opacity: (totalMatches === 0 || !searchQuery) ? 0.4 : (pressed ? 0.7 : 1),
+                    })}
+                  >
+                    <Replace size={20} color={colors.foreground} />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => editorRef.current?.replaceAll?.(searchQuery, replaceQuery)}
+                    disabled={totalMatches === 0 || !searchQuery}
+                    style={({ pressed }) => ({
+                      padding: 6,
+                      opacity: (totalMatches === 0 || !searchQuery) ? 0.4 : (pressed ? 0.7 : 1),
+                    })}
+                  >
+                    <ReplaceAll size={20} color={colors.foreground} />
+                  </Pressable>
+                </View>
+              </View>
+            )}
           </View>
         )}
         {Platform.OS === "web" ? (

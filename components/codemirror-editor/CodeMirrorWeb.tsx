@@ -344,6 +344,10 @@ export interface CodeMirrorEditorHandle {
   wrapSelection?: (before: string, after: string, cursorOffset?: number) => void;
   /** For web: return the editor container DOM node so parent can check focus (e.g. for keyboard shortcuts). */
   getDomNode?: () => HTMLDivElement | null;
+  setSearch?: (query: string, activeIndex: number) => number;
+  scrollToMatch?: (query: string, activeIndex: number) => void;
+  replace?: (query: string, replacement: string, activeIndex: number) => void;
+  replaceAll?: (query: string, replacement: string) => void;
 }
 
 interface CodeMirrorWebProps {
@@ -823,6 +827,35 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
                   behavior: 'smooth'
                 });
               }
+            });
+          }
+        },
+        replace: (query: string, replacement: string, activeIndex: number) => {
+          const view = viewRef.current;
+          if (!view || !query) return;
+          const res = getSearchDecorations?.(view.state, query, activeIndex);
+          const match = res?.matches[activeIndex];
+          if (match) {
+            view.dispatch({
+              changes: { from: match.from, to: match.to, insert: replacement },
+              selection: { anchor: match.from + replacement.length },
+              userEvent: "input.replace",
+            });
+          }
+        },
+        replaceAll: (query: string, replacement: string) => {
+          const view = viewRef.current;
+          if (!view || !query) return;
+          
+          const changes = [];
+          const res = getSearchDecorations?.(view.state, query, 0);
+          if (res && res.matches.length > 0) {
+            for (const match of res.matches) {
+              changes.push({ from: match.from, to: match.to, insert: replacement });
+            }
+            view.dispatch({
+              changes,
+              userEvent: "input.replace.all",
             });
           }
         }

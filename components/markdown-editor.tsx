@@ -1410,6 +1410,12 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       scrollToMatch: (query: string, activeIndex: number) => {
         inputRef.current?.scrollToMatch?.(query, activeIndex);
       },
+      replace: (query: string, replacement: string, activeIndex: number) => {
+        inputRef.current?.replace?.(query, replacement, activeIndex);
+      },
+      replaceAll: (query: string, replacement: string) => {
+        inputRef.current?.replaceAll?.(query, replacement);
+      },
     }));
 
     const markdownStyles = {

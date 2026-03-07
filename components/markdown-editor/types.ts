@@ -35,8 +35,10 @@ export interface MarkdownEditorRef {
   replaceRange: (start: number, end: number, text: string) => void;
   /** (Native only) Flush WebView content to parent. Returns a promise that resolves with current editor text. Use before switching to preview so typed content is not lost. */
   getContentAsync?: () => Promise<string>;
-  setSearch?: (query: string, activeIndex: number) => number;
-  scrollToMatch?: (query: string, activeIndex: number) => void;
+  setSearch?: (query: string, activeIndex: number) => number | Promise<number>;
+  scrollToMatch?: (query: string, activeIndex: number) => void | Promise<void>;
+  replace?: (query: string, replacement: string, activeIndex: number) => void | Promise<void>;
+  replaceAll?: (query: string, replacement: string) => void | Promise<void>;
 }
 
 export type Snapshot = {

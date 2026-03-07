@@ -10,7 +10,7 @@ import { Text } from "@/components/ui/text";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { ArrowLeft, Check, Edit, Eye, Folder, MoreVertical, RefreshCcw, Search, Share2 } from "lucide-react-native";
+import { ArrowLeft, Check, Edit, Eye, Folder, MoreVertical, RefreshCcw, Replace, Search, Share2 } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, View } from "react-native";
 import { KeyboardController } from "react-native-keyboard-controller";
@@ -34,6 +34,7 @@ interface NoteDetailHeaderProps {
   folderName?: string;
   onOpenMoveModal?: () => void;
   onSearchOpen?: () => void;
+  onReplaceOpen?: () => void;
 }
 
 export function NoteDetailHeader({
@@ -52,6 +53,7 @@ export function NoteDetailHeader({
   folderName,
   onOpenMoveModal,
   onSearchOpen,
+  onReplaceOpen,
 }: NoteDetailHeaderProps) {
   const router = useRouter();
   const { colors } = useThemeColors();
@@ -246,6 +248,18 @@ export function NoteDetailHeader({
                   >
                     <Icon as={Search} className="size-4 text-foreground" />
                     <Text style={{ color: colors.foreground }}>Search</Text>
+                  </DropdownMenuItem>
+                )}
+                {!isPreview && onReplaceOpen && (
+                  <DropdownMenuItem
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      onReplaceOpen();
+                    }}
+                    className="flex flex-row items-center gap-2"
+                  >
+                    <Icon as={Replace} className="size-4 text-foreground" />
+                    <Text style={{ color: colors.foreground }}>Replace</Text>
                   </DropdownMenuItem>
                 )}
                 {onOpenShareModal && (
