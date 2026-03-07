@@ -495,15 +495,17 @@ export default function FilesScreen() {
                     setActionDialogOpen(false);
                     setFileToAction(null);
                   }}
+                  disabled={archiveMutation.isPending}
                 >
                   <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
                   className="rounded-md px-4 py-2"
                   onPress={handleArchiveConfirm}
+                  disabled={archiveMutation.isPending}
                 >
                   <Text className="font-semibold text-red-500">
-                    Archive
+                    {archiveMutation.isPending ? "Archiving..." : "Archive"}
                   </Text>
                 </Pressable>
               </View>
@@ -536,15 +538,17 @@ export default function FilesScreen() {
                     setActionDialogOpen(false);
                     setFileToAction(null);
                   }}
+                  disabled={archiveMutation.isPending}
                 >
                   <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
                   className="rounded-md px-4 py-2"
                   onPress={handleArchiveConfirm}
+                  disabled={archiveMutation.isPending}
                 >
                   <Text className="font-semibold text-red-500">
-                    Archive
+                    {archiveMutation.isPending ? "Archiving..." : "Archive"}
                   </Text>
                 </Pressable>
               </View>

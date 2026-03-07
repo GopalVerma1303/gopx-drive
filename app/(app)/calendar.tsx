@@ -240,8 +240,6 @@ export default function CalendarScreen() {
     if (eventToDelete) {
       console.log("Deleting event:", eventToDelete.id);
       deleteMutation.mutate(eventToDelete.id);
-      setDeleteDialogOpen(false);
-      setEventToDelete(null);
     }
   };
 
@@ -549,6 +547,8 @@ export default function CalendarScreen() {
         onUpdate={updateMutation.mutate}
         onDelete={deleteMutation.mutate}
         userId={user?.id || ""}
+        isSaving={createMutation.isPending || updateMutation.isPending}
+        isDeleting={deleteMutation.isPending}
       />
 
       {/* Delete Confirmation Dialog */}
@@ -628,6 +628,7 @@ export default function CalendarScreen() {
                     setDeleteDialogOpen(false);
                     setEventToDelete(null);
                   }}
+                  disabled={deleteMutation.isPending}
                 >
                   <Text style={{ color: colors.foreground }}>Cancel</Text>
                 </Pressable>
@@ -639,9 +640,10 @@ export default function CalendarScreen() {
                     borderRadius: 6,
                   }}
                   onPress={handleDeleteConfirm}
+                  disabled={deleteMutation.isPending}
                 >
                   <Text style={{ color: "#ef4444", fontWeight: "600" }}>
-                    Delete
+                    {deleteMutation.isPending ? "Deleting..." : "Delete"}
                   </Text>
                 </Pressable>
               </View>
@@ -681,15 +683,17 @@ export default function CalendarScreen() {
                     setDeleteDialogOpen(false);
                     setEventToDelete(null);
                   }}
+                  disabled={deleteMutation.isPending}
                 >
                   <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
                   className="rounded-md px-4 py-2"
                   onPress={handleDeleteConfirm}
+                  disabled={deleteMutation.isPending}
                 >
                   <Text className="font-semibold text-red-500">
-                    Delete
+                    {deleteMutation.isPending ? "Deleting..." : "Delete"}
                   </Text>
                 </Pressable>
               </View>

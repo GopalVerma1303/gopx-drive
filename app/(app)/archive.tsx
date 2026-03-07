@@ -947,15 +947,17 @@ export default function ArchiveScreen() {
                 <Pressable
                   className="px-4 py-2"
                   onPress={() => setDeleteDialogOpen(false)}
+                  disabled={deleteNoteMutation.isPending || deleteFileMutation.isPending || deleteFolderMutation.isPending}
                 >
                   <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
                   className="rounded-md px-4 py-2"
                   onPress={confirmDelete}
+                  disabled={deleteNoteMutation.isPending || deleteFileMutation.isPending || deleteFolderMutation.isPending}
                 >
                   <Text className="font-semibold text-red-500">
-                    Delete
+                    {deleteNoteMutation.isPending || deleteFileMutation.isPending || deleteFolderMutation.isPending ? "Deleting..." : "Delete"}
                   </Text>
                 </Pressable>
               </View>
@@ -993,15 +995,17 @@ export default function ArchiveScreen() {
                 <Pressable
                   className="px-4 py-2"
                   onPress={() => setDeleteDialogOpen(false)}
+                  disabled={deleteNoteMutation.isPending || deleteFileMutation.isPending || deleteFolderMutation.isPending}
                 >
                   <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
                   className="rounded-md px-4 py-2"
                   onPress={confirmDelete}
+                  disabled={deleteNoteMutation.isPending || deleteFileMutation.isPending || deleteFolderMutation.isPending}
                 >
                   <Text className="font-semibold text-red-500">
-                    Delete
+                    {deleteNoteMutation.isPending || deleteFileMutation.isPending || deleteFolderMutation.isPending ? "Deleting..." : "Delete"}
                   </Text>
                 </Pressable>
               </View>
@@ -1037,15 +1041,17 @@ export default function ArchiveScreen() {
                 <Pressable
                   className="px-4 py-2"
                   onPress={() => setRestoreDialogOpen(false)}
+                  disabled={restoreNoteMutation.isPending || restoreFileMutation.isPending || restoreFolderMutation.isPending}
                 >
                   <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
                   className="rounded-md px-4 py-2"
                   onPress={confirmRestore}
+                  disabled={restoreNoteMutation.isPending || restoreFileMutation.isPending || restoreFolderMutation.isPending}
                 >
                   <Text className="font-semibold text-blue-500">
-                    Restore
+                    {restoreNoteMutation.isPending || restoreFileMutation.isPending || restoreFolderMutation.isPending ? "Restoring..." : "Restore"}
                   </Text>
                 </Pressable>
               </View>
@@ -1083,15 +1089,17 @@ export default function ArchiveScreen() {
                 <Pressable
                   className="px-4 py-2"
                   onPress={() => setRestoreDialogOpen(false)}
+                  disabled={restoreNoteMutation.isPending || restoreFileMutation.isPending || restoreFolderMutation.isPending}
                 >
                   <Text className="text-foreground">Cancel</Text>
                 </Pressable>
                 <Pressable
                   className="rounded-md px-4 py-2"
                   onPress={confirmRestore}
+                  disabled={restoreNoteMutation.isPending || restoreFileMutation.isPending || restoreFolderMutation.isPending}
                 >
                   <Text className="font-semibold text-blue-500">
-                    Restore
+                    {restoreNoteMutation.isPending || restoreFileMutation.isPending || restoreFolderMutation.isPending ? "Restoring..." : "Restore"}
                   </Text>
                 </Pressable>
               </View>

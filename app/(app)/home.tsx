@@ -36,6 +36,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -75,6 +76,7 @@ export default function HomeScreen() {
     }
     return Dimensions.get("window").width;
   });
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
 
   const viewMode = getViewMode("home");
 
@@ -216,6 +218,7 @@ export default function HomeScreen() {
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setOptionsModalOpen(false);
       setSelectedItem(null);
+      setArchiveDialogOpen(false);
     },
   });
 
@@ -226,6 +229,7 @@ export default function HomeScreen() {
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setOptionsModalOpen(false);
       setSelectedItem(null);
+      setArchiveDialogOpen(false);
     },
   });
 
@@ -280,6 +284,11 @@ export default function HomeScreen() {
   const openArchiveConfirm = () => {
     if (!selectedItem) return;
     setOptionsModalOpen(false);
+    setArchiveDialogOpen(true);
+  };
+
+  const handleArchiveConfirm = () => {
+    if (!selectedItem) return;
     if (selectedItem.type === "note") {
       archiveNoteMutation.mutate(selectedItem.item.id);
     } else {
@@ -799,6 +808,84 @@ export default function HomeScreen() {
         onMoveConfirm={handleMoveConfirm}
         isPending={moveNoteMutation.isPending || moveFileMutation.isPending}
       />
+
+      {/* Archive confirmation dialog */}
+      {Platform.OS === "web" ? (
+        archiveDialogOpen && (
+          <View className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <Pressable
+              className="absolute inset-0"
+              onPress={() => setArchiveDialogOpen(false)}
+            />
+            <View className="w-full max-w-md rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                Archive {selectedItem?.type === "note" ? "Note" : "File"}
+              </Text>
+              <Text className="mb-6 text-sm text-muted-foreground">
+                Are you sure you want to archive "{selectedItem?.type === "note" ? selectedItem.item.title || "Untitled" : selectedItem?.item.name ?? "Item"}"? You can restore it from the archive later.
+              </Text>
+              <View className="flex-row justify-end gap-3">
+                <Pressable
+                  className="px-4 py-2"
+                  onPress={() => setArchiveDialogOpen(false)}
+                  disabled={archiveNoteMutation.isPending || archiveFileMutation.isPending}
+                >
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleArchiveConfirm}
+                  disabled={archiveNoteMutation.isPending || archiveFileMutation.isPending}
+                >
+                  <Text className="font-semibold text-red-500">
+                    {archiveNoteMutation.isPending || archiveFileMutation.isPending ? "Archiving..." : "Archive"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )
+      ) : (
+        <Modal
+          visible={archiveDialogOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setArchiveDialogOpen(false)}
+        >
+          <View className="flex-1 items-center justify-center bg-black/50 p-4">
+            <Pressable
+              className="absolute inset-0"
+              onPress={() => setArchiveDialogOpen(false)}
+            />
+            <View className="w-full max-w-[400px] rounded-lg border border-border bg-muted p-6 shadow-lg">
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                Archive {selectedItem?.type === "note" ? "Note" : "File"}
+              </Text>
+              <Text className="mb-6 text-sm text-muted-foreground">
+                Are you sure you want to archive "{selectedItem?.type === "note" ? selectedItem.item.title || "Untitled" : selectedItem?.item.name ?? "Item"}"? You can restore it from the archive later.
+              </Text>
+              <View className="flex-row justify-end gap-3">
+                <Pressable
+                  className="px-4 py-2"
+                  onPress={() => setArchiveDialogOpen(false)}
+                  disabled={archiveNoteMutation.isPending || archiveFileMutation.isPending}
+                >
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleArchiveConfirm}
+                  disabled={archiveNoteMutation.isPending || archiveFileMutation.isPending}
+                >
+                  <Text className="font-semibold text-red-500">
+                    {archiveNoteMutation.isPending || archiveFileMutation.isPending ? "Archiving..." : "Archive"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
 
       {PreviewModal}
     </View>

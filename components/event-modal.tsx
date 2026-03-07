@@ -42,6 +42,8 @@ export interface EventModalProps {
   }) => void;
   onDelete: (id: string) => void;
   userId: string;
+  isSaving?: boolean;
+  isDeleting?: boolean;
 }
 
 export function EventModal({
@@ -53,6 +55,8 @@ export function EventModal({
   onUpdate,
   onDelete,
   userId,
+  isSaving = false,
+  isDeleting = false,
 }: EventModalProps) {
   const { colors } = useThemeColors();
   const { alert } = useAlert();
@@ -98,6 +102,7 @@ export function EventModal({
         setEventTime("12:01 AM");
         setRepeatInterval("once");
       }
+      setDeleteDialogOpen(false);
       setDateError("");
       setTimeError("");
     } else {
@@ -222,7 +227,6 @@ export function EventModal({
   const handleDeleteConfirm = () => {
     if (event) {
       onDelete(event.id);
-      setDeleteDialogOpen(false);
     }
   };
 
@@ -317,16 +321,21 @@ export function EventModal({
                 <Pressable
                   onPress={handleDelete}
                   className="rounded-md bg-transparent px-4 py-2.5"
+                  disabled={isSaving || isDeleting}
                 >
-                  <Text className="font-semibold text-red-500">Delete</Text>
+                  <Text className="font-semibold text-red-500">
+                    {isDeleting ? "Deleting..." : "Delete"}
+                  </Text>
                 </Pressable>
               )}
               <View className="flex-1 flex-row justify-end gap-3">
-                <Pressable onPress={onClose} className="rounded-md px-4 py-2.5">
+                <Pressable onPress={onClose} className="rounded-md px-4 py-2.5" disabled={isSaving || isDeleting}>
                   <Text className="text-foreground">Cancel</Text>
                 </Pressable>
-                <Pressable onPress={handleSave} className="rounded-md px-4 py-2.5">
-                  <Text className="font-semibold text-blue-500">Save</Text>
+                <Pressable onPress={handleSave} className="rounded-md px-4 py-2.5" disabled={isSaving || isDeleting}>
+                  <Text className="font-semibold text-blue-500">
+                    {isSaving ? "Saving..." : "Save"}
+                  </Text>
                 </Pressable>
               </View>
             </View>
@@ -446,16 +455,21 @@ export function EventModal({
                         <Pressable
                           onPress={handleDelete}
                           className="rounded-md bg-transparent px-4 py-2.5"
+                          disabled={isSaving || isDeleting}
                         >
-                          <Text className="font-semibold text-red-500">Delete</Text>
+                          <Text className="font-semibold text-red-500">
+                            {isDeleting ? "Deleting..." : "Delete"}
+                          </Text>
                         </Pressable>
                       )}
                       <View className="flex-1 flex-row justify-end gap-3">
-                        <Pressable onPress={onClose} className="rounded-md px-4 py-2.5">
+                        <Pressable onPress={onClose} className="rounded-md px-4 py-2.5" disabled={isSaving || isDeleting}>
                           <Text className="text-foreground">Cancel</Text>
                         </Pressable>
-                        <Pressable onPress={handleSave} className="rounded-md px-4 py-2.5">
-                          <Text className="font-semibold text-blue-500">Save</Text>
+                        <Pressable onPress={handleSave} className="rounded-md px-4 py-2.5" disabled={isSaving || isDeleting}>
+                          <Text className="font-semibold text-blue-500">
+                            {isSaving ? "Saving..." : "Save"}
+                          </Text>
                         </Pressable>
                       </View>
                     </View>
@@ -477,11 +491,21 @@ export function EventModal({
                 Are you sure you want to delete "{event.title}"? This action cannot be undone.
               </Text>
               <View className="flex-row justify-end gap-3">
-                <Pressable className="px-4 py-2" onPress={() => setDeleteDialogOpen(false)}>
+                <Pressable
+                  className="px-4 py-2"
+                  onPress={() => setDeleteDialogOpen(false)}
+                  disabled={isDeleting}
+                >
                   <Text className="text-foreground">Cancel</Text>
                 </Pressable>
-                <Pressable className="rounded-md px-4 py-2" onPress={handleDeleteConfirm}>
-                  <Text className="font-semibold text-red-500">Delete</Text>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleDeleteConfirm}
+                  disabled={isDeleting}
+                >
+                  <Text className="font-semibold text-red-500">
+                    {isDeleting ? "Deleting..." : "Delete"}
+                  </Text>
                 </Pressable>
               </View>
             </View>
@@ -502,11 +526,21 @@ export function EventModal({
                 Are you sure you want to delete "{event?.title}"? This action cannot be undone.
               </Text>
               <View className="flex-row justify-end gap-3">
-                <Pressable className="px-4 py-2" onPress={() => setDeleteDialogOpen(false)}>
+                <Pressable
+                  className="px-4 py-2"
+                  onPress={() => setDeleteDialogOpen(false)}
+                  disabled={isDeleting}
+                >
                   <Text className="text-foreground">Cancel</Text>
                 </Pressable>
-                <Pressable className="rounded-md px-4 py-2" onPress={handleDeleteConfirm}>
-                  <Text className="font-semibold text-red-500">Delete</Text>
+                <Pressable
+                  className="rounded-md px-4 py-2"
+                  onPress={handleDeleteConfirm}
+                  disabled={isDeleting}
+                >
+                  <Text className="font-semibold text-red-500">
+                    {isDeleting ? "Deleting..." : "Delete"}
+                  </Text>
                 </Pressable>
               </View>
             </View>
