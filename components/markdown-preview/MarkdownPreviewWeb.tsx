@@ -424,6 +424,29 @@ export function MarkdownPreviewWeb({
   const mermaidRef = useRef<any | null>(null);
   const searchStateRef = useRef({ query: searchQuery || "", index: currentMatchIndex || 0 });
   searchStateRef.current = { query: searchQuery || "", index: currentMatchIndex || 0 };
+  
+  // Dynamically load and initialize mermaid
+  useEffect(() => {
+    let mounted = true;
+    import("mermaid").then((m) => {
+      if (!mounted) return;
+      const mermaidInstance = m.default || m;
+      mermaidRef.current = mermaidInstance;
+      mermaidInstance.initialize({
+        startOnLoad: false,
+        securityLevel: "loose",
+        theme: isDark ? "dark" : "default",
+      });
+      // Force a re-run if we already have content
+      if (containerRef.current) {
+        const nodes = containerRef.current.querySelectorAll<HTMLElement>(".mermaid");
+        if (nodes.length > 0) {
+          mermaidInstance.run({ nodes });
+        }
+      }
+    }).catch(err => console.error("Failed to load mermaid:", err));
+    return () => { mounted = false; };
+  }, [isDark]);
 
   // Pre-render search highlighting to prevent flickering
   const highlightedHtml = React.useMemo(() => {
@@ -506,8 +529,12 @@ export function MarkdownPreviewWeb({
           const mermaid: any = mermaidRef.current;
           const mermaidNodes = container.querySelectorAll<HTMLElement>(".mermaid");
           if (mermaidNodes.length > 0) {
-            if (typeof mermaid.run === "function") mermaid.run({ nodes: mermaidNodes });
-            else if (typeof mermaid.init === "function") mermaid.init(undefined, mermaidNodes);
+            // Use .run() for v10+, .init() for older versions if needed
+            if (typeof mermaid.run === "function") {
+              mermaid.run({ nodes: mermaidNodes });
+            } else if (typeof mermaid.init === "function") {
+              mermaid.init(undefined, mermaidNodes);
+            }
           }
         } catch {}
       }
