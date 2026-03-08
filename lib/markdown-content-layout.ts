@@ -27,8 +27,8 @@ export const MARKDOWN_EDITOR_CONTENT_PADDING_PX_WEB = {
 /** Native-only: same as above but with smaller horizontal padding. Used by CodeMirrorDOM. */
 export const MARKDOWN_CONTENT_PADDING_PX_NATIVE = {
   ...MARKDOWN_CONTENT_PADDING_PX,
-  paddingLeft: 20,
-  paddingRight: 20,
+  paddingLeft: 24,
+  paddingRight: 24,
 } as const;
 
 /** Base font size (px) for editor and preview body text. */
