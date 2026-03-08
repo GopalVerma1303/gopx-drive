@@ -40,6 +40,7 @@ import {
 } from "react-native";
 import { KeyboardController, useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import Animated, { useAnimatedStyle } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function NoteEditorScreen() {
   const { id, edit: editParam, folderId } = useLocalSearchParams<{ id: string; edit?: string; folderId?: string }>();
@@ -57,6 +58,7 @@ export default function NoteEditorScreen() {
   /** Open in edit mode for new notes, or when we just created and replaced (edit=1) */
   const openInEditMode = isNewNote || editParam === "1";
   const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
+  const insets = useSafeAreaInsets();
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState(DEFAULT_NEW_NOTE_CONTENT);
@@ -108,6 +110,14 @@ export default function NoteEditorScreen() {
 
     return {
       marginBottom: -keyboardHeight.value,
+    };
+  });
+  
+  const toolbarAnimatedStyle = useAnimatedStyle(() => {
+    // Dynamically reduce paddingBottom as keyboard moves up.
+    // keyboardHeight is positive when keyboard is visible.
+    return {
+      paddingBottom: Math.max(0, insets.bottom - Math.abs(keyboardHeight.value)),
     };
   });
 
@@ -788,7 +798,7 @@ export default function NoteEditorScreen() {
                 >
                   <ScrollView
                     className="flex-1 w-full h-full"
-                    contentContainerStyle={{ flexGrow: 1 }}
+                    contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom }}
                     showsVerticalScrollIndicator
                   >
                     <View className="flex-grow w-full max-w-[672px] self-center bg-muted">
@@ -836,7 +846,10 @@ export default function NoteEditorScreen() {
                       />
                     )}
                   </View>
-                  <View className="absolute bottom-0 left-0 right-0 z-10 bg-background">
+                  <Animated.View 
+                    className="absolute bottom-0 left-0 right-0 z-10 bg-background"
+                    style={toolbarAnimatedStyle}
+                  >
                     <MarkdownToolbar
                       onInsertText={(text, cursorOffset) => {
                         editorRef.current?.insertText(text, cursorOffset);
@@ -852,7 +865,7 @@ export default function NoteEditorScreen() {
                       onImageInsert={() => setImageModalOpen(true)}
                       isPreview={false}
                     />
-                  </View>
+                  </Animated.View>
                 </View>
               </View>
             </View>
