@@ -140,6 +140,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       searchQuery,
       currentMatchIndex,
       onSearchMatchCount,
+      extraBottomPadding,
     },
     ref
   ) {
@@ -2904,6 +2905,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               ringColor={colors.ring}
               mentionTag={theme.mentionTag}
               isDark={isDark}
+              extraBottomPadding={extraBottomPadding}
             />
           </CodeMirrorNativeErrorBoundary>
         )}

@@ -294,6 +294,7 @@ interface CodeMirrorDOMProps {
   mutedForeground?: string;
   mentionTag?: string;
   isDark?: boolean;
+  extraBottomPadding?: number;
   dom?: import("expo/dom").DOMProps;
   ref?: Ref<CodeMirrorDOMRef>;
 }
@@ -314,6 +315,7 @@ export default function CodeMirrorDOM({
   mutedForeground,
   mentionTag,
   isDark,
+  extraBottomPadding,
   ref: refProp,
 }: CodeMirrorDOMProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -859,6 +861,7 @@ export default function CodeMirrorDOM({
           overflow: "hidden",
           fontSize: `${editorFontSizePx}px`,
           ...MARKDOWN_CONTENT_PADDING_PX_NATIVE,
+          paddingBottom: (MARKDOWN_CONTENT_PADDING_PX_NATIVE.paddingBottom || 0) + (extraBottomPadding || 0),
           backgroundColor: muted ?? backgroundColor,
           color,
           boxSizing: "border-box",

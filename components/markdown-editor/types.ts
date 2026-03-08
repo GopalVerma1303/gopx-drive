@@ -18,6 +18,8 @@ export interface MarkdownEditorProps {
   searchQuery?: string;
   currentMatchIndex?: number;
   onSearchMatchCount?: (count: number) => void;
+  /** (Native only) Extra padding at the bottom of the editor content (e.g. to avoid being hidden by toolbar). */
+  extraBottomPadding?: number;
 }
 
 export interface MarkdownEditorRef {

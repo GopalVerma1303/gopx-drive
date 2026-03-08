@@ -3,6 +3,7 @@
 import { AIPromptModal } from "@/components/ai-prompt-modal";
 import { NoteDetailHeader } from "@/components/headers/note-detail-header";
 import { ImageInsertModal } from "@/components/image-insert-modal";
+import { MARKDOWN_CONTENT_PADDING_PX_NATIVE, MARKDOWN_FONT_SIZE, MARKDOWN_TOOLBAR_HEIGHT } from "@/lib/markdown-content-layout";
 import { MarkdownEditor, MarkdownEditorRef } from "@/components/markdown-editor";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { MarkdownToolbar } from "@/components/markdown-toolbar";
@@ -843,6 +844,7 @@ export default function NoteEditorScreen() {
                         searchQuery={isSearchBarVisible ? searchQuery : ""}
                         currentMatchIndex={currentMatchIndex}
                         onSearchMatchCount={setTotalMatches}
+                        extraBottomPadding={MARKDOWN_TOOLBAR_HEIGHT + insets.bottom}
                       />
                     )}
                   </View>
