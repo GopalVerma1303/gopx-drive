@@ -2,14 +2,16 @@
 
 import { Stack } from "expo-router";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Pressable,
+  ScrollView,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/ui/button";
@@ -125,9 +127,9 @@ export default function LoginScreen() {
   }
 
   const authContent = (
-    <View className="flex-1 justify-center px-6">
+    <View className="px-6">
       {/* Header */}
-      <View className="items-center mb-8">
+      <View className="items-center mb-8 mt-12">
         <Text className="text-foreground text-4xl font-bold">Gopx Drive</Text>
         <Text className="text-foreground text-base">
           Your files & folders, organized
@@ -242,9 +244,9 @@ export default function LoginScreen() {
           <Button
             variant="link"
             onPress={() => setIsSignUp(!isSignUp)}
-            className="py-3"
+            className="h-auto py-4"
           >
-            <Text className="text-foreground text-sm font-medium">
+            <Text className="text-foreground text-sm font-medium leading-relaxed">
               {isSignUp
                 ? "Already have an account? Sign In"
                 : "Don't have an account? Sign Up"}
@@ -256,15 +258,36 @@ export default function LoginScreen() {
   );
 
   return (
-    <View className="flex-1">
+    <View className="flex-1 bg-background">
       <Stack.Screen options={{ headerShown: false }} />
-      <KeyboardAvoidingView
-        className="flex-1 bg-background"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
-      >
-        <View className="flex-1">{authContent}</View>
-      </KeyboardAvoidingView>
+      {Platform.OS === "web" ? (
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: "center",
+            paddingTop: 20,
+            paddingBottom: Math.max(insets.bottom, 40),
+          }}
+        >
+          {authContent}
+        </ScrollView>
+      ) : (
+        <KeyboardAwareScrollView
+          bottomOffset={20}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: "center",
+            paddingTop: 20,
+            paddingBottom: Math.max(insets.bottom, 40),
+          }}
+        >
+          {authContent}
+        </KeyboardAwareScrollView>
+      )}
     </View>
   );
 }
