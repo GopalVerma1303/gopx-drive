@@ -20,15 +20,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader } from "@/components/ui/loader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Loader } from "@/components/ui/loader";
 import { Text } from "@/components/ui/text";
 import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
-import { useThemeColors } from "@/lib/use-theme-colors";
 import { UI_DEV } from "@/lib/config";
 import { THEME } from "@/lib/theme";
+import { useThemeColors } from "@/lib/use-theme-colors";
 
 export default function SignupScreen() {
   const { alert } = useAlert();
@@ -36,7 +36,7 @@ export default function SignupScreen() {
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -77,7 +77,7 @@ export default function SignupScreen() {
           <Card className="border-2 border-border mx-auto w-full max-w-lg bg-muted">
             <CardHeader className="items-center">
               <View className="w-16 h-16 items-center justify-center">
-                <Mail className="text-foreground" size={32} />
+                <Mail color={colors.foreground} size={32} />
               </View>
               <CardTitle>
                 <Text className="text-xl font-bold text-foreground text-center">

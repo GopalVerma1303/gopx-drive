@@ -20,14 +20,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader } from "@/components/ui/loader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Loader } from "@/components/ui/loader";
 import { Text } from "@/components/ui/text";
 import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
-import { useThemeColors } from "@/lib/use-theme-colors";
 import { THEME } from "@/lib/theme";
+import { useThemeColors } from "@/lib/use-theme-colors";
 
 export default function ForgotPasswordScreen() {
   const { alert } = useAlert();
@@ -35,7 +35,7 @@ export default function ForgotPasswordScreen() {
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  
+
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
