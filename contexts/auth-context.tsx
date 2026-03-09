@@ -16,6 +16,7 @@ interface AuthContextValue {
   resetPassword: (email: string) => Promise<void>;
   updateEmail: (newEmail: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
+  verifyPassword: (password: string) => Promise<void>;
   deleteAccount: () => Promise<void>;
   isRecoveringPassword: boolean;
   setIsRecoveringPassword: (value: boolean) => void;
@@ -268,6 +269,18 @@ export const [AuthProvider, useAuth] = createContextHook(
       if (error) throw error;
     };
 
+    const verifyPassword = async (password: string) => {
+      if (UI_DEV) return;
+      if (!user?.email) throw new Error("User email not found");
+      
+      const { error } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password,
+      });
+      
+      if (error) throw error;
+    };
+
     const deleteAccount = async () => {
       if (UI_DEV) {
         setUser(null);
@@ -294,6 +307,7 @@ export const [AuthProvider, useAuth] = createContextHook(
       resetPassword,
       updateEmail,
       updatePassword,
+      verifyPassword,
       deleteAccount,
       isRecoveringPassword,
       setIsRecoveringPassword,
