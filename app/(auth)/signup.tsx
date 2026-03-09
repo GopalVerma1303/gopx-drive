@@ -59,11 +59,9 @@ export default function SignupScreen() {
     setIsLoading(true);
     try {
       await signUp(email, password);
-      if (!UI_DEV) {
-        setIsLoading(false);
-        setShowVerificationMessage(true);
-        return;
-      }
+      setIsLoading(false);
+      setShowVerificationMessage(true);
+      return;
     } catch (error: any) {
       alert("Error", error.message || "Failed to create account");
     } finally {

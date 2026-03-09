@@ -16,6 +16,7 @@ interface AuthContextValue {
   resetPassword: (email: string) => Promise<void>;
   updateEmail: (newEmail: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
+  deleteAccount: () => Promise<void>;
   isRecoveringPassword: boolean;
   setIsRecoveringPassword: (value: boolean) => void;
 }
@@ -199,11 +200,7 @@ export const [AuthProvider, useAuth] = createContextHook(
 
     const signUp = async (email: string, password: string) => {
       if (UI_DEV) {
-        // In UI dev mode, just set a demo user
-        setUser({
-          id: "demo-user",
-          email: email || "demo@example.com",
-        } as User);
+        // In UI dev mode, don't set user immediately so the "Check your email" screen can be shown
         return;
       }
 
@@ -271,6 +268,22 @@ export const [AuthProvider, useAuth] = createContextHook(
       if (error) throw error;
     };
 
+    const deleteAccount = async () => {
+      if (UI_DEV) {
+        setUser(null);
+        setSession(null);
+        return;
+      }
+      
+      // Call RPC to delete the user's data and account
+      // Note: This requires a 'delete_user' RPC function in Supabase
+      const { error } = await supabase.rpc('delete_user');
+      if (error) throw error;
+      
+      // Sign out after deletion
+      await signOut();
+    };
+
     return {
       user,
       session,
@@ -281,6 +294,7 @@ export const [AuthProvider, useAuth] = createContextHook(
       resetPassword,
       updateEmail,
       updatePassword,
+      deleteAccount,
       isRecoveringPassword,
       setIsRecoveringPassword,
     };
