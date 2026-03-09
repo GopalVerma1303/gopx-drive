@@ -31,7 +31,7 @@ import { THEME } from "@/lib/theme";
 
 export default function LoginScreen() {
   const { alert } = useAlert();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, isRecoveringPassword, setIsRecoveringPassword } = useAuth();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,12 +49,12 @@ export default function LoginScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    if (type === "recovery") {
+    if (isRecoveringPassword) {
       setIsResetPassword(true);
       setIsForgotPassword(false);
       setIsSignUp(false);
     }
-  }, [type]);
+  }, [isRecoveringPassword]);
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -121,6 +121,7 @@ export default function LoginScreen() {
       await updatePassword(password);
       alert("Success", "Password updated successfully. Please sign in with your new password.");
       setIsResetPassword(false);
+      setIsRecoveringPassword(false);
       setPassword("");
       setConfirmPassword("");
       router.replace("/(auth)/login");
@@ -377,6 +378,7 @@ export default function LoginScreen() {
               onPress={() => {
                 if (isResetPassword) {
                   setIsResetPassword(false);
+                  setIsRecoveringPassword(false);
                   router.replace("/(auth)/login");
                 } else if (isForgotPassword) {
                   setIsForgotPassword(false);

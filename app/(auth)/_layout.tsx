@@ -1,11 +1,11 @@
 import { DefaultAppHead } from "@/components/default-app-head";
 import { useAuth } from "@/contexts/auth-context";
 import { useThemeColors } from "@/lib/use-theme-colors";
-import { Redirect, Stack } from "expo-router";
-import { ActivityIndicator, View } from "react-native";
+import { Redirect, Stack, useLocalSearchParams } from "expo-router";
+import { ActivityIndicator, Platform, View } from "react-native";
 
 export default function AuthLayout() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isRecoveringPassword } = useAuth();
   const { colors } = useThemeColors();
 
   if (isLoading) {
@@ -26,7 +26,7 @@ export default function AuthLayout() {
     );
   }
 
-  if (user) {
+  if (user && !isRecoveringPassword) {
     return (
       <>
         <DefaultAppHead />

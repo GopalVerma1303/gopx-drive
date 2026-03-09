@@ -16,6 +16,8 @@ interface AuthContextValue {
   resetPassword: (email: string) => Promise<void>;
   updateEmail: (newEmail: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
+  isRecoveringPassword: boolean;
+  setIsRecoveringPassword: (value: boolean) => void;
 }
 
 const SESSION_STORAGE_KEY = "sb-auth-token";
@@ -25,6 +27,7 @@ export const [AuthProvider, useAuth] = createContextHook(
     const [user, setUser] = useState<User | null>(null);
     const [session, setSession] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isRecoveringPassword, setIsRecoveringPassword] = useState(false);
 
     useEffect(() => {
       if (UI_DEV) {
@@ -126,6 +129,11 @@ export const [AuthProvider, useAuth] = createContextHook(
         if (event === "SIGNED_OUT") {
           setSession(null);
           setUser(null);
+          setIsRecoveringPassword(false);
+        } else if (event === "PASSWORD_RECOVERY") {
+          setIsRecoveringPassword(true);
+          setSession(session);
+          setUser(session?.user ?? null);
         } else if (
           event === "USER_UPDATED" ||
           event === "SIGNED_IN" ||
@@ -273,6 +281,8 @@ export const [AuthProvider, useAuth] = createContextHook(
       resetPassword,
       updateEmail,
       updatePassword,
+      isRecoveringPassword,
+      setIsRecoveringPassword,
     };
   }
 );

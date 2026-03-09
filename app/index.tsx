@@ -1,16 +1,13 @@
 import { DefaultAppHead } from "@/components/default-app-head";
 import { useAuth } from "@/contexts/auth-context";
 import { useThemeColors } from "@/lib/use-theme-colors";
-import { Redirect } from "expo-router";
-import { ActivityIndicator, View } from "react-native";
+import { Redirect, useLocalSearchParams } from "expo-router";
+import { ActivityIndicator, Platform, View } from "react-native";
 
 export default function Index() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isRecoveringPassword } = useAuth();
   const { colors } = useThemeColors();
 
-  // While we don't yet know if the user is authenticated, avoid showing
-  // either the login screen or the notes screen. This prevents the
-  // brief flash of the login route when a valid session exists.
   if (isLoading) {
     return (
       <>
@@ -29,7 +26,7 @@ export default function Index() {
     );
   }
 
-  if (user) {
+  if (user && !isRecoveringPassword) {
     // Authenticated: go straight to home
     return (
       <>
