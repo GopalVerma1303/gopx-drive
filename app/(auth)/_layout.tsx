@@ -1,12 +1,20 @@
 import { DefaultAppHead } from "@/components/default-app-head";
 import { useAuth } from "@/contexts/auth-context";
 import { useThemeColors } from "@/lib/use-theme-colors";
-import { Redirect, Stack, useLocalSearchParams } from "expo-router";
+import { Redirect, Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect } from "react";
 import { ActivityIndicator, Platform, View } from "react-native";
 
 export default function AuthLayout() {
   const { user, isLoading, isRecoveringPassword } = useAuth();
   const { colors } = useThemeColors();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isRecoveringPassword) {
+      router.replace("/(auth)/reset-password");
+    }
+  }, [isRecoveringPassword]);
 
   if (isLoading) {
     return (

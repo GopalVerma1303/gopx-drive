@@ -1,8 +1,8 @@
 "use client";
 
 import { Stack, useRouter } from "expo-router";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react-native";
-import { useState } from "react";
+import { Eye, EyeOff, Lock } from "lucide-react-native";
+import { useEffect, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -27,38 +27,54 @@ import { Text } from "@/components/ui/text";
 import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useThemeColors } from "@/lib/use-theme-colors";
-import { UI_DEV } from "@/lib/config";
 import { THEME } from "@/lib/theme";
 
-export default function LoginScreen() {
+export default function ResetPasswordScreen() {
   const { alert } = useAlert();
-  const { signIn } = useAuth();
+  const { isRecoveringPassword, setIsRecoveringPassword, updatePassword } = useAuth();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      alert("Error", "Please enter both email and password");
+  // If we aren't recovering, we shouldn't be here
+  useEffect(() => {
+    if (!isRecoveringPassword) {
+      router.replace("/(auth)/login");
+    }
+  }, [isRecoveringPassword]);
+
+  const handleSetNewPassword = async () => {
+    if (!password || !confirmPassword) {
+      alert("Error", "Please fill in all fields");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      alert("Error", "Passwords do not match");
       return;
     }
 
     setIsLoading(true);
     try {
-      await signIn(email, password);
+      await updatePassword(password);
+      alert("Success", "Password updated successfully. Please sign in with your new password.");
+      setIsRecoveringPassword(false);
+      setPassword("");
+      setConfirmPassword("");
+      router.replace("/(auth)/login");
     } catch (error: any) {
-      alert("Error", error.message || "Failed to authenticate");
+      alert("Error", error.message || "Failed to update password");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loginContent = (
+  const resetPasswordContent = (
     <View className="px-6">
       {/* Header */}
       <View className="items-center mb-8 mt-12">
@@ -72,40 +88,20 @@ export default function LoginScreen() {
       <Card className="border-0 mx-auto w-full max-w-lg">
         <CardHeader>
           <CardTitle>
-            <Text className="text-xl font-bold text-foreground">Welcome back</Text>
+            <Text className="text-xl font-bold text-foreground">
+              Set New Password
+            </Text>
           </CardTitle>
           <CardDescription>
             <Text className="text-muted-foreground text-sm">
-              {UI_DEV
-                ? "Sign in with any email and password to continue."
-                : "Sign in to your account to continue."}
+              Please enter your new password below.
             </Text>
           </CardDescription>
         </CardHeader>
 
         <CardContent className="gap-4">
-          <View className="gap-2" key="login-email">
-            <Label nativeID="email">Email</Label>
-            <View className="flex-row items-center bg-muted rounded-2xl px-4 h-14 border border-border">
-              <Mail
-                className="text-muted-foreground"
-                color={THEME.light.mutedForeground}
-                size={20}
-              />
-              <Input
-                className="flex-1 ml-2 border-0 bg-transparent h-full shadow-none"
-                placeholder="Enter your email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                editable={!isLoading}
-              />
-            </View>
-          </View>
-
-          <View className="gap-2" key="login-password">
-            <Label nativeID="password">Password</Label>
+          <View className="gap-2" key="new-password">
+            <Label nativeID="password">New Password</Label>
             <View className="flex-row items-center bg-muted rounded-2xl pl-4 pr-2 h-14 border border-border">
               <Lock
                 className="text-muted-foreground"
@@ -114,7 +110,7 @@ export default function LoginScreen() {
               />
               <Input
                 className="flex-1 ml-2 border-0 bg-transparent h-full shadow-none"
-                placeholder="Enter your password"
+                placeholder="Enter new password"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -133,17 +129,28 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          <Pressable
-            onPress={() => router.push("/(auth)/forgot-password")}
-            className="self-end"
-            hitSlop={8}
-          >
-            <Text className="text-blue-500 text-sm font-medium">Forgot Password?</Text>
-          </Pressable>
+          <View className="gap-2" key="confirm-new-password">
+            <Label nativeID="confirmPassword">Confirm New Password</Label>
+            <View className="flex-row items-center bg-muted rounded-2xl pl-4 pr-2 h-14 border border-border">
+              <Lock
+                className="text-muted-foreground"
+                color={THEME.light.mutedForeground}
+                size={20}
+              />
+              <Input
+                className="flex-1 ml-2 border-0 bg-transparent h-full shadow-none"
+                placeholder="Repeat new password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showPassword}
+                editable={!isLoading}
+              />
+            </View>
+          </View>
 
           {/* Submit Button */}
           <Button
-            onPress={handleLogin}
+            onPress={handleSetNewPassword}
             className="h-14 rounded-2xl mt-2 bg-foreground"
             size="xl"
             disabled={isLoading}
@@ -151,18 +158,23 @@ export default function LoginScreen() {
             {isLoading ? (
               <Loader color={colors.background} />
             ) : (
-              <Text className="text-background font-semibold text-base">Sign In</Text>
+              <Text className="text-background font-semibold text-base">
+                Update Password
+              </Text>
             )}
           </Button>
 
           {/* Toggle View */}
           <View className="flex-row justify-center mt-2">
             <Pressable
-              onPress={() => router.push("/(auth)/signup")}
+              onPress={() => {
+                setIsRecoveringPassword(false);
+                router.replace("/(auth)/login");
+              }}
               className="py-2"
             >
               <Text className="text-muted-foreground text-sm font-medium text-center">
-                Don't have an account? Sign Up
+                Cancel and go to Sign In
               </Text>
             </Pressable>
           </View>
@@ -185,7 +197,7 @@ export default function LoginScreen() {
             paddingBottom: Math.max(insets.bottom, 40),
           }}
         >
-          {loginContent}
+          {resetPasswordContent}
         </ScrollView>
       ) : (
         <KeyboardAwareScrollView
@@ -199,7 +211,7 @@ export default function LoginScreen() {
             paddingBottom: Math.max(insets.bottom, 40),
           }}
         >
-          {loginContent}
+          {resetPasswordContent}
         </KeyboardAwareScrollView>
       )}
     </View>

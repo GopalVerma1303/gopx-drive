@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Loader } from "@/components/ui/loader";
 import { Text } from "@/components/ui/text";
 import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
@@ -10,7 +11,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { Stack, useRouter } from "expo-router";
 import { ArrowLeft, Lock, Mail, Eye, EyeOff } from "lucide-react-native";
 import { useState } from "react";
-import { ActivityIndicator, Platform, Pressable, ScrollView, View } from "react-native";
+import { Platform, Pressable, ScrollView, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -197,7 +198,7 @@ export default function UpdateEmailScreen() {
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator color="#3b82f6" />
+              <Loader color="#3b82f6" />
             ) : (
               <Text className="text-blue-500 font-semibold text-base">
                 Update Email & Sign Out

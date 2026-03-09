@@ -30,35 +30,98 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { UI_DEV } from "@/lib/config";
 import { THEME } from "@/lib/theme";
 
-export default function LoginScreen() {
+export default function SignupScreen() {
   const { alert } = useAlert();
-  const { signIn } = useAuth();
+  const { signUp } = useAuth();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showVerificationMessage, setShowVerificationMessage] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      alert("Error", "Please enter both email and password");
+  const handleSignup = async () => {
+    if (!email || !password || !confirmPassword) {
+      alert("Error", "Please fill in all fields");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      alert("Error", "Passwords do not match");
       return;
     }
 
     setIsLoading(true);
     try {
-      await signIn(email, password);
+      await signUp(email, password);
+      if (!UI_DEV) {
+        setIsLoading(false);
+        setShowVerificationMessage(true);
+        return;
+      }
     } catch (error: any) {
-      alert("Error", error.message || "Failed to authenticate");
+      alert("Error", error.message || "Failed to create account");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loginContent = (
+  if (showVerificationMessage) {
+    return (
+      <View className="flex-1 bg-background">
+        <Stack.Screen options={{ headerShown: false }} />
+        <View className="flex-1 justify-center px-6">
+          <Card className="border-2 border-border mx-auto w-full max-w-lg bg-muted">
+            <CardHeader className="items-center">
+              <View className="w-16 h-16 items-center justify-center">
+                <Mail className="text-foreground" size={32} />
+              </View>
+              <CardTitle>
+                <Text className="text-xl font-bold text-foreground text-center">
+                  Check your email
+                </Text>
+              </CardTitle>
+              <CardDescription className="flex flex-col items-center justify-center">
+                <Text className="text-muted-foreground text-sm text-center mt-2">
+                  We've sent a verification link to{"\n"}
+                </Text>
+                <Text className="font-semibold text-foreground">{email}</Text>
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="gap-4">
+              <Text className="text-muted-foreground text-sm text-center">
+                Please check your inbox and click the verification link to
+                activate your account. Once verified, you can sign in.
+              </Text>
+
+              <Button
+                onPress={() => router.replace("/(auth)/login")}
+                className="h-14 rounded-2xl mt-2 bg-foreground"
+                size="xl"
+              >
+                <Text className="text-background font-semibold text-base">
+                  Back to Sign In
+                </Text>
+              </Button>
+
+              <Text className="text-muted-foreground text-xs text-center">
+                Didn't receive the email? Check your spam folder or try signing
+                up again.
+              </Text>
+            </CardContent>
+          </Card>
+        </View>
+      </View>
+    );
+  }
+
+  const signupContent = (
     <View className="px-6">
       {/* Header */}
       <View className="items-center mb-8 mt-12">
@@ -72,19 +135,21 @@ export default function LoginScreen() {
       <Card className="border-0 mx-auto w-full max-w-lg">
         <CardHeader>
           <CardTitle>
-            <Text className="text-xl font-bold text-foreground">Welcome back</Text>
+            <Text className="text-xl font-bold text-foreground">
+              Create new account
+            </Text>
           </CardTitle>
           <CardDescription>
             <Text className="text-muted-foreground text-sm">
               {UI_DEV
-                ? "Sign in with any email and password to continue."
-                : "Sign in to your account to continue."}
+                ? "Use any email & password to explore the app."
+                : "Create a new account to get started."}
             </Text>
           </CardDescription>
         </CardHeader>
 
         <CardContent className="gap-4">
-          <View className="gap-2" key="login-email">
+          <View className="gap-2" key="signup-email">
             <Label nativeID="email">Email</Label>
             <View className="flex-row items-center bg-muted rounded-2xl px-4 h-14 border border-border">
               <Mail
@@ -104,7 +169,7 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          <View className="gap-2" key="login-password">
+          <View className="gap-2" key="signup-password">
             <Label nativeID="password">Password</Label>
             <View className="flex-row items-center bg-muted rounded-2xl pl-4 pr-2 h-14 border border-border">
               <Lock
@@ -133,17 +198,38 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          <Pressable
-            onPress={() => router.push("/(auth)/forgot-password")}
-            className="self-end"
-            hitSlop={8}
-          >
-            <Text className="text-blue-500 text-sm font-medium">Forgot Password?</Text>
-          </Pressable>
+          <View className="gap-2" key="signup-confirm-password">
+            <Label nativeID="confirmPassword">Confirm Password</Label>
+            <View className="flex-row items-center bg-muted rounded-2xl pl-4 pr-2 h-14 border border-border">
+              <Lock
+                className="text-muted-foreground"
+                color={THEME.light.mutedForeground}
+                size={20}
+              />
+              <Input
+                className="flex-1 ml-2 border-0 bg-transparent h-full shadow-none"
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                editable={!isLoading}
+              />
+              <Pressable
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="p-2"
+              >
+                {showConfirmPassword ? (
+                  <EyeOff color={THEME.light.mutedForeground} size={20} />
+                ) : (
+                  <Eye color={THEME.light.mutedForeground} size={20} />
+                )}
+              </Pressable>
+            </View>
+          </View>
 
           {/* Submit Button */}
           <Button
-            onPress={handleLogin}
+            onPress={handleSignup}
             className="h-14 rounded-2xl mt-2 bg-foreground"
             size="xl"
             disabled={isLoading}
@@ -151,18 +237,20 @@ export default function LoginScreen() {
             {isLoading ? (
               <Loader color={colors.background} />
             ) : (
-              <Text className="text-background font-semibold text-base">Sign In</Text>
+              <Text className="text-background font-semibold text-base">
+                Sign Up
+              </Text>
             )}
           </Button>
 
           {/* Toggle View */}
           <View className="flex-row justify-center mt-2">
             <Pressable
-              onPress={() => router.push("/(auth)/signup")}
+              onPress={() => router.replace("/(auth)/login")}
               className="py-2"
             >
               <Text className="text-muted-foreground text-sm font-medium text-center">
-                Don't have an account? Sign Up
+                Already have an account? Sign In
               </Text>
             </Pressable>
           </View>
@@ -185,7 +273,7 @@ export default function LoginScreen() {
             paddingBottom: Math.max(insets.bottom, 40),
           }}
         >
-          {loginContent}
+          {signupContent}
         </ScrollView>
       ) : (
         <KeyboardAwareScrollView
@@ -199,7 +287,7 @@ export default function LoginScreen() {
             paddingBottom: Math.max(insets.bottom, 40),
           }}
         >
-          {loginContent}
+          {signupContent}
         </KeyboardAwareScrollView>
       )}
     </View>

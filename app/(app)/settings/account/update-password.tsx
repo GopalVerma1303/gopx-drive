@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Loader } from "@/components/ui/loader";
 import { Text } from "@/components/ui/text";
 import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
@@ -10,7 +11,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { Stack, useRouter } from "expo-router";
 import { ArrowLeft, Lock, Eye, EyeOff } from "lucide-react-native";
 import { useState } from "react";
-import { ActivityIndicator, Platform, Pressable, ScrollView, View } from "react-native";
+import { Platform, Pressable, ScrollView, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -170,14 +171,14 @@ export default function UpdatePasswordScreen() {
           <View className="bg-muted border border-border rounded-2xl p-4 gap-6">
             <View>
               <Text className="mb-2 text-sm font-medium text-foreground">New Password</Text>
-              <View className="flex-row items-center bg-background rounded-2xl px-4 h-14 border border-border">
+              <View className="flex-row items-center bg-background rounded-2xl pl-4 pr-2 h-14 border border-border">
                 <Lock
                   className="text-muted-foreground"
                   color={colors.mutedForeground}
                   size={20}
                 />
                 <Input
-                  className="flex-1 ml-3 border-0 bg-transparent h-full shadow-none"
+                  className="flex-1 ml-2 border-0 bg-transparent h-full shadow-none"
                   placeholder="Minimum 6 characters"
                   value={newPassword}
                   onChangeText={setNewPassword}
@@ -194,14 +195,14 @@ export default function UpdatePasswordScreen() {
 
             <View>
               <Text className="mb-2 text-sm font-medium text-foreground">Confirm New Password</Text>
-              <View className="flex-row items-center bg-background rounded-2xl px-4 h-14 border border-border">
+              <View className="flex-row items-center bg-background rounded-2xl pl-4 pr-2 h-14 border border-border">
                 <Lock
                   className="text-muted-foreground"
                   color={colors.mutedForeground}
                   size={20}
                 />
                 <Input
-                  className="flex-1 ml-3 border-0 bg-transparent h-full shadow-none"
+                  className="flex-1 ml-2 border-0 bg-transparent h-full shadow-none"
                   placeholder="Repeat new password"
                   value={confirmNewPassword}
                   onChangeText={setConfirmNewPassword}
@@ -225,7 +226,7 @@ export default function UpdatePasswordScreen() {
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator color="#3b82f6" />
+              <Loader color="#3b82f6" />
             ) : (
               <Text className="text-blue-500 font-semibold text-base">
                 Update Password & Sign Out

@@ -106,7 +106,7 @@ function RootLayoutNav() {
             
             if (isRecovery) {
               // If it's a recovery link, we need to show the reset password UI
-              router.replace("/(auth)/login?type=recovery");
+              router.replace("/(auth)/reset-password");
               return;
             }
 
