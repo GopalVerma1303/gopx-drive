@@ -144,9 +144,13 @@ export default function SettingsScreen() {
             Account
           </Text>
           <View className="bg-muted border border-border rounded-2xl overflow-hidden">
-            <View
+            <Pressable
               style={{
                 padding: 16,
+              }}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/(app)/settings/account");
               }}
             >
               <View style={{ flex: 1 }}>
@@ -169,7 +173,7 @@ export default function SettingsScreen() {
                   {user?.email || "Not available"}
                 </Text>
               </View>
-            </View>
+            </Pressable>
           </View>
         </View>
 
@@ -236,7 +240,7 @@ export default function SettingsScreen() {
               className="flex flex-row items-center gap-12 p-4"
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push("/(app)/toolbar-order");
+                router.push("/(app)/settings/toolbar-order");
               }}
             >
               <View className="flex flex-row items-center gap-2">
@@ -277,7 +281,7 @@ export default function SettingsScreen() {
               className="flex flex-row items-center gap-12 p-4"
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push("/(app)/shared-notes");
+                router.push("/(app)/settings/shared-notes");
               }}
             >
               <View className="flex flex-row items-center gap-2">
@@ -318,7 +322,7 @@ export default function SettingsScreen() {
               className="flex flex-row items-center gap-12 p-4"
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push("/(app)/archive");
+                router.push("/(app)/settings/archive");
               }}
             >
               <View className="flex flex-row items-center gap-2">
@@ -341,7 +345,7 @@ export default function SettingsScreen() {
               className="flex flex-row items-center gap-12 p-4 border-t border-border"
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push("/(app)/attachments");
+                router.push("/(app)/settings/attachments");
               }}
             >
               <View className="flex flex-row items-center gap-2">

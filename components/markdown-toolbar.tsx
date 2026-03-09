@@ -365,7 +365,7 @@ export function MarkdownToolbar({
 
   const handleToolbarSettings = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push("/(app)/toolbar-order" as any);
+    router.push("/(app)/settings/toolbar-order" as any);
   };
 
   // Map item IDs to handlers and icons

@@ -1,15 +1,14 @@
 "use client";
 
-import { Stack } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Keyboard,
   Platform,
   Pressable,
   ScrollView,
-  View,
+  View
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -36,14 +35,35 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showVerificationMessage, setShowVerificationMessage] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const { type } = useLocalSearchParams<{ type: string }>();
+  const [isResetPassword, setIsResetPassword] = useState(false);
+
+  const { resetPassword, updatePassword } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (type === "recovery") {
+      setIsResetPassword(true);
+      setIsForgotPassword(false);
+      setIsSignUp(false);
+    }
+  }, [type]);
 
   const handleAuth = async () => {
     if (!email || !password) {
       alert("Error", "Please enter both email and password");
+      return;
+    }
+
+    if (isSignUp && password !== confirmPassword) {
+      alert("Error", "Passwords do not match");
       return;
     }
 
@@ -59,15 +79,53 @@ export default function LoginScreen() {
       } else {
         await signIn(email, password);
       }
-      // Auth layout will redirect to /home when user is set (avoids race where
-      // home mounts before auth state is committed and queries stay disabled).
     } catch (error: any) {
-      alert(
-        "Error",
-        UI_DEV
-          ? "This is a new login. Any credentials will work."
-          : error.message || "Failed to authenticate"
-      );
+      alert("Error", error.message || "Failed to authenticate");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      alert("Error", "Please enter your email to reset password");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await resetPassword(email);
+      setResetSent(true);
+      alert("Success", "Password reset link sent to your email");
+      setIsForgotPassword(false);
+    } catch (error: any) {
+      alert("Error", error.message || "Failed to send reset link");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSetNewPassword = async () => {
+    if (!password || !confirmPassword) {
+      alert("Error", "Please fill in all fields");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      alert("Error", "Passwords do not match");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await updatePassword(password);
+      alert("Success", "Password updated successfully. Please sign in with your new password.");
+      setIsResetPassword(false);
+      setPassword("");
+      setConfirmPassword("");
+      router.replace("/(auth)/login");
+    } catch (error: any) {
+      alert("Error", error.message || "Failed to update password");
     } finally {
       setIsLoading(false);
     }
@@ -78,21 +136,21 @@ export default function LoginScreen() {
       <View className="flex-1 bg-background">
         <Stack.Screen options={{ headerShown: false }} />
         <View className="flex-1 justify-center px-6">
-          <Card className="border-2 border-foreground/5 mx-auto w-full max-w-lg bg-muted">
+          <Card className="border-2 border-border mx-auto w-full max-w-lg bg-muted">
             <CardHeader className="items-center">
-              <View className="w-16 h-16 rounded-full bg-green-100 items-center justify-center mb-4">
-                <Mail className="text-green-600" size={32} />
+              <View className="w-16 h-16 items-center justify-center">
+                <Mail className="text-foreground" size={32} />
               </View>
               <CardTitle>
                 <Text className="text-xl font-bold text-foreground text-center">
                   Check your email
                 </Text>
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="flex flex-col items-center justify-center">
                 <Text className="text-muted-foreground text-sm text-center mt-2">
                   We've sent a verification link to{"\n"}
-                  <Text className="font-semibold text-foreground">{email}</Text>
                 </Text>
+                <Text className="font-semibold text-foreground">{email}</Text>
               </CardDescription>
             </CardHeader>
 
@@ -141,86 +199,159 @@ export default function LoginScreen() {
         <CardHeader>
           <CardTitle>
             <Text className="text-xl font-bold text-foreground">
-              {isSignUp ? "Create new account" : "Welcome back"}
+              {isResetPassword
+                ? "Set New Password"
+                : isForgotPassword
+                  ? "Reset Password"
+                  : isSignUp
+                    ? "Create new account"
+                    : "Welcome back"}
             </Text>
           </CardTitle>
           <CardDescription>
             <Text className="text-muted-foreground text-sm">
-              {UI_DEV
-                ? isSignUp
-                  ? "Use any email & password to explore the app."
-                  : "Sign in with any email and password to continue."
-                : isSignUp
-                  ? "Create a new account to get started."
-                  : "Sign in to your account to continue."}
+              {isResetPassword
+                ? "Please enter your new password below."
+                : isForgotPassword
+                  ? "Enter your email to receive a password reset link."
+                  : UI_DEV
+                    ? isSignUp
+                      ? "Use any email & password to explore the app."
+                      : "Sign in with any email and password to continue."
+                    : isSignUp
+                      ? "Create a new account to get started."
+                      : "Sign in to your account to continue."}
             </Text>
           </CardDescription>
         </CardHeader>
 
         <CardContent className="gap-4">
           {/* Email Field */}
-          <View className="gap-2">
-            <Label nativeID="email">Email</Label>
-            <View className="flex-row items-center bg-muted rounded-2xl px-4 h-14 border border-border">
-              <Mail
-                className="text-muted-foreground"
-                color={THEME.light.mutedForeground}
-                size={20}
-              />
-              <Input
-                className="flex-1 ml-3 border-0 bg-transparent h-full shadow-none"
-                placeholder="Enter your email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                accessibilityLabelledBy="email"
-              />
+          {!isResetPassword && (
+            <View className="gap-2">
+              <Label nativeID="email">Email</Label>
+              <View className="flex-row items-center bg-muted rounded-2xl px-4 h-14 border border-border">
+                <Mail
+                  className="text-muted-foreground"
+                  color={THEME.light.mutedForeground}
+                  size={20}
+                />
+                <Input
+                  className="flex-1 ml-2 border-0 bg-transparent h-full shadow-none"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  accessibilityLabelledBy="email"
+                />
+              </View>
             </View>
-          </View>
+          )}
 
-          {/* Password Field */}
-          <View className="gap-2">
-            <Label nativeID="password">Password</Label>
-            <View className="flex-row items-center bg-muted rounded-2xl px-4 h-14 border border-border">
-              <Lock
-                className="text-muted-foreground"
-                color={THEME.light.mutedForeground}
-                size={20}
-              />
-              <Input
-                className="flex-1 ml-3 border-0 bg-transparent h-full shadow-none"
-                placeholder="Enter a password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                accessibilityLabelledBy="password"
-              />
-              <Pressable
-                onPress={() => setShowPassword(!showPassword)}
-                className="p-2"
-                hitSlop={8}
-              >
-                {showPassword ? (
-                  <EyeOff
-                    className="text-muted-foreground"
-                    color={THEME.light.mutedForeground}
-                    size={20}
-                  />
-                ) : (
-                  <Eye
-                    className="text-muted-foreground"
-                    color={THEME.light.mutedForeground}
-                    size={20}
-                  />
-                )}
-              </Pressable>
+          {(!isForgotPassword || isResetPassword) && (
+            <View className="gap-2">
+              <Label nativeID="password">
+                {isResetPassword ? "New Password" : "Password"}
+              </Label>
+              <View className="flex-row items-center bg-muted rounded-2xl pl-4 pr-2 h-14 border border-border">
+                <Lock
+                  className="text-muted-foreground"
+                  color={THEME.light.mutedForeground}
+                  size={20}
+                />
+                <Input
+                  className="flex-1 ml-2 border-0 bg-transparent h-full shadow-none"
+                  placeholder={isResetPassword ? "Enter new password" : "Enter your password"}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  accessibilityLabelledBy="password"
+                />
+                <Pressable
+                  onPress={() => setShowPassword(!showPassword)}
+                  className="p-2"
+                  hitSlop={8}
+                >
+                  {showPassword ? (
+                    <EyeOff
+                      className="text-muted-foreground"
+                      color={THEME.light.mutedForeground}
+                      size={20}
+                    />
+                  ) : (
+                    <Eye
+                      className="text-muted-foreground"
+                      color={THEME.light.mutedForeground}
+                      size={20}
+                    />
+                  )}
+                </Pressable>
+              </View>
             </View>
-          </View>
+          )}
+
+          {(isSignUp || isResetPassword) && (
+            <View className="gap-2">
+              <Label nativeID="confirmPassword">
+                {isResetPassword ? "Confirm New Password" : "Confirm Password"}
+              </Label>
+              <View className="flex-row items-center bg-muted rounded-2xl pl-4 pr-2 h-14 border border-border">
+                <Lock
+                  className="text-muted-foreground"
+                  color={THEME.light.mutedForeground}
+                  size={20}
+                />
+                <Input
+                  className="flex-1 ml-2 border-0 bg-transparent h-full shadow-none"
+                  placeholder={isResetPassword ? "Repeat new password" : "Confirm your password"}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showPassword}
+                  accessibilityLabelledBy="confirmPassword"
+                />
+                <Pressable
+                  onPress={() => setShowPassword(!showPassword)}
+                  className="p-2"
+                  hitSlop={8}
+                >
+                  {showPassword ? (
+                    <EyeOff
+                      className="text-muted-foreground"
+                      color={THEME.light.mutedForeground}
+                      size={20}
+                    />
+                  ) : (
+                    <Eye
+                      className="text-muted-foreground"
+                      color={THEME.light.mutedForeground}
+                      size={20}
+                    />
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          )}
+
+          {!isSignUp && !isForgotPassword && (
+            <Pressable
+              onPress={() => setIsForgotPassword(true)}
+              className="self-end"
+              hitSlop={8}
+            >
+              <Text className="text-blue-500 text-sm font-medium">Forgot Password?</Text>
+            </Pressable>
+          )}
 
           {/* Submit Button */}
           <Button
-            onPress={handleAuth}
+            onPress={
+              isResetPassword
+                ? handleSetNewPassword
+                : isForgotPassword
+                  ? handleResetPassword
+                  : handleAuth
+            }
             className="h-14 rounded-2xl mt-2 bg-foreground"
             size="xl"
             disabled={isLoading}
@@ -229,29 +360,43 @@ export default function LoginScreen() {
               <ActivityIndicator color="background" />
             ) : (
               <Text className="text-background font-semibold text-base">
-                {isSignUp
-                  ? UI_DEV
-                    ? "Create new account"
-                    : "Sign Up"
-                  : UI_DEV
-                    ? "Login"
-                    : "Sign In"}
+                {isResetPassword
+                  ? "Update Password"
+                  : isForgotPassword
+                    ? "Send Reset Link"
+                    : isSignUp
+                      ? "Sign Up"
+                      : "Sign In"}
               </Text>
             )}
           </Button>
 
-          {/* Toggle Sign Up / Sign In */}
-          <Button
-            variant="link"
-            onPress={() => setIsSignUp(!isSignUp)}
-            className="h-auto py-4"
-          >
-            <Text className="text-foreground text-sm font-medium leading-relaxed">
-              {isSignUp
-                ? "Already have an account? Sign In"
-                : "Don't have an account? Sign Up"}
-            </Text>
-          </Button>
+          {/* Toggle View */}
+          <View className="flex-row justify-center mt-2">
+            <Pressable
+              onPress={() => {
+                if (isResetPassword) {
+                  setIsResetPassword(false);
+                  router.replace("/(auth)/login");
+                } else if (isForgotPassword) {
+                  setIsForgotPassword(false);
+                } else {
+                  setIsSignUp(!isSignUp);
+                }
+              }}
+              className="py-2"
+            >
+              <Text className="text-muted-foreground text-sm font-medium text-center">
+                {isResetPassword
+                  ? "Cancel and go to Sign In"
+                  : isForgotPassword
+                    ? "Back to Sign In"
+                    : isSignUp
+                      ? "Already have an account? Sign In"
+                      : "Don't have an account? Sign Up"}
+              </Text>
+            </Pressable>
+          </View>
         </CardContent>
       </Card>
     </View>

@@ -95,12 +95,21 @@ function RootLayoutNav() {
         // We just need to handle errors and show success messages
 
         // Check if this is a Supabase auth callback
-        if (url.includes("#access_token") || url.includes("type=email")) {
+        if (url.includes("#access_token") || url.includes("type=email") || url.includes("type=recovery")) {
+          const isRecovery = url.includes("type=recovery");
+          
           // Give Supabase a moment to process the URL
           setTimeout(async () => {
             const {
               data: { session },
             } = await supabase.auth.getSession();
+            
+            if (isRecovery) {
+              // If it's a recovery link, we need to show the reset password UI
+              router.replace("/(auth)/login?type=recovery");
+              return;
+            }
+
             if (session?.user?.email_confirmed_at) {
               alert(
                 "Email Verified",

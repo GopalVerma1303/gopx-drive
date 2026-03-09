@@ -87,10 +87,6 @@ const navItems: NavItem[] = [
     activePathPrefixes: [
       "/settings/",
       "/(app)/settings/",
-      "/(app)/archive",
-      "/(app)/toolbar-order",
-      "/archive",
-      "/toolbar-order",
     ],
   },
 ];

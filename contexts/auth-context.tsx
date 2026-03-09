@@ -4,6 +4,7 @@ import createContextHook from "@nkzw/create-context-hook";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { User } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
+import { Platform } from "react-native";
 
 interface AuthContextValue {
   user: User | null;
@@ -12,6 +13,9 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updateEmail: (newEmail: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
 }
 
 const SESSION_STORAGE_KEY = "sb-auth-token";
@@ -235,6 +239,30 @@ export const [AuthProvider, useAuth] = createContextHook(
       setSession(null);
     };
 
+    const resetPassword = async (email: string) => {
+      if (UI_DEV) return;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: Platform.OS === "web" 
+          ? window.location.origin
+          : "com.anonymous.gopxdrive://",
+      });
+      if (error) throw error;
+    };
+
+    const updateEmail = async (newEmail: string) => {
+      if (UI_DEV) return;
+      const { error } = await supabase.auth.updateUser({ email: newEmail });
+      if (error) throw error;
+      // Note: Supabase will send verification emails to both old and new addresses.
+      // The email won't actually change until verified.
+    };
+
+    const updatePassword = async (newPassword: string) => {
+      if (UI_DEV) return;
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+    };
+
     return {
       user,
       session,
@@ -242,6 +270,9 @@ export const [AuthProvider, useAuth] = createContextHook(
       signIn,
       signUp,
       signOut,
+      resetPassword,
+      updateEmail,
+      updatePassword,
     };
   }
 );
