@@ -353,6 +353,7 @@ export interface CodeMirrorEditorHandle {
 }
 
 interface CodeMirrorWebProps {
+  id?: string;
   value: string;
   onChangeText?: (text: string) => void;
   onSelectionChange?: (selection: { start: number; end: number }) => void;
@@ -368,7 +369,7 @@ interface CodeMirrorWebProps {
 
 export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirrorWebProps>(
   function CodeMirrorWeb(
-    { value, onChangeText, onSelectionChange, placeholder, containerHeight, searchQuery, currentMatchIndex, onSearchMatchCount },
+    { id, value, onChangeText, onSelectionChange, placeholder, containerHeight, searchQuery, currentMatchIndex, onSearchMatchCount },
     ref
   ) {
     const containerRef = useRef<HTMLDivElement | null>(null);

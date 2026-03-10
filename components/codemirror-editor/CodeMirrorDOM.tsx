@@ -274,6 +274,7 @@ export interface CodeMirrorDOMRef extends DOMImperativeFactory {
 }
 
 interface CodeMirrorDOMProps {
+  id?: string;
   value: string;
   placeholder?: string;
   /** Native action: called when content changes. Keeps native state in sync. */
@@ -300,6 +301,7 @@ interface CodeMirrorDOMProps {
 }
 
 export default function CodeMirrorDOM({
+  id,
   value,
   placeholder = "Start writing in markdown...",
   onContentChange,

@@ -126,6 +126,7 @@ class CodeMirrorNativeErrorBoundary extends React.Component<
 export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>(
   function MarkdownEditor(
     {
+      id,
       value,
       onChangeText,
       placeholder = "Start writing in markdown...",
@@ -2868,6 +2869,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           />
         ) : Platform.OS === "web" ? (
           <CodeMirrorWeb
+            key={id ? `cm-web-${id}` : undefined}
             ref={inputRef as React.Ref<import("@/components/codemirror-editor").CodeMirrorEditorHandle>}
             value={value}
             onChangeText={handleTextChange}
@@ -2888,7 +2890,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         ) : (
           <CodeMirrorNativeErrorBoundary>
             <CodeMirrorDOM
-              key={isDark ? "editor-dark" : "editor-light"}
+              key={id ? `cm-dom-${id}-${isDark ? "dark" : "light"}` : (isDark ? "editor-dark" : "editor-light")}
               ref={inputRef as React.Ref<import("@/components/codemirror-editor/CodeMirrorDOM").CodeMirrorDOMRef>}
               value={value}
               placeholder={placeholder}

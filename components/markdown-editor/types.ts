@@ -1,4 +1,5 @@
 export interface MarkdownEditorProps {
+  id?: string;
   value: string;
   onChangeText?: (text: string | ((prev: string) => string)) => void;
   placeholder?: string;

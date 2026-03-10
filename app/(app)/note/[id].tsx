@@ -755,6 +755,7 @@ export default function NoteEditorScreen() {
                   {(!isNewNote && isLoading) ? null : (
                     <MarkdownEditor
                       ref={editorRef}
+                      id={id}
                       value={content}
                       onChangeText={setContent}
                       onSelectionChange={(sel) => {
@@ -810,6 +811,7 @@ export default function NoteEditorScreen() {
                     {(!isNewNote && isLoading) ? null : (
                       <MarkdownEditor
                         key={`note-editor-${id}`}
+                        id={id}
                         ref={editorRef}
                         value={content}
                         onChangeText={setContent}
