@@ -289,6 +289,7 @@ export default function NoteEditorScreen() {
       // note creation: next save will call updateNote(id) instead of createNote() again.
       // If user saved from preview mode, open in preview; if from edit mode, open in edit.
       if (id === "new" && savedNote?.id) {
+        lastSyncedNoteIdRef.current = savedNote.id;
         const openInEditAfterSave = variables?.openInEditAfterSave ?? true;
         router.replace(
           `/(app)/note/${savedNote.id}${openInEditAfterSave ? "?edit=1" : ""}`
@@ -752,7 +753,7 @@ export default function NoteEditorScreen() {
                     if (typeof h === "number" && h > 0) setEditorAreaHeightPx(h);
                   }}
                 >
-                  {(!isNewNote && isLoading) ? null : (
+                  {(!isNewNote && isLoading && !note) ? null : (
                     <MarkdownEditor
                       ref={editorRef}
                       id={id}
@@ -808,7 +809,7 @@ export default function NoteEditorScreen() {
                       minHeight: nativeEditorContentMinHeight,
                     }}
                   >
-                    {(!isNewNote && isLoading) ? null : (
+                    {(!isNewNote && isLoading && !note) ? null : (
                       <MarkdownEditor
                         key={`note-editor-${id}`}
                         id={id}
