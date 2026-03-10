@@ -7,8 +7,8 @@ import { ScrollView, StyleSheet, View } from "react-native";
 
 interface MarkdownPreviewWebProps {
   html: string;
-  /** Called with task index (0-based DOM order) when a checkbox is toggled. Parent should update markdown. */
-  onToggleCheckbox?: (taskIndex: number) => void;
+  /** Called with line index in markdown when a checkbox is toggled. */
+  onToggleCheckbox?: (lineIndex: number) => void;
   contentContainerStyle?: object;
   className?: string;
   searchQuery?: string;
@@ -332,18 +332,19 @@ function enhanceMermaidBlocks(container: HTMLDivElement) {
   });
 }
 
-const TASK_INDEX_ATTR = "data-task-index";
+const LINE_INDEX_ATTR = "data-line-index";
 
 /**
  * Replace native checkbox inputs with pure-DOM custom checkboxes. On click toggles visual state and calls onToggleCheckbox(taskIndex) so parent can update markdown.
  */
 function replaceCheckboxesWithDom(
   container: HTMLDivElement,
-  onToggleCheckbox?: (taskIndex: number) => void
+  onToggleCheckbox?: (lineIndex: number) => void
 ) {
   const inputs = container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
   inputs.forEach((input, taskIndex) => {
-    let checked = input.hasAttribute("checked");
+    let checked = input.hasAttribute("checked") || input.checked;
+    
     const parentLi = input.closest("li");
     if (parentLi && !parentLi.classList.contains(TASK_LIST_ITEM_CLASS)) {
       parentLi.classList.add(TASK_LIST_ITEM_CLASS);
@@ -356,7 +357,11 @@ function replaceCheckboxesWithDom(
     box.setAttribute("role", "checkbox");
     box.setAttribute("aria-checked", String(checked));
     box.setAttribute("aria-label", "Task list checkbox");
-    box.setAttribute(TASK_INDEX_ATTR, String(taskIndex));
+    box.setAttribute(LINE_INDEX_ATTR, String(input.getAttribute(LINE_INDEX_ATTR) || ""));
+    box.style.pointerEvents = "auto";
+    box.style.display = "flex";
+    box.style.alignItems = "center";
+    box.style.justifyContent = "center";
     box.className = checked ? `${CHECKBOX_CLASS} ${CHECKBOX_CHECKED_CLASS}` : CHECKBOX_CLASS;
     box.innerHTML = checked ? CHECK_ICON_SVG : "";
 
@@ -376,7 +381,11 @@ function replaceCheckboxesWithDom(
       e.stopPropagation();
       checked = !checked;
       updateVisual();
-      onToggleCheckbox?.(taskIndex);
+      const lineIdxAttr = box.getAttribute(LINE_INDEX_ATTR);
+      const lineIndex = lineIdxAttr ? parseInt(lineIdxAttr, 10) : -1;
+      if (!isNaN(lineIndex) && lineIndex !== -1) {
+        onToggleCheckbox?.(lineIndex);
+      }
     });
 
     wrapper.appendChild(box);
@@ -518,7 +527,7 @@ export function MarkdownPreviewWeb({
 
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const runImmediateEnhancers = () => {
-      replaceCheckboxesWithDom(container, (taskIndex) => onToggleRef.current?.(taskIndex));
+      replaceCheckboxesWithDom(container, (lineIndex) => onToggleRef.current?.(lineIndex));
       addCodeCopyButtons(container);
       wrapWideTables(container);
       wrapImagesWithCaptions(container);

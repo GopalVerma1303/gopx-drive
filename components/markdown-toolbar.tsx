@@ -51,33 +51,15 @@ export function toggleCheckboxInMarkdown(
   const lines = markdown.split('\n');
   if (lineIndex >= 0 && lineIndex < lines.length) {
     const line = lines[lineIndex];
-    // Use detectCheckboxInLine to ensure we're using the exact same detection logic
-    const checkboxInfo = detectCheckboxInLine(line);
-
-    if (checkboxInfo && checkboxInfo.hasCheckbox) {
-      // Get the checkbox info to preserve exact format
-      const { prefix, restText, isChecked } = checkboxInfo;
-
-      // Toggle the checkbox state
-      const newCheckboxState = isChecked ? ' ' : 'x';
-
-      // Reconstruct the line using the exact format that detectCheckboxInLine expects
-      // Format: prefix + " " + "[checkbox]" + (space if restText exists) + restText
-      // prefix is indent + listMarker (e.g., "-" or "  -")
-      // The detection pattern requires \s+ (one or more spaces) between listMarker and [
-      const restTextStr = restText || '';
-      // Always add one space after listMarker (required by \s+ in detection pattern)
-      // Add one space after ] if restText exists (common markdown format)
-      // Don't trim restText to preserve original formatting
-      const newLine = restTextStr.length > 0
-        ? `${prefix} [${newCheckboxState}] ${restTextStr}`
-        : `${prefix} [${newCheckboxState}]`;
-
-      return [
-        ...lines.slice(0, lineIndex),
-        newLine,
-        ...lines.slice(lineIndex + 1),
-      ].join('\n');
+    const checkboxMatch = line.match(/^(\s*[-*+]\s+\[)([\s*xX*])(\].*)$/);
+    
+    if (checkboxMatch) {
+      const [, prefix, state, suffix] = checkboxMatch;
+      const isChecked = state === '*' || state === 'x' || state === 'X';
+      const newState = isChecked ? ' ' : 'x';
+      
+      lines[lineIndex] = prefix + newState + suffix;
+      return lines.join('\n');
     }
   }
   return markdown;

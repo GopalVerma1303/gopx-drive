@@ -25,6 +25,10 @@ type HastNode = {
   properties?: Record<string, unknown>;
   children?: HastNode[];
   value?: string;
+  position?: {
+    start: { line: number; column: number; offset?: number };
+    end: { line: number; column: number; offset?: number };
+  };
 };
 
 /**
@@ -393,6 +397,43 @@ function rehypeAlerts() {
   };
 }
 
+/**
+ * Rehype plugin: attach source line index to task list item checkboxes.
+ * GFM rendering: <li class="task-list-item"><input type="checkbox" ...> ...</li>
+ * We look for the input and attach data-line-index from its owner <li>'s position.
+ */
+function rehypeTaskListItemSource() {
+  return (tree: HastNode) => {
+    visit(tree as any, "element", (node: HastNode) => {
+      if (node.tagName === "li" && node.children) {
+        // Find if this LI contains a checkbox (task list item). Check direct children and nested children.
+        let checkbox: HastNode | undefined;
+        const findCheckbox = (nodes: HastNode[]) => {
+          for (const c of nodes) {
+            if (c.type === 'element' && c.tagName === 'input' && c.properties?.type === 'checkbox') {
+              checkbox = c;
+              return true;
+            }
+            if (c.children && findCheckbox(c.children)) return true;
+          }
+          return false;
+        };
+        
+        findCheckbox(node.children);
+        
+        if (checkbox && node.position) {
+          // unist position lines are 1-based; we use 0-based index for toggling.
+          const lineIndex = node.position.start.line - 1;
+          checkbox.properties = {
+            ...(checkbox.properties || {}),
+            "data-line-index": String(lineIndex)
+          };
+        }
+      }
+    });
+  };
+}
+
 const sanitizeSchema = {
   ...defaultSchema,
   tagNames: [
@@ -410,15 +451,21 @@ const sanitizeSchema = {
       ...(defaultSchema.attributes?.code ?? []),
       ["className", "hljs", /^language-/],
     ],
+    input: [
+      "type",
+      "checked",
+      "disabled",
+      "className",
+      "data-line-index",
+    ],
     span: [
       ...(defaultSchema.attributes?.span ?? []),
       ["className", /^hljs-/, "mention-tag"],
     ],
     div: [
-      ...(defaultSchema.attributes?.div ?? []),
-      // Allow <div class="mermaid" data-mermaid-source="...">…</div> wrappers for diagrams and markdown alerts.
-      ["className", "mermaid", /^markdown-alert/, /^markdown-alert-/],
-      ["data-mermaid-source"],
+      ...(defaultSchema.attributes?.div || []),
+      "className",
+      "data-mermaid-source",
     ],
   },
 };
@@ -426,7 +473,7 @@ const sanitizeSchema = {
 let processor: ReturnType<typeof createProcessor> | null = null;
 
 function createProcessor() {
-  return unified()
+  return (unified() as any)
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkRehype, { allowDangerousHtml: false })
@@ -435,6 +482,7 @@ function createProcessor() {
     .use(rehypeMark)
     .use(rehypeUnderline)
     .use(rehypeAlerts)
+    .use(rehypeTaskListItemSource)
     .use(rehypeHighlight as any, { subset: false })
     .use(rehypeSanitize as any, sanitizeSchema)
     .use(rehypeStringify);

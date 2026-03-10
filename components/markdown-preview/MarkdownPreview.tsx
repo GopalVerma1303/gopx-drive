@@ -16,16 +16,6 @@ function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Line indices in content that are task list items (have - [ ] or - [x] etc.). */
-function getTaskListLineIndices(content: string): number[] {
-  const lines = content.split("\n");
-  const indices: number[] = [];
-  lines.forEach((line, i) => {
-    const info = detectCheckboxInLine(line);
-    if (info?.hasCheckbox) indices.push(i);
-  });
-  return indices;
-}
 
 export interface MarkdownPreviewProps {
   /** Raw markdown string (same as editor value). Will be linkified and converted to HTML via remark/rehype. */
@@ -34,8 +24,8 @@ export interface MarkdownPreviewProps {
   className?: string;
   /** Placeholder when content is empty */
   placeholder?: string;
-  /** When a checkbox is toggled in the preview, called with the new markdown so the parent can update content. */
-  onToggleCheckbox?: (newMarkdown: string) => void;
+  /** When a checkbox is toggled in the preview, called with a functional updater or new string so the parent can update content atomically. */
+  onToggleCheckbox?: (updater: string | ((prev: string) => string)) => void;
   /** Called once when non-empty HTML has been rendered for the first time. Useful for outer screens to hide a loading state. */
   onFirstHtmlRendered?: () => void;
   searchQuery?: string;
@@ -59,15 +49,20 @@ export function MarkdownPreview({
   onSearchMatchCount,
 }: MarkdownPreviewProps) {
   const [html, setHtml] = useState("");
+  const skipNextHtmlGenRef = useRef(false);
   const generationRef = useRef(0);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasNotifiedFirstHtmlRef = useRef(false);
-  const taskListLineIndices = useMemo(() => getTaskListLineIndices(content), [content]);
 
   useEffect(() => {
-    const gen = ++generationRef.current;
+    if (skipNextHtmlGenRef.current) {
+      skipNextHtmlGenRef.current = false;
+      return;
+    }
 
-    // Cancel any in-flight debounce when content changes
+    const gen = ++generationRef.current;
+    
+    // ... rest of the existing useEffect logic ...
     if (debounceTimerRef.current != null) {
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
@@ -75,7 +70,6 @@ export function MarkdownPreview({
 
     if (!content || !content.trim()) {
       setHtml("");
-      // For empty content, consider preview "ready" so outer loaders can hide.
       if (!hasNotifiedFirstHtmlRef.current) {
         hasNotifiedFirstHtmlRef.current = true;
         if (typeof onFirstHtmlRendered === "function") {
@@ -85,8 +79,6 @@ export function MarkdownPreview({
       return;
     }
 
-    // Debounce markdown → HTML conversion so typing stays snappy and
-    // preview work doesn't run on every single keystroke.
     debounceTimerRef.current = setTimeout(() => {
       const linked = linkifyMarkdown(content);
       markdownToHtml(linked)
@@ -95,7 +87,6 @@ export function MarkdownPreview({
             setHtml(result);
             if (!hasNotifiedFirstHtmlRef.current && result.trim()) {
               hasNotifiedFirstHtmlRef.current = true;
-              // Notify parent that initial HTML is ready (best-effort)
               (typeof onFirstHtmlRendered === "function") &&
                 onFirstHtmlRendered();
             }
@@ -126,15 +117,40 @@ export function MarkdownPreview({
 
   const isEmpty = !content || !content.trim();
   const placeholderHtml = `<p class="preview-placeholder">${escapeHtml(placeholder)}</p>`;
+  
   const displayHtml = isEmpty
     ? placeholderHtml
     : html || "";
 
-  const handleCheckboxToggle = (taskIndex: number) => {
-    if (!onToggleCheckbox || taskIndex < 0 || taskIndex >= taskListLineIndices.length) return;
-    const lineIndex = taskListLineIndices[taskIndex];
-    const newMarkdown = toggleCheckboxInMarkdown(content, lineIndex);
-    onToggleCheckbox(newMarkdown);
+  const handleCheckboxToggle = (lineIndex: number) => {
+    if (!onToggleCheckbox || lineIndex < 0) return;
+    
+    // Optimistic HTML Update for instant feedback
+    setHtml(prevHtml => {
+      if (!prevHtml) return prevHtml;
+      const escapedIdx = String(lineIndex);
+      
+      const btnRegex = new RegExp(`(<button[^>]*data-line-index="${escapedIdx}"[^>]*aria-checked=")(true|false)("[^>]*class="[^"]*)(checked)?([^"]*"[^>]*>)`, 'g');
+      if (btnRegex.test(prevHtml)) {
+        return prevHtml.replace(btnRegex, (match, p1, checked, p3, p4, p5) => {
+          const isNowChecked = checked === 'false';
+          const newCheckedAttr = isNowChecked ? 'true' : 'false';
+          const content = isNowChecked 
+            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+            : '';
+          return `${p1}${newCheckedAttr}${p3}${isNowChecked ? 'checked' : ''}${p5}>${content}</button>`;
+        });
+      }
+      
+      const inputRegex = new RegExp(`(<input[^>]*data-line-index="${escapedIdx}"[^>]*type="checkbox"[^>]*?)(checked)?([^>]*>)`, 'g');
+      return prevHtml.replace(inputRegex, (match, p1, checked, p3) => {
+         return checked ? (p1 + p3) : (p1 + 'checked ' + p3);
+      });
+    });
+
+    // Atomic Functional Update: Bypass state staleness by passing a setter function.
+    skipNextHtmlGenRef.current = true;
+    onToggleCheckbox((prev) => toggleCheckboxInMarkdown(prev, lineIndex));
   };
 
   if (Platform.OS === "web") {

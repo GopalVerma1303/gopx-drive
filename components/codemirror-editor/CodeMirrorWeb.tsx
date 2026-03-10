@@ -17,6 +17,7 @@ let EditorView: any;
 let EditorState: any;
 let Compartment: any;
 let StateField: any;
+let Annotation: any;
 let markdown: any;
 let keymap: any;
 let defaultKeymap: any;
@@ -60,6 +61,7 @@ if (typeof document !== "undefined") {
   EditorState = cmState.EditorState;
   Compartment = cmState.Compartment;
   StateField = cmState.StateField;
+  Annotation = cmState.Annotation;
   BlockWrapper = cmView.BlockWrapper;
   markdown = cmLangMarkdown.markdown;
   keymap = cmView.keymap;
@@ -386,6 +388,11 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
     const [searchState, setSearchState] = React.useState({ query: "", activeIndex: 0 });
     const searchStateRef = useRef(searchState);
     searchStateRef.current = searchState;
+    
+    const programmatic = React.useMemo(() => {
+      if (!Annotation) return null;
+      return Annotation.define();
+    }, []);
 
     useEffect(() => {
       if (Platform.OS !== "web" || !EditorView || !Compartment) return;
@@ -540,6 +547,11 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
           EditorView.lineWrapping,
           EditorView.updateListener.of((update: any) => {
             if (update.docChanged && onChangeRef.current) {
+              // Echo Suppression: If this change was triggered programmatically (e.g. from a prop update),
+              // do NOT sync it back to the parent. This prevents feedback loops and stale state race conditions.
+              if (programmatic && update.transactions.some((tr: any) => tr.annotation(programmatic))) {
+                return;
+              }
               const v = update.state.doc.toString();
               onChangeRef.current(v);
             }
@@ -655,6 +667,7 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
 
         viewRef.current.dispatch({
           changes: { from: prefixLen, to: currentSuffixIdx + 1, insert },
+          annotations: programmatic ? programmatic.of(true) : [],
         });
       }
     }, [value]);

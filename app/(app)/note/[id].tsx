@@ -712,10 +712,11 @@ export default function NoteEditorScreen() {
             <View className="flex-1 min-h-0 w-full bg-background relative">
               {/* Preview: always mounted, hidden when editing for instant switch */}
               <View
-                className={cn(
-                  "flex-1 min-h-full",
-                  !isPreview && "absolute inset-0 opacity-0 pointer-events-none"
-                )}
+                style={{ 
+                  flex: 1, 
+                  display: isPreview ? "flex" : "none",
+                  zIndex: isPreview ? 1 : 0
+                }}
               >
                 <ScrollView
                   className="flex-1"
@@ -725,7 +726,7 @@ export default function NoteEditorScreen() {
                   <View className="flex-grow w-full max-w-[672px] self-center bg-muted">
                     <MarkdownPreview
                       content={content}
-                      onToggleCheckbox={setContent}
+                      onToggleCheckbox={(updater) => setContent(updater as any)}
                       placeholder="Start writing in markdown..."
                       onFirstHtmlRendered={() => setPreviewReady(true)}
                       searchQuery={isSearchBarVisible ? searchQuery : ""}
@@ -737,15 +738,16 @@ export default function NoteEditorScreen() {
               </View>
               {/* Editor: always mounted, hidden when previewing for instant switch */}
               <View
-                className={cn(
-                  "flex-1 min-h-0 flex-col",
-                  isPreview && "absolute inset-0 opacity-0 pointer-events-none"
-                )}
+                style={{ 
+                  flex: 1, 
+                  display: isPreview ? "none" : "flex",
+                  zIndex: isPreview ? 0 : 1
+                }}
+                className="flex-col"
               >
-                {/* Web: measure this area so we can give CodeMirror an explicit pixel height (first-principles: scroll needs a definite viewport size). */}
                 <View
                   className="flex-1 min-h-0"
-                  onLayout={(e) => {
+                  onLayout={(e: any) => {
                     const h = e.nativeEvent.layout.height;
                     if (typeof h === "number" && h > 0) setEditorAreaHeightPx(h);
                   }}
@@ -790,38 +792,14 @@ export default function NoteEditorScreen() {
           <Animated.View className="flex-1" style={containerAnimatedStyle}>
             <View className="flex-1 bg-background">
               <View className="flex-1 w-full relative">
-                {/* Preview: always mounted, hidden when editing for instant switch */}
-                <View
-                  className={cn(
-                    "flex-1 w-full h-full",
-                    !isPreview && "absolute inset-0 opacity-0 pointer-events-none"
-                  )}
-                >
-                  <ScrollView
-                    className="flex-1 w-full h-full"
-                    contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom }}
-                    showsVerticalScrollIndicator
-                  >
-                    <View className="flex-grow w-full max-w-[672px] self-center bg-muted">
-                      <MarkdownPreview
-                        content={content}
-                        onToggleCheckbox={setContent}
-                        placeholder="Start writing in markdown..."
-                        contentContainerStyle={{ flex: 1, width: "100%" }}
-                        onFirstHtmlRendered={() => setPreviewReady(true)}
-                        searchQuery={isSearchBarVisible ? searchQuery : ""}
-                        currentMatchIndex={currentMatchIndex}
-                        onSearchMatchCount={setTotalMatches}
-                      />
-                    </View>
-                  </ScrollView>
-                </View>
                 {/* Editor: always mounted, hidden when previewing for instant switch */}
                 <View
-                  className={cn(
-                    "flex-1 w-full flex-col",
-                    isPreview && "absolute inset-0 opacity-0 pointer-events-none"
-                  )}
+                  style={{ 
+                    flex: 1, 
+                    display: isPreview ? "none" : "flex",
+                    zIndex: isPreview ? 0 : 1
+                  }}
+                  className="w-full flex-col"
                 >
                   <View
                     className="flex-1 w-full max-w-[672px] self-center bg-muted"
@@ -835,7 +813,7 @@ export default function NoteEditorScreen() {
                         ref={editorRef}
                         value={content}
                         onChangeText={setContent}
-                        onContentSync={setContent}
+                        onContentSync={(updater) => setContent(updater as any)}
                         onSelectionChange={(sel) => {
                           lastSelectionRef.current = sel;
                         }}
@@ -868,6 +846,33 @@ export default function NoteEditorScreen() {
                       isPreview={false}
                     />
                   </Animated.View>
+                </View>
+
+                {/* Preview: always mounted, hidden when editing for instant switch */}
+                <View
+                  style={{ 
+                    flex: 1, 
+                    display: isPreview ? "flex" : "none",
+                    zIndex: isPreview ? 1 : 0
+                  }}
+                  className="w-full"
+                >
+                  <View className="flex-1 w-full max-w-[672px] self-center bg-muted">
+                    <MarkdownPreview
+                      content={content}
+                      onToggleCheckbox={(updater) => setContent(updater as any)}
+                      placeholder="Start writing in markdown..."
+                      contentContainerStyle={{ 
+                        flex: 1, 
+                        width: "100%",
+                        paddingBottom: insets.bottom + 20
+                      }}
+                      onFirstHtmlRendered={() => setPreviewReady(true)}
+                      searchQuery={isSearchBarVisible ? searchQuery : ""}
+                      currentMatchIndex={currentMatchIndex}
+                      onSearchMatchCount={setTotalMatches}
+                    />
+                  </View>
                 </View>
               </View>
             </View>

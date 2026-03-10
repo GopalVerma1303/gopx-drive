@@ -1,6 +1,6 @@
 export interface MarkdownEditorProps {
   value: string;
-  onChangeText?: (text: string) => void;
+  onChangeText?: (text: string | ((prev: string) => string)) => void;
   placeholder?: string;
   className?: string;
   isPreview?: boolean;
@@ -12,7 +12,7 @@ export interface MarkdownEditorProps {
   /** When true with previewOnly, render only the Markdown content without ScrollView (parent provides scroll). */
   noScrollView?: boolean;
   /** On mobile WebView: called with raw content when editor sends a change. Use to keep note state in sync (e.g. pass setContent). */
-  onContentSync?: (text: string) => void;
+  onContentSync?: (text: string | ((prev: string) => string)) => void;
   /** (Web only) Measured height in px for the editor area. When set, CodeMirror wrapper uses this so the scroll viewport has a definite size. */
   editorAreaHeight?: number;
   searchQuery?: string;

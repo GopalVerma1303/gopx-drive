@@ -30,7 +30,7 @@ import { rust } from "@codemirror/lang-rust";
 import { sql } from "@codemirror/lang-sql";
 import { xml } from "@codemirror/lang-xml";
 import { HighlightStyle, syntaxHighlighting, syntaxTree } from "@codemirror/language";
-import { EditorState, StateField } from "@codemirror/state";
+import { EditorState, StateField, Annotation } from "@codemirror/state";
 import { BlockWrapper, Decoration, DecorationSet, EditorView, keymap, ViewPlugin, WidgetType } from "@codemirror/view";
 import { useDOMImperativeHandle, type DOMImperativeFactory } from "expo/dom";
 import React, { useEffect, useRef, type Ref } from "react";
@@ -331,6 +331,8 @@ export default function CodeMirrorDOM({
   const [searchState, setSearchState] = React.useState({ query: "", activeIndex: 0 });
   const searchStateRef = useRef(searchState);
   searchStateRef.current = searchState;
+  
+  const programmatic = useRef(Annotation.define<boolean>()).current;
 
   // Create CodeMirror instance once (theme colors from props so light/dark render correctly)
   useEffect(() => {
@@ -548,6 +550,11 @@ export default function CodeMirrorDOM({
         EditorView.lineWrapping,
         EditorView.updateListener.of((update) => {
           if (update.docChanged && onContentChangeRef.current) {
+            // Echo Suppression: If this change was triggered programmatically (e.g. from a prop update),
+            // do NOT sync it back to the parent. This prevents feedback loops and stale state race conditions.
+            if (update.transactions.some(tr => tr.annotation(programmatic))) {
+              return;
+            }
             const v = update.state.doc.toString();
             onContentChangeRef.current(v);
           }
@@ -658,6 +665,7 @@ export default function CodeMirrorDOM({
 
       viewRef.current.dispatch({
         changes: { from: prefixLen, to: currentSuffixIdx + 1, insert },
+        annotations: programmatic.of(true),
       });
     }
   }, [value]);

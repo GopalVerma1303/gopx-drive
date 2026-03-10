@@ -25,25 +25,22 @@ const REPLACE_CHECKBOXES_SCRIPT = `
     var box=document.createElement('button');
     box.type='button';
     box.setAttribute('role','checkbox');
-    box.setAttribute('aria-checked',checked);
     box.setAttribute('aria-label','Task list checkbox');
-    box.setAttribute('data-task-index',String(i));
+    box.setAttribute('aria-checked', JSON.stringify(checked));
+    box.setAttribute('data-line-index', (function() {
+         var v = input.getAttribute('data-line-index');
+         if (!v || v === 'null') return -1;
+         var n = parseInt(v, 10);
+         return isNaN(n) ? -1 : n;
+       })());
+    box.style.pointerEvents = 'auto';
+    box.style.cursor = 'pointer';
+    box.style.webkitTapHighlightColor = 'transparent';
+    box.style.display = 'flex';
+    box.style.alignItems = 'center';
+    box.style.justifyContent = 'center';
     box.className=checked?'md-preview-checkbox checked':'md-preview-checkbox';
     box.innerHTML=checked?svg:'';
-    box.onclick=(function(idx){
-      return function(e){
-        e.preventDefault();
-        e.stopPropagation();
-        var c=this.getAttribute('aria-checked')==='true';
-        c=!c;
-        this.setAttribute('aria-checked',c);
-        this.classList.toggle('checked',c);
-        this.innerHTML=c?svg:'';
-        if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage){
-          window.ReactNativeWebView.postMessage(JSON.stringify({type:'toggleCheckbox',taskIndex:idx}));
-        }
-      };
-    })(i);
     wrap.appendChild(box);
     input.parentNode.replaceChild(wrap,input);
   }
@@ -74,19 +71,8 @@ const ADD_CODE_COPY_BUTTONS_SCRIPT = `
     btn.className = COPY_CLASS;
     btn.setAttribute('aria-label','Copy code');
     btn.setAttribute('data-copy-index', String(i));
+    btn.setAttribute('data-copy-text', text);
     btn.innerHTML = COPY_SVG;
-    btn.onclick = (function(txt, idx){
-      return function(){
-        if(window.ReactNativeWebView && window.ReactNativeWebView.postMessage){
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'copyCode', text: txt, index: idx }));
-        } else if(typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText){
-          navigator.clipboard.writeText(txt).then(function(){
-            var b = document.querySelector('.code-copy-btn[data-copy-index="'+idx+'"]');
-            if(b){ b.classList.add('copied'); b.innerHTML = CHECK_SVG; setTimeout(function(){ b.classList.remove('copied'); b.innerHTML = COPY_SVG; }, 2000); }
-          });
-        }
-      };
-    })(text, i);
     pre.insertBefore(btn, scrollWrap);
   }
 })(); true;
@@ -323,8 +309,8 @@ const RENDER_MATH_SCRIPT = `
 interface MarkdownPreviewWebViewProps {
   html: string;
   contentContainerStyle?: object;
-  /** Called with task index when user toggles a checkbox in the WebView. Parent should update markdown. */
-  onCheckboxToggle?: (taskIndex: number) => void;
+  /** Called with line index when user toggles a checkbox in the WebView. Parent should update markdown. */
+  onCheckboxToggle?: (lineIndex: number) => void;
   searchQuery?: string;
   currentMatchIndex?: number;
   onSearchMatchCount?: (count: number) => void;
@@ -474,7 +460,7 @@ export function MarkdownPreviewWebView({
       try {
         const data = JSON.parse(event.nativeEvent.data) as {
           type?: string;
-          taskIndex?: number;
+          lineIndex?: number;
           text?: string;
           index?: number;
           count?: number;
@@ -483,8 +469,8 @@ export function MarkdownPreviewWebView({
           onSearchMatchCount?.(data.count);
           return;
         }
-        if (data?.type === "toggleCheckbox" && typeof data.taskIndex === "number") {
-          onCheckboxToggleRef.current?.(data.taskIndex);
+        if (data?.type === "toggleCheckbox" && typeof data.lineIndex === "number") {
+          onCheckboxToggleRef.current?.(data.lineIndex);
           return;
         }
         if (data?.type === "copyCode" && typeof data.text === "string") {

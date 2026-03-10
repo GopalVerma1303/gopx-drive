@@ -41,6 +41,44 @@ export function getPreviewFullHtml(bodyHtml: string, colors: PreviewThemeColors)
     (function() {
       var _q = "", _idx = 0, _obs = null, _t = null, _busy = false, _last = -1;
 
+      // Event Delegation for Checkboxes and Copy Buttons
+      document.addEventListener('click', function(e) {
+        var target = e.target;
+        
+        // 1. Checkbox toggle
+        var box = target.closest('.md-preview-checkbox');
+        if (box) {
+          e.preventDefault();
+          e.stopPropagation();
+          var liIdx = parseInt(box.getAttribute('data-line-index'), 10);
+          if (!isNaN(liIdx) && liIdx >= 0) {
+            var checked = (box.getAttribute('aria-checked') === 'true');
+            checked = !checked;
+            box.setAttribute('aria-checked', JSON.stringify(checked));
+            box.classList.toggle('checked', checked);
+            var svg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            box.innerHTML = checked ? svg : '';
+            if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({type:'toggleCheckbox', lineIndex:liIdx}));
+            }
+          }
+          return;
+        }
+
+        // 2. Code Copy toggle
+        var copyBtn = target.closest('.code-copy-btn');
+        if (copyBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          var txt = copyBtn.getAttribute('data-copy-text');
+          var idx = parseInt(copyBtn.getAttribute('data-copy-index'), 10);
+          if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'copyCode', text: txt || '', index: isNaN(idx) ? 0 : idx }));
+          }
+          return;
+        }
+      }, true); /* Capture phase for maximum reliability */
+
       function report(c) {
         if (_last !== c) {
           _last = c;

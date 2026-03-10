@@ -185,17 +185,22 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     };
 
     // Handle text changes to detect and process list continuations
-    const handleTextChange = (newText: string) => {
+    const handleTextChange = (input: string | ((prev: string) => string)) => {
       if (!onChangeText) return;
+      
+      const oldText = previousValueRef.current;
+      const newText = typeof input === 'function' ? input(oldText) : input;
+      
+      onContentSync?.(input);
+
       // Skip processing if we're already processing a list change (avoid infinite loops)
       if (isProcessingListRef.current) {
         previousValueRef.current = newText;
         pendingInternalValueRef.current = newText;
-        onChangeText(newText);
+        onChangeText(input);
         return;
       }
 
-      const oldText = previousValueRef.current;
       const oldLines = oldText.split('\n');
       const newLines = newText.split('\n');
 
@@ -346,6 +351,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           previousValueRef.current = newText;
           pendingInternalValueRef.current = newText;
           onChangeText(newText);
+          onContentSync?.(newText);
           return;
         }
 
@@ -392,6 +398,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
             previousValueRef.current = newText;
             pendingInternalValueRef.current = newText;
             onChangeText(newText);
+            onContentSync?.(newText);
             return;
           }
 
@@ -603,6 +610,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       previousValueRef.current = newText;
       pendingInternalValueRef.current = newText;
       onChangeText(newText);
+      onContentSync?.(newText);
     };
 
     // Update previousValueRef when value changes externally
@@ -640,6 +648,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       previousValueRef.current = nextText;
       pendingInternalValueRef.current = nextText;
       onChangeText?.(nextText);
+      onContentSync?.(nextText);
 
       const setCursorPosition = () => {
         const input = inputRef.current as any;
@@ -1401,10 +1410,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         redoStackRef.current = [];
         applyTextAndSelection(nextText, { start: newCursorPosition, end: newCursorPosition });
       },
-      getContentAsync:
-        Platform.OS !== "web"
-          ? () => (inputRef.current as any)?.getValueAsync?.() ?? Promise.resolve(value)
-          : undefined,
       setSearch: (query: string, activeIndex: number, shouldScroll?: boolean) => {
         // Return -1 if not ready so callers can avoid resetting match counts during transient states.
         return inputRef.current?.setSearch?.(query, activeIndex, shouldScroll ?? false) ?? -1;
@@ -1417,6 +1422,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       },
       replaceAll: (query: string, replacement: string) => {
         inputRef.current?.replaceAll?.(query, replacement);
+      },
+      getContentAsync: async () => {
+        return previousValueRef.current;
       },
     }));
 
@@ -2851,6 +2859,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         {showPreview ? (
           <MarkdownPreview
             content={value}
+            onToggleCheckbox={onChangeText}
             placeholder={placeholder}
             className={className}
             searchQuery={searchQuery}
