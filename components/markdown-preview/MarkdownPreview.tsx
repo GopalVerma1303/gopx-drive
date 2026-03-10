@@ -17,6 +17,9 @@ function escapeHtml(text: string): string {
 }
 
 
+const CHECK_ICON_SVG =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+
 export interface MarkdownPreviewProps {
   /** Raw markdown string (same as editor value). Will be linkified and converted to HTML via remark/rehype. */
   content: string;
@@ -130,21 +133,44 @@ export function MarkdownPreview({
       if (!prevHtml) return prevHtml;
       const escapedIdx = String(lineIndex);
       
-      const btnRegex = new RegExp(`(<button[^>]*data-line-index="${escapedIdx}"[^>]*aria-checked=")(true|false)("[^>]*class="[^"]*)(checked)?([^"]*"[^>]*>)`, 'g');
-      if (btnRegex.test(prevHtml)) {
-        return prevHtml.replace(btnRegex, (match, p1, checked, p3, p4, p5) => {
-          const isNowChecked = checked === 'false';
-          const newCheckedAttr = isNowChecked ? 'true' : 'false';
-          const content = isNowChecked 
-            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
-            : '';
-          return `${p1}${newCheckedAttr}${p3}${isNowChecked ? 'checked' : ''}${p5}>${content}</button>`;
+      // 1. Try to find and patch a <button> (Custom DOM Checkbox)
+      // Matches: <button ... data-line-index="N" ... > ... </button>
+      const btnTagRegex = new RegExp(`(<button[^>]*data-line-index="${escapedIdx}"[^>]*>)([\\s\\S]*?)(</button>)`, 'g');
+      if (btnTagRegex.test(prevHtml)) {
+        return prevHtml.replace(btnTagRegex, (match, openTag, content, closeTag) => {
+          const isChecked = openTag.includes('aria-checked="true"');
+          const newCheckedValue = !isChecked;
+          
+          // Toggle aria-checked
+          let newOpenTag = openTag.replace(/aria-checked="(true|false)"/, `aria-checked="${newCheckedValue}"`);
+          
+          // Toggle "checked" class
+          if (newCheckedValue) {
+            if (!newOpenTag.includes('class="')) {
+              newOpenTag = newOpenTag.replace('>', ' class="checked">');
+            } else if (!newOpenTag.includes('checked')) {
+              newOpenTag = newOpenTag.replace(/class="([^"]*)"/, 'class="$1 checked"');
+            }
+          } else {
+            newOpenTag = newOpenTag.replace(/\s?checked\s?/, ' ');
+          }
+          
+          // Toggle SVG content
+          const newContent = newCheckedValue ? CHECK_ICON_SVG : '';
+          
+          return `${newOpenTag}${newContent}${closeTag}`;
         });
       }
       
-      const inputRegex = new RegExp(`(<input[^>]*data-line-index="${escapedIdx}"[^>]*type="checkbox"[^>]*?)(checked)?([^>]*>)`, 'g');
-      return prevHtml.replace(inputRegex, (match, p1, checked, p3) => {
-         return checked ? (p1 + p3) : (p1 + 'checked ' + p3);
+      // 2. Fallback to 1. Try to find and patch an <input> (Standard GFM Checkbox)
+      // Matches: <input ... data-line-index="N" ... >
+      const inputTagRegex = new RegExp(`(<input[^>]*data-line-index="${escapedIdx}"[^>]*>)`, 'g');
+      return prevHtml.replace(inputTagRegex, (match, tag) => {
+        if (tag.includes('checked')) {
+          return tag.replace(/\s?checked(=["']checked["'])?\s?/, ' ');
+        } else {
+          return tag.replace('>', ' checked>');
+        }
       });
     });
 
