@@ -24,7 +24,7 @@ export function getPreviewFullHtml(bodyHtml: string, colors: PreviewThemeColors)
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
   <!-- Mermaid runtime for native WebView; diagrams are rendered on-demand after content injection. -->
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
   <script>
     (function() {
       try {
