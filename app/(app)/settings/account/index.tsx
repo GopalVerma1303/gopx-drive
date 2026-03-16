@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { ArrowLeft, Eye, EyeOff, Lock, Mail, UserX } from "lucide-react-native";
+import { ArrowLeft, ChevronRight, Eye, EyeOff, Lock, Mail, UserX } from "lucide-react-native";
 import { useState, useEffect } from "react";
 import {
   ActivityIndicator,
@@ -176,35 +176,40 @@ export default function AccountScreen() {
           </Text>
           <View className="bg-muted border border-border rounded-2xl overflow-hidden">
             <Pressable
-              className="flex flex-row items-center gap-3 p-4 active:bg-accent/50"
+              className="flex flex-row items-center justify-between p-4 active:bg-accent/50"
               onPress={() => handlePress("/(app)/settings/account/update-email")}
             >
-              <Mail size={20} color={colors.foreground} />
-              <Text
-                style={{
-                  fontSize: 16,
-                  color: colors.foreground,
-                  fontWeight: "500",
-                }}
-              >
-                Update Email
-              </Text>
+              <View className="flex flex-row items-center gap-3">
+                <Mail size={20} color={colors.foreground} />
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: colors.foreground,
+                    fontWeight: "500",
+                  }}
+                >
+                  Update Email
+                </Text>
+              </View>
+              <ChevronRight size={20} color={colors.mutedForeground} />
             </Pressable>
-
             <Pressable
-              className="flex flex-row items-center gap-3 p-4 border-t border-border active:bg-accent/50"
+              className="flex flex-row items-center justify-between p-4 border-t border-border active:bg-accent/50"
               onPress={() => handlePress("/(app)/settings/account/update-password")}
             >
-              <Lock size={20} color={colors.foreground} />
-              <Text
-                style={{
-                  fontSize: 16,
-                  color: colors.foreground,
-                  fontWeight: "500",
-                }}
-              >
-                Update Password
-              </Text>
+              <View className="flex flex-row items-center gap-3">
+                <Lock size={20} color={colors.foreground} />
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: colors.foreground,
+                    fontWeight: "500",
+                  }}
+                >
+                  Update Password
+                </Text>
+              </View>
+              <ChevronRight size={20} color={colors.mutedForeground} />
             </Pressable>
           </View>
         </View>

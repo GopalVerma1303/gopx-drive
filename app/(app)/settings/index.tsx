@@ -10,7 +10,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Archive, Eraser, FileText, Heart, ImageIcon, LogOut, Settings2, WandSparkles } from "lucide-react-native";
+import { Archive, ChevronRight, Eraser, FileText, Heart, ImageIcon, LogOut, Settings2, WandSparkles } from "lucide-react-native";
 import { useState } from "react";
 import {
   Linking,
@@ -148,6 +148,9 @@ export default function SettingsScreen() {
             <Pressable
               style={{
                 padding: 16,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
               }}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -174,6 +177,10 @@ export default function SettingsScreen() {
                   {user?.email || "Not available"}
                 </Text>
               </View>
+              <ChevronRight
+                color={colors.mutedForeground}
+                size={20}
+              />
             </Pressable>
           </View>
         </View>
@@ -238,7 +245,7 @@ export default function SettingsScreen() {
           </Text>
           <View className="bg-muted border border-border rounded-2xl overflow-hidden">
             <Pressable
-              className="flex flex-row items-center gap-12 p-4"
+              className="flex flex-row items-center justify-between p-4"
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push("/(app)/settings/toolbar-order");
@@ -259,6 +266,10 @@ export default function SettingsScreen() {
                   Toolbar Order
                 </Text>
               </View>
+              <ChevronRight
+                color={colors.mutedForeground}
+                size={20}
+              />
             </Pressable>
           </View>
         </View>
@@ -279,7 +290,7 @@ export default function SettingsScreen() {
           </Text>
           <View className="bg-muted border border-border rounded-2xl overflow-hidden">
             <Pressable
-              className="flex flex-row items-center gap-12 p-4"
+              className="flex flex-row items-center justify-between p-4"
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push("/(app)/settings/shared-notes");
@@ -300,6 +311,10 @@ export default function SettingsScreen() {
                   Manage Shared Notes
                 </Text>
               </View>
+              <ChevronRight
+                color={colors.mutedForeground}
+                size={20}
+              />
             </Pressable>
           </View>
         </View>
@@ -320,7 +335,7 @@ export default function SettingsScreen() {
           </Text>
           <View className="bg-muted border border-border rounded-2xl overflow-hidden">
             <Pressable
-              className="flex flex-row items-center gap-12 p-4"
+              className="flex flex-row items-center justify-between p-4"
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push("/(app)/settings/archive");
@@ -341,9 +356,13 @@ export default function SettingsScreen() {
                   Archive
                 </Text>
               </View>
+              <ChevronRight
+                color={colors.mutedForeground}
+                size={20}
+              />
             </Pressable>
             <Pressable
-              className="flex flex-row items-center gap-12 p-4 border-t border-border"
+              className="flex flex-row items-center justify-between p-4 border-t border-border"
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push("/(app)/settings/attachments");
@@ -364,6 +383,10 @@ export default function SettingsScreen() {
                   Attachments
                 </Text>
               </View>
+              <ChevronRight
+                color={colors.mutedForeground}
+                size={20}
+              />
             </Pressable>
             <Pressable
               className="flex flex-row items-center gap-12 p-4 border-t border-border"
