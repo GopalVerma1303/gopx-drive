@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "./ui/text";
+import { cn } from "@/lib/utils";
 
 interface NavigationProps {
   isOpen: boolean;
@@ -113,15 +114,15 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
 
   // Render navigation items
   const renderNavItems = (iconOnly: boolean = false, horizontal: boolean = false) => (
-    <View style={{
-      flexDirection: horizontal ? "row" : "column",
-      gap: horizontal ? 0 : 4,
-      alignItems: horizontal ? "center" : "stretch",
-      justifyContent: horizontal ? "space-around" : "flex-start",
-      ...(horizontal && { width: "100%" }),
-      backgroundColor: colors.background,
-      paddingVertical: horizontal ? 16 : 10,
-    }}>
+    <View
+      className={cn(
+        "flex",
+        horizontal ? "flex-row items-center justify-around w-full py-1" : "flex-col items-stretch justify-start gap-1 py-[10px]"
+      )}
+      style={{
+        backgroundColor: colors.background,
+      }}
+    >
       {navItems.map((item) => {
         const Icon = item.icon;
 
@@ -154,18 +155,13 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
             key={item.href}
             {...(horizontal && { hitSlop: { top: 10, bottom: 10, left: 20, right: 20 } })}
             onPress={() => handleNavPress(item.href)}
+            className={cn(
+              "flex items-center rounded-lg",
+              horizontal ? "flex-1 flex-col justify-center py-3 px-3 w-full" : "flex-row justify-start py-3 px-4 mx-2",
+              iconOnly && !horizontal && "px-3 mx-0"
+            )}
             style={({ pressed }) => ({
-              flex: horizontal ? 1 : undefined,
-              flexDirection: horizontal ? "column" : "row",
-              alignItems: "center",
-              justifyContent: horizontal ? "center" : "flex-start",
-              paddingVertical: horizontal ? 16 : 12,
-              paddingHorizontal: horizontal ? 12 : (iconOnly ? 12 : 16),
-              borderRadius: 8,
               backgroundColor: pressed ? colors.accent : "transparent",
-              marginHorizontal: iconOnly ? 0 : 8,
-              ...(horizontal && { width: "100%" }),
-
             })}
           >
             <Icon
@@ -174,13 +170,12 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
             />
             {!iconOnly && (
               <Text
+                className={cn(
+                  horizontal ? "ml-0 mt-1 text-[11px] text-center" : "ml-3 mt-0 text-[15px] text-left",
+                  isActive ? "font-bold" : "font-normal"
+                )}
                 style={{
-                  marginLeft: horizontal ? 0 : 12,
-                  marginTop: horizontal ? 4 : 0,
-                  fontSize: horizontal ? 11 : 15,
-                  fontWeight: isActive ? "700" : "400",
                   color: isActive ? colors.primary : colors.mutedForeground,
-                  textAlign: horizontal ? "center" : "left",
                 }}
               >
                 {item.label}
@@ -196,17 +191,11 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
   if (isSm) {
     return (
       <View
+        className="absolute bottom-0 left-0 right-0 border-t elevation-10 z-[1000]"
         style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
           backgroundColor: colors.background,
-          borderTopWidth: 1,
           borderTopColor: colors.border,
           paddingBottom: insets.bottom,
-          elevation: 10,
-          zIndex: 1000,
         }}
       >
         {renderNavItems(true, true)}
@@ -218,19 +207,17 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
   if (isMd) {
     return (
       <View
+        className="w-16 h-full border-r"
         style={{
-          width: 64,
-          height: "100%",
           backgroundColor: colors.background,
-          borderRightWidth: 1,
           borderRightColor: colors.border,
           paddingTop: insets.top,
         }}
       >
-        <View style={{ paddingVertical: 16, paddingHorizontal: 12, alignItems: "center" }}>
+        <View className="py-4 px-3 items-center">
           <Image source={transicon} style={{ width: 32, height: 32 }} resizeMode="contain" className="filter dark:invert" />
         </View>
-        <View style={{ paddingHorizontal: 8 }}>
+        <View className="px-2">
           {renderNavItems(true, false)}
         </View>
       </View>
@@ -240,22 +227,19 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
   // Large screens: Full sidebar (left side, always visible, part of flex layout)
   return (
     <View
+      className="w-[240px] h-full border-r"
       style={{
-        width: 240,
-        height: "100%",
         backgroundColor: colors.background,
-        borderRightWidth: 1,
         borderRightColor: colors.border,
         paddingTop: insets.top,
       }}
     >
-      <View style={{ paddingVertical: 16, paddingHorizontal: 16 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 24, paddingHorizontal: 12, gap: 10 }}>
+      <View className="py-4 px-4">
+        <View className="flex-row items-center mb-6 px-3 gap-[10px]">
           <Image source={transicon} style={{ width: 28, height: 28 }} resizeMode="contain" className="filter dark:invert" />
           <Text
+            className="text-[20px] font-bold"
             style={{
-              fontSize: 20,
-              fontWeight: "700",
               color: colors.foreground,
             }}
           >
@@ -318,11 +302,9 @@ export function NavigationToggle({ onPress }: { onPress: () => void }) {
     <Pressable
       onPress={handlePress}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      style={({ pressed }) => ({
-        padding: 8,
-        marginLeft: -8,
+      className="p-2 -ml-2 z-[10000]"
+      style={({ pressed }: { pressed: boolean }) => ({
         opacity: pressed ? 0.7 : 1,
-        zIndex: 10000,
       })}
     >
       <Menu color={colors.foreground} size={24} />
