@@ -466,7 +466,7 @@ export default function HomeScreen() {
           contentContainerStyle={{
             paddingTop: 24,
             paddingHorizontal: containerPadding,
-            paddingBottom: insets.bottom + 32,
+            paddingBottom: insets.bottom + 90,
             maxWidth: maxWidth,
             alignSelf: "center",
             width: "100%",

@@ -156,6 +156,7 @@ export default function AccountScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{
           padding: 16,
+          paddingBottom: insets.bottom + 100,
           gap: 32,
         }}
       >

@@ -591,7 +591,7 @@ export default function FoldersScreen() {
 
         <ScrollView
           className="flex-1"
-          contentContainerClassName="p-4 pb-32"
+          contentContainerClassName="p-4 pb-24"
           refreshControl={
             <RefreshControl
               progressBackgroundColor={colors.background}

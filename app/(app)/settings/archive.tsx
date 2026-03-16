@@ -697,7 +697,7 @@ export default function ArchiveScreen() {
               <ScrollView
                 className="flex-1"
                 style={{ flex: 1 }}
-                contentContainerClassName="p-4 pb-32"
+                contentContainerClassName="p-4 pb-24"
                 contentContainerStyle={{ flexGrow: 0 }}
                 refreshControl={
                   <RefreshControl
@@ -773,7 +773,7 @@ export default function ArchiveScreen() {
               <ScrollView
                 className="flex-1"
                 style={{ flex: 1 }}
-                contentContainerClassName="p-4 pb-32"
+                contentContainerClassName="p-4 pb-24"
                 contentContainerStyle={{ flexGrow: 0 }}
                 refreshControl={
                   <RefreshControl
@@ -852,7 +852,7 @@ export default function ArchiveScreen() {
               <ScrollView
                 className="flex-1"
                 style={{ flex: 1 }}
-                contentContainerClassName="p-4 pb-32"
+                contentContainerClassName="p-4 pb-24"
                 contentContainerStyle={{ flexGrow: 0 }}
                 refreshControl={
                   <RefreshControl

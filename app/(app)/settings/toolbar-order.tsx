@@ -336,7 +336,7 @@ export default function ToolbarOrderScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{
           padding: 16,
-          paddingBottom: Math.max(48, insets.bottom + 48),
+          paddingBottom: Math.max(100, insets.bottom + 100),
           gap: 24,
         }}
       >

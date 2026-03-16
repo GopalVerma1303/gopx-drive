@@ -54,7 +54,6 @@ function AppLayoutContent() {
         {!isDetailPage && <Navigation isOpen={isOpen} onClose={close} />}
         <View style={{
           flex: 1,
-          paddingBottom: isDetailPage ? 0 : 70, // Add padding for bottom bar on small screens only when navbar is visible
         }}>
           <Stack
             screenOptions={{

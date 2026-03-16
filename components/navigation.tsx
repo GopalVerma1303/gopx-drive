@@ -120,7 +120,7 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
       justifyContent: horizontal ? "space-around" : "flex-start",
       ...(horizontal && { width: "100%" }),
       backgroundColor: colors.background,
-      paddingVertical: horizontal ? 12 : 10,
+      paddingVertical: horizontal ? 16 : 10,
     }}>
       {navItems.map((item) => {
         const Icon = item.icon;
@@ -159,7 +159,7 @@ export function Navigation({ isOpen, onClose }: NavigationProps) {
               flexDirection: horizontal ? "column" : "row",
               alignItems: "center",
               justifyContent: horizontal ? "center" : "flex-start",
-              paddingVertical: horizontal ? 12 : 12,
+              paddingVertical: horizontal ? 16 : 12,
               paddingHorizontal: horizontal ? 12 : (iconOnly ? 12 : 16),
               borderRadius: 8,
               backgroundColor: pressed ? colors.accent : "transparent",

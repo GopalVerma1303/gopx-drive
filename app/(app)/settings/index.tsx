@@ -126,6 +126,7 @@ export default function SettingsScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{
           padding: 16,
+          paddingBottom: insets.bottom + 100,
           gap: 24,
         }}
       >
