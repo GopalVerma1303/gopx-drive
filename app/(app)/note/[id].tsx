@@ -831,7 +831,7 @@ export default function NoteEditorScreen() {
                   </View>
                   <Animated.View
                     className="absolute bottom-0 left-0 right-0 z-10 bg-background"
-                    style={toolbarAnimatedStyle}
+                    style={[toolbarAnimatedStyle, { bottom: -0.5 }]}
                   >
                     <MarkdownToolbar
                       onInsertText={(text, cursorOffset) => {

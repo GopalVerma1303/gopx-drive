@@ -553,7 +553,7 @@ export function MarkdownToolbar({
         bounces={false}
         contentContainerStyle={{
           paddingHorizontal: 16,
-          paddingVertical: 12,
+          paddingVertical: 8,
           gap: 4,
           flexDirection: "row",
           alignItems: "center",

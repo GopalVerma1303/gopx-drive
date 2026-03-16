@@ -57,7 +57,7 @@ export const MARKDOWN_HEADING5_LINE_HEIGHT = "1.4";
 export const MARKDOWN_HEADING6_LINE_HEIGHT = "1.4";
 
 /** Standard toolbar height (before safe area/keyboard adjustments) */
-export const MARKDOWN_TOOLBAR_HEIGHT = 65;
+export const MARKDOWN_TOOLBAR_HEIGHT = 57;
 
 /** Body text in editor (1em = inherit root size from MARKDOWN_FONT_SIZE). Use in native/WebView so one constant controls actual px. */
 export const MARKDOWN_FONT_SIZE_EM = "0.875em";
