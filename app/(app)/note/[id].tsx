@@ -3,7 +3,6 @@
 import { AIPromptModal } from "@/components/ai-prompt-modal";
 import { NoteDetailHeader } from "@/components/headers/note-detail-header";
 import { ImageInsertModal } from "@/components/image-insert-modal";
-import { MARKDOWN_CONTENT_PADDING_PX_NATIVE, MARKDOWN_FONT_SIZE, MARKDOWN_TOOLBAR_HEIGHT } from "@/lib/markdown-content-layout";
 import { MarkdownEditor, MarkdownEditorRef } from "@/components/markdown-editor";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { MarkdownToolbar } from "@/components/markdown-toolbar";
@@ -20,6 +19,7 @@ import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
 import { generateAIContent } from "@/lib/ai-providers";
 import { listFolders } from "@/lib/folders";
+import { MARKDOWN_TOOLBAR_HEIGHT } from "@/lib/markdown-content-layout";
 import { createNote, getNoteById, syncNotesFromSupabase, updateNote } from "@/lib/notes";
 import { invalidateFoldersQueries, invalidateNotesListQueries } from "@/lib/query-utils";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -113,7 +113,7 @@ export default function NoteEditorScreen() {
       marginBottom: -keyboardHeight.value,
     };
   });
-  
+
   const toolbarAnimatedStyle = useAnimatedStyle(() => {
     // Dynamically reduce paddingBottom as keyboard moves up.
     // keyboardHeight is positive when keyboard is visible.
@@ -713,8 +713,8 @@ export default function NoteEditorScreen() {
             <View className="flex-1 min-h-0 w-full bg-background relative">
               {/* Preview: always mounted, hidden when editing for instant switch */}
               <View
-                style={{ 
-                  flex: 1, 
+                style={{
+                  flex: 1,
                   display: isPreview ? "flex" : "none",
                   zIndex: isPreview ? 1 : 0
                 }}
@@ -739,8 +739,8 @@ export default function NoteEditorScreen() {
               </View>
               {/* Editor: always mounted, hidden when previewing for instant switch */}
               <View
-                style={{ 
-                  flex: 1, 
+                style={{
+                  flex: 1,
                   display: isPreview ? "none" : "flex",
                   zIndex: isPreview ? 0 : 1
                 }}
@@ -796,8 +796,8 @@ export default function NoteEditorScreen() {
               <View className="flex-1 w-full relative">
                 {/* Editor: always mounted, hidden when previewing for instant switch */}
                 <View
-                  style={{ 
-                    flex: 1, 
+                  style={{
+                    flex: 1,
                     display: isPreview ? "none" : "flex",
                     zIndex: isPreview ? 0 : 1
                   }}
@@ -829,7 +829,7 @@ export default function NoteEditorScreen() {
                       />
                     )}
                   </View>
-                  <Animated.View 
+                  <Animated.View
                     className="absolute bottom-0 left-0 right-0 z-10 bg-background"
                     style={toolbarAnimatedStyle}
                   >
@@ -853,8 +853,8 @@ export default function NoteEditorScreen() {
 
                 {/* Preview: always mounted, hidden when editing for instant switch */}
                 <View
-                  style={{ 
-                    flex: 1, 
+                  style={{
+                    flex: 1,
                     display: isPreview ? "flex" : "none",
                     zIndex: isPreview ? 1 : 0
                   }}
@@ -865,10 +865,10 @@ export default function NoteEditorScreen() {
                       content={content}
                       onToggleCheckbox={(updater) => setContent(updater as any)}
                       placeholder="Start writing in markdown..."
-                      contentContainerStyle={{ 
-                        flex: 1, 
+                      contentContainerStyle={{
+                        flex: 1,
                         width: "100%",
-                        paddingBottom: insets.bottom + 20
+                        paddingBottom: insets.bottom
                       }}
                       onFirstHtmlRendered={() => setPreviewReady(true)}
                       searchQuery={isSearchBarVisible ? searchQuery : ""}
