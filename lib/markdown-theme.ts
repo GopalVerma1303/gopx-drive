@@ -337,7 +337,6 @@ ${getHighlightCss(colors)}
   padding-left: 0.75em;
   margin: 1em 0 1em 0;
   color: ${colors.foreground};
-  font-style: italic;
   white-space: normal;
   overflow-wrap: break-word;
   word-break: break-word;
@@ -548,7 +547,6 @@ export function getMarkdownHighlightStyleConfig(colors: MarkdownThemeColors) {
     /* Quote: text opacity on .blockquote-wrapper .cm-line */
     {
       tag: tags.quote,
-      fontStyle: "italic",
     },
     { tag: tags.list, opacity: "0.95" },
     { tag: tags.contentSeparator, opacity: "0.6" },
@@ -649,7 +647,7 @@ export function getMarkdownHighlightStyleMinimalConfig(colors: MarkdownThemeColo
     // Strikethrough / Underline
     { tag: [tags.strikethrough, tags.deleted], textDecoration: "line-through", textDecorationColor: "#ec4899" },
     // Blockquote + lists
-    { tag: tags.quote, opacity: "0.7", fontStyle: "italic" },
+    { tag: tags.quote, opacity: "0.7" },
     { tag: tags.list, opacity: "0.95" },
     // Comments / separators
     { tag: tags.contentSeparator, opacity: "0.6" },
@@ -759,7 +757,6 @@ export function getCodeMirrorThemeConfig(
     },
     /* Blockquote: text slightly faded */
     ".blockquote-wrapper": {
-      fontStyle: "italic",
     },
     ".blockquote-wrapper .cm-line": {
       opacity: "0.7",
@@ -815,7 +812,7 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
     `.cm-monospace { background: ${codeBg} !important; } ` +
     `.code-block-wrapper { background: ${codeBlockBg} !important; overflow: auto !important; font-size: ${codeBlockFontSize}px !important; line-height: 1.45 !important; font-family: ${MARKDOWN_FONT_FAMILY_CODE} !important; border: 1px solid ${colors.ring} !important; border-radius: 8px !important; } ` +
     `.code-block-wrapper .cm-monospace { padding: 0 !important; border-radius: 0 !important; background: transparent !important; } ` +
-    `.blockquote-wrapper { font-style: italic !important; } ` +
+    `.blockquote-wrapper { } ` +
     `.blockquote-wrapper .cm-line { opacity: 0.7 !important; } ` +
     `.cm-underline { text-decoration: underline !important; } ` +
 
