@@ -185,6 +185,8 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
   const { link, linkUrl, codeBg, quoteBorder } = resolveColors(colors);
   const codeBlockBg = hexToRgba(colors.background, colors.isDark ? 0.22 : 0.06);
   return `
+@import url('https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css');
+
 /* Padding on content only so scrollbar can sit at edge of device */
 /* Long URLs and unbreakable strings: wrap so content stays visible (no horizontal cut-off). */
 .markdown-preview {
@@ -459,6 +461,11 @@ ${getScrollbarCss({ muted: colors.muted, mutedForeground: colors.mutedForeground
   background-color: #eab308; /* yellow-500 */
   color: #000;
 }
+/* KaTeX math font size match */
+.markdown-preview .katex {
+  font-size: 1em !important;
+}
+
 /* KaTeX block math horizontal scroll */
 .markdown-preview .katex-display {
   overflow-x: auto;

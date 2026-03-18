@@ -393,27 +393,6 @@ function replaceCheckboxesWithDom(
   });
 }
 
-/**
- * Uses KaTeX's auto-render extension to parse text nodes for $, $$, \(\), and \[\]
- * and replaces them with rendered math HTML.
- */
-function enhanceMathBlocks(container: HTMLDivElement) {
-  if (typeof window === "undefined" || !(window as any).renderMathInElement) return;
-
-  try {
-    (window as any).renderMathInElement(container, {
-      delimiters: [
-        { left: "$$", right: "$$", display: true },
-        { left: "$", right: "$", display: false },
-        { left: "\\(", right: "\\)", display: false },
-        { left: "\\[", right: "\\]", display: true },
-      ],
-      throwOnError: false,
-    });
-  } catch (e) {
-    console.warn("KaTeX render error:", e);
-  }
-}
 
 export function MarkdownPreviewWeb({
   html,
@@ -548,7 +527,6 @@ export function MarkdownPreviewWeb({
         } catch {}
       }
       enhanceMermaidBlocks(container);
-      enhanceMathBlocks(container);
     };
     const debouncedHeavyEnhancers = () => {
       if (debounceTimer) clearTimeout(debounceTimer);

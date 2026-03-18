@@ -11,9 +11,11 @@
  */
 
 import rehypeHighlight from "rehype-highlight";
+import rehypeKatex from "rehype-katex";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
@@ -438,7 +440,8 @@ const sanitizeSchema = {
   ...defaultSchema,
   tagNames: [
     ...(defaultSchema.tagNames || []),
-    "svg", "path", "circle", "polygon", "line", "mark", "u"
+    "svg", "path", "circle", "polygon", "line", "mark", "u",
+    "math", "semantics", "mrow", "msub", "msup", "mi", "mo", "mn", "mtext", "mspace", "mstyle", "mfrac", "mroot", "msqrt", "mtable", "mtr", "mtd", "annotation"
   ],
   attributes: {
     ...defaultSchema.attributes,
@@ -460,13 +463,15 @@ const sanitizeSchema = {
     ],
     span: [
       ...(defaultSchema.attributes?.span ?? []),
-      ["className", /^hljs-/, "mention-tag"],
+      ["className", /^hljs-/, /^katex-/, "mention-tag", "math", "math-inline", "math-display"],
     ],
     div: [
       ...(defaultSchema.attributes?.div || []),
       "className",
       "data-mermaid-source",
+      ["className", "math", "math-display"],
     ],
+    annotation: ["encoding"],
   },
 };
 
@@ -475,6 +480,7 @@ let processor: ReturnType<typeof createProcessor> | null = null;
 function createProcessor() {
   return (unified() as any)
     .use(remarkParse)
+    .use(remarkMath)
     .use(remarkGfm)
     .use(remarkRehype, { allowDangerousHtml: false })
     .use(rehypeMermaidBlocks)
@@ -485,6 +491,7 @@ function createProcessor() {
     .use(rehypeTaskListItemSource)
     .use(rehypeHighlight as any, { subset: false })
     .use(rehypeSanitize as any, sanitizeSchema)
+    .use(rehypeKatex)
     .use(rehypeStringify);
 }
 
