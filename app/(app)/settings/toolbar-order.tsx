@@ -438,7 +438,7 @@ export default function ToolbarOrderScreen() {
                         e.stopPropagation();
                         moveToVisible(itemId);
                       }}
-                      style={{ padding: 4 }}
+                      style={{ padding: 4, marginRight: -4 }}
                     >
                       <Plus color="#3b82f6" size={20} />
                     </Pressable>
@@ -487,7 +487,7 @@ function ToolbarOrderItem({
           {item.label}
         </Text>
       </View>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginRight: -4 }}>
         <Pressable
           onPress={(e) => {
             e.stopPropagation();

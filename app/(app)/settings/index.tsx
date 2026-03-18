@@ -180,6 +180,7 @@ export default function SettingsScreen() {
               <ChevronRight
                 color={colors.mutedForeground}
                 size={20}
+                style={{ marginRight: -4 }}
               />
             </Pressable>
           </View>
@@ -269,6 +270,7 @@ export default function SettingsScreen() {
               <ChevronRight
                 color={colors.mutedForeground}
                 size={20}
+                style={{ marginRight: -4 }}
               />
             </Pressable>
           </View>
@@ -314,6 +316,7 @@ export default function SettingsScreen() {
               <ChevronRight
                 color={colors.mutedForeground}
                 size={20}
+                style={{ marginRight: -4 }}
               />
             </Pressable>
           </View>
@@ -359,6 +362,7 @@ export default function SettingsScreen() {
               <ChevronRight
                 color={colors.mutedForeground}
                 size={20}
+                style={{ marginRight: -4 }}
               />
             </Pressable>
             <Pressable
@@ -386,6 +390,7 @@ export default function SettingsScreen() {
               <ChevronRight
                 color={colors.mutedForeground}
                 size={20}
+                style={{ marginRight: -4 }}
               />
             </Pressable>
             <Pressable

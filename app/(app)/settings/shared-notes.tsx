@@ -236,6 +236,7 @@ export default function SharedNotesScreen() {
                       onPress={() => openDisableModal(note)}
                       className="p-2 rounded-lg active:opacity-70"
                       accessibilityLabel="Disable sharing link"
+                      style={{ marginRight: -4 }}
                     >
                       <Unlink
                         color="#ef4444"

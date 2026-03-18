@@ -191,7 +191,7 @@ export default function AccountScreen() {
                   Update Email
                 </Text>
               </View>
-              <ChevronRight size={20} color={colors.mutedForeground} />
+              <ChevronRight size={20} color={colors.mutedForeground} style={{ marginRight: -4 }} />
             </Pressable>
             <Pressable
               className="flex flex-row items-center justify-between p-4 border-t border-border active:bg-accent/50"
@@ -209,7 +209,7 @@ export default function AccountScreen() {
                   Update Password
                 </Text>
               </View>
-              <ChevronRight size={20} color={colors.mutedForeground} />
+              <ChevronRight size={20} color={colors.mutedForeground} style={{ marginRight: -4 }} />
             </Pressable>
           </View>
         </View>
