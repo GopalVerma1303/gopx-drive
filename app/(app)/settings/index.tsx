@@ -10,6 +10,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
+import { NAV_BAR_HEIGHT } from "@/lib/layout";
 import { Archive, ChevronRight, Eraser, FileText, Heart, ImageIcon, LogOut, Settings2, WandSparkles } from "lucide-react-native";
 import { useState } from "react";
 import {
@@ -126,7 +127,7 @@ export default function SettingsScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{
           padding: 16,
-          paddingBottom: insets.bottom + 100,
+          paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32,
           gap: 24,
         }}
       >

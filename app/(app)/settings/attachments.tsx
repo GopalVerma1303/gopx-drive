@@ -14,6 +14,7 @@ import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { Stack, useRouter } from "expo-router";
 import { ArrowLeft, ImageIcon, LayoutGrid, Rows2, Search, X } from "lucide-react-native";
+import { NAV_BAR_HEIGHT } from "@/lib/layout";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -263,7 +264,7 @@ export default function AttachmentsScreen() {
       ) : (
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 100 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32 }}
           refreshControl={
             <RefreshControl
               progressBackgroundColor={colors.background}

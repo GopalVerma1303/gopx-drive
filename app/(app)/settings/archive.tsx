@@ -55,6 +55,7 @@ import {
   Undo2,
   X,
 } from "lucide-react-native";
+import { NAV_BAR_HEIGHT } from "@/lib/layout";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -697,8 +698,11 @@ export default function ArchiveScreen() {
               <ScrollView
                 className="flex-1"
                 style={{ flex: 1 }}
-                contentContainerClassName="p-4 pb-24"
-                contentContainerStyle={{ flexGrow: 0 }}
+                contentContainerStyle={{
+                  padding: 16,
+                  paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32,
+                  flexGrow: 0,
+                }}
                 refreshControl={
                   <RefreshControl
                     progressBackgroundColor={colors.background}
@@ -773,8 +777,11 @@ export default function ArchiveScreen() {
               <ScrollView
                 className="flex-1"
                 style={{ flex: 1 }}
-                contentContainerClassName="p-4 pb-24"
-                contentContainerStyle={{ flexGrow: 0 }}
+                contentContainerStyle={{
+                  padding: 16,
+                  paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32,
+                  flexGrow: 0,
+                }}
                 refreshControl={
                   <RefreshControl
                     progressBackgroundColor={colors.background}
@@ -852,8 +859,11 @@ export default function ArchiveScreen() {
               <ScrollView
                 className="flex-1"
                 style={{ flex: 1 }}
-                contentContainerClassName="p-4 pb-24"
-                contentContainerStyle={{ flexGrow: 0 }}
+                contentContainerStyle={{
+                  padding: 16,
+                  paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 24,
+                  flexGrow: 0,
+                }}
                 refreshControl={
                   <RefreshControl
                     progressBackgroundColor={colors.background}

@@ -22,6 +22,7 @@ import { getTodaysAndTomorrowsEvents } from "@/lib/calendar-utils";
 import { createEvent, listEvents } from "@/lib/events";
 import { archiveFile, listFiles, updateFile, uploadFile } from "@/lib/files";
 import { listFolders } from "@/lib/folders";
+import { NAV_BAR_HEIGHT } from "@/lib/layout";
 import { archiveNote, getUnsyncedNoteIds, listNotes, updateNote } from "@/lib/notes";
 import { invalidateEventsQueries, invalidateFilesQueries, invalidateFoldersQueries, invalidateNotesListQueries } from "@/lib/query-utils";
 import type { File as FileRecord, Note } from "@/lib/supabase";
@@ -466,7 +467,7 @@ export default function HomeScreen() {
           contentContainerStyle={{
             paddingTop: 24,
             paddingHorizontal: containerPadding,
-            paddingBottom: insets.bottom + 90,
+            paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32,
             maxWidth: maxWidth,
             alignSelf: "center",
             width: "100%",

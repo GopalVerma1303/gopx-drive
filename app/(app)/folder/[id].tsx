@@ -23,6 +23,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, FileText, Files, Folder, LayoutGrid, Plus, Rows2, Search, X } from "lucide-react-native";
+import { NAV_BAR_HEIGHT } from "@/lib/layout";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -468,8 +469,11 @@ export default function FolderDetailScreen() {
               <ScrollView
                 className="flex-1"
                 style={{ flex: 1 }}
-                contentContainerClassName="p-4 pb-12"
-                contentContainerStyle={{ flexGrow: 0 }}
+                contentContainerStyle={{
+                  padding: 16,
+                  paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32,
+                  flexGrow: 0,
+                }}
                 refreshControl={
                   <RefreshControl
                     progressBackgroundColor={colors.background}
@@ -582,8 +586,11 @@ export default function FolderDetailScreen() {
               <ScrollView
                 className="flex-1"
                 style={{ flex: 1 }}
-                contentContainerClassName="p-4 pb-32"
-                contentContainerStyle={{ flexGrow: 0 }}
+                contentContainerStyle={{
+                  padding: 16,
+                  paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 24,
+                  flexGrow: 0,
+                }}
                 refreshControl={
                   <RefreshControl
                     progressBackgroundColor={colors.background}

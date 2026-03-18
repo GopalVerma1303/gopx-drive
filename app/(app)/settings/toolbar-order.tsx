@@ -11,44 +11,8 @@ import {
 import { useThemeColors } from "@/lib/use-theme-colors";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import {
-  ArrowLeft,
-  Bold,
-  Calendar,
-  Check,
-  ChevronDown,
-  ChevronUp,
-  CircleAlert,
-  Clock,
-  Code,
-  Code2,
-  Heading1,
-  Heading2,
-  Heading3,
-  Highlighter,
-  AtSign,
-  Image,
-  IndentDecrease,
-  IndentIncrease,
-  Italic,
-  Link,
-  List,
-  ListChecks,
-  ListOrdered,
-  Minus,
-  Percent,
-  Plus,
-  Quote,
-  RotateCcw,
-  RotateCw,
-  Sparkles,
-  SquareSigma,
-  Strikethrough,
-  Table,
-  Underline,
-  Wrench,
-  X,
-} from "lucide-react-native";
+import { ArrowLeft, Bold, Calendar, Check, ChevronDown, ChevronUp, CircleAlert, Clock, Code, Code2, Heading1, Heading2, Heading3, Highlighter, AtSign, Image, IndentDecrease, IndentIncrease, Italic, Link, List, ListChecks, ListOrdered, Minus, Percent, Plus, Quote, RotateCcw, RotateCw, Sparkles, SquareSigma, Strikethrough, Table, Underline, Wrench, X } from "lucide-react-native";
+import { NAV_BAR_HEIGHT } from "@/lib/layout";
 import { useEffect, useState } from "react";
 import {
   Platform,
@@ -336,7 +300,7 @@ export default function ToolbarOrderScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{
           padding: 16,
-          paddingBottom: Math.max(100, insets.bottom + 100),
+          paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32,
           gap: 24,
         }}
       >

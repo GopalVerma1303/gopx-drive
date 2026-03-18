@@ -9,7 +9,7 @@ import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useViewMode } from "@/contexts/view-mode-context";
 import { listFolders } from "@/lib/folders";
-import { CARD_LIST_MAX_WIDTH } from "@/lib/layout";
+import { CARD_LIST_MAX_WIDTH, NAV_BAR_HEIGHT } from "@/lib/layout";
 import {
   archiveNote,
   getNotesSyncStatus,
@@ -314,7 +314,7 @@ export default function NotesScreen() {
           </View>
         </View>
       </View>
-      <View className="w-full h-full">
+      <View className="flex-1 w-full">
         {/* Search Container */}
         <View className="w-full max-w-3xl mx-auto">
           <View className="flex-row items-center mx-4 my-3 px-4 rounded-2xl h-14 border border-border bg-muted">
@@ -352,7 +352,10 @@ export default function NotesScreen() {
         ) : (
           <ScrollView
             className="flex-1"
-            contentContainerClassName="p-4 pb-24"
+            contentContainerStyle={{
+              padding: 16,
+              paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32,
+            }}
             refreshControl={
               <RefreshControl
                 progressBackgroundColor={colors.background}

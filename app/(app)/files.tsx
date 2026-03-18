@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useViewMode } from "@/contexts/view-mode-context";
 import { archiveFile, listFiles, updateFile, uploadFile } from "@/lib/files";
 import { listFolders } from "@/lib/folders";
+import { NAV_BAR_HEIGHT } from "@/lib/layout";
 import { invalidateFilesQueries, invalidateFoldersQueries } from "@/lib/query-utils";
 import type { File as FileRecord } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
@@ -293,7 +294,7 @@ export default function FilesScreen() {
         title="Upload file"
       />
 
-      <View className="w-full h-full">
+      <View className="flex-1 w-full">
         {/* Search Container */}
         <View className="w-full max-w-3xl mx-auto">
           <View className="flex-row items-center mx-4 my-3 px-4 rounded-2xl h-14 border border-border bg-muted">
@@ -331,7 +332,10 @@ export default function FilesScreen() {
         ) : (
           <ScrollView
             className="flex-1"
-            contentContainerClassName="p-4 pb-24"
+            contentContainerStyle={{
+              padding: 16,
+              paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32,
+            }}
             refreshControl={
               <RefreshControl
                 progressBackgroundColor={colors.background}

@@ -12,6 +12,7 @@ import { Stack, useRouter } from "expo-router";
 import { ArrowLeft, Lock, Mail, Eye, EyeOff } from "lucide-react-native";
 import { useState } from "react";
 import { Platform, Pressable, ScrollView, View } from "react-native";
+import { NAV_BAR_HEIGHT } from "@/lib/layout";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -107,7 +108,7 @@ export default function UpdateEmailScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{
           padding: 16,
-          paddingBottom: insets.bottom + 100,
+          paddingBottom: insets.bottom + 32,
           gap: 24,
         }}
       >

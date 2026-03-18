@@ -12,6 +12,7 @@ import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import { ArrowLeft, Check, FileText, Link, Unlink } from "lucide-react-native";
+import { NAV_BAR_HEIGHT } from "@/lib/layout";
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -174,7 +175,10 @@ export default function SharedNotesScreen() {
       ) : (
         <ScrollView
           className="flex-1"
-          contentContainerClassName="p-4 pb-24"
+          contentContainerStyle={{
+            padding: 16,
+            paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32,
+          }}
           refreshControl={
             <RefreshControl
               progressBackgroundColor={colors.background}

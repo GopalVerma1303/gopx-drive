@@ -11,7 +11,7 @@ import {
   listFolders,
   updateFolder,
 } from "@/lib/folders";
-import { CARD_LIST_MAX_WIDTH } from "@/lib/layout";
+import { CARD_LIST_MAX_WIDTH, NAV_BAR_HEIGHT } from "@/lib/layout";
 import { invalidateFoldersQueries } from "@/lib/query-utils";
 import type { Folder } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
@@ -591,7 +591,10 @@ export default function FoldersScreen() {
 
         <ScrollView
           className="flex-1"
-          contentContainerClassName="p-4 pb-24"
+          contentContainerStyle={{
+            padding: 16,
+            paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32,
+          }}
           refreshControl={
             <RefreshControl
               progressBackgroundColor={colors.background}

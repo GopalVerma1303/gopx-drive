@@ -20,6 +20,7 @@ import {
   listEvents,
   updateEvent,
 } from "@/lib/events";
+import { NAV_BAR_HEIGHT } from "@/lib/layout";
 import { debounce, invalidateEventsQueries } from "@/lib/query-utils";
 import type { Event } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
@@ -345,7 +346,6 @@ export default function CalendarScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   };
-
   return (
     <View
       className="flex-1 w-full mx-auto"
@@ -402,7 +402,7 @@ export default function CalendarScreen() {
           </View>
         </View>
       </View>
-      <View className="w-full h-full">
+      <View className="flex-1 w-full">
         {/* Search Container */}
         <View className="w-full max-w-3xl mx-auto">
           <View className="flex-row items-center mx-4 my-3 px-4 rounded-2xl h-14 border border-border bg-muted">
@@ -435,7 +435,10 @@ export default function CalendarScreen() {
 
         <ScrollView
           className="flex-1"
-          contentContainerClassName="p-4 pb-24"
+          contentContainerStyle={{
+            padding: 16,
+            paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32,
+          }}
           refreshControl={
             <RefreshControl
               progressBackgroundColor={colors.background}
