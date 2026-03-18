@@ -115,7 +115,7 @@ export default function UpdatePasswordScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{
           padding: 16,
-          paddingBottom: insets.bottom + 32,
+          paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32,
           gap: 24,
         }}
       >

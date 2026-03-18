@@ -556,7 +556,7 @@ export default function FoldersScreen() {
         </Modal>
       )}
 
-      <View className="w-full h-full">
+      <View className="flex-1 w-full">
         {/* Search bar */}
         <View className="w-full max-w-3xl mx-auto">
           <View className="flex-row items-center mx-4 my-3 px-4 rounded-2xl h-14 border border-border bg-muted">

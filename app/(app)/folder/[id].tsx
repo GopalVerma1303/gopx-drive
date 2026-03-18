@@ -418,7 +418,7 @@ export default function FolderDetailScreen() {
         title="Upload to folder"
       />
 
-      <View className="w-full h-full">
+      <View className="flex-1 w-full">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "notes" | "files")} className="flex-1">
           <View className="w-full max-w-3xl mx-auto">
             <View className="flex-row items-center mx-4 my-3 gap-2">
@@ -588,7 +588,7 @@ export default function FolderDetailScreen() {
                 style={{ flex: 1 }}
                 contentContainerStyle={{
                   padding: 16,
-                  paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 24,
+                  paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32,
                   flexGrow: 0,
                 }}
                 refreshControl={

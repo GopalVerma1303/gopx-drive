@@ -612,7 +612,7 @@ export default function ArchiveScreen() {
           </View>
         </View>
       </View>
-      <View className="w-full h-full">
+      <View className="flex-1 w-full">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "notes" | "files" | "folders")} className="flex-1">
           {/* Search and Tabs Container */}
           <View className="w-full max-w-3xl mx-auto">
@@ -861,7 +861,7 @@ export default function ArchiveScreen() {
                 style={{ flex: 1 }}
                 contentContainerStyle={{
                   padding: 16,
-                  paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 24,
+                  paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32,
                   flexGrow: 0,
                 }}
                 refreshControl={
