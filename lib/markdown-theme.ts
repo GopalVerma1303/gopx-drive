@@ -345,7 +345,7 @@ ${getHighlightCss(colors)}
 /* GitHub Alerts (NOTE, TIP, IMPORTANT, WARNING, CAUTION) */
 .markdown-preview .markdown-alert {
   border-left-width: 4px; border-left-style: solid;
-  padding: 0.5em 1em; margin: 1em 0;
+  padding: 0 1em; margin: 1em 0;
   color: ${colors.foreground};
   background-color: transparent;
   white-space: normal; overflow-wrap: break-word; word-break: break-word;
