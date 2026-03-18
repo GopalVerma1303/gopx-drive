@@ -281,6 +281,52 @@ const ENHANCE_MERMAID_SCRIPT = `
 })(); true;
 `;
 
+/** Injected into WebView: turn .sandbox-block divs into iframes rendering the raw HTML source. */
+const ENHANCE_SANDBOX_SCRIPT = `
+(function(){
+  try {
+    var container = document.getElementById('content');
+    if (!container) return;
+    var sandboxes = container.querySelectorAll('.sandbox-block');
+    if (!sandboxes.length) return;
+
+    var COPY_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
+    var CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+
+    sandboxes.forEach(function(node) {
+      if (node.querySelector('iframe')) return;
+
+      var source = node.getAttribute('data-sandbox-source') || '';
+      var iframe = document.createElement('iframe');
+      iframe.setAttribute('sandbox', 'allow-scripts');
+      iframe.srcdoc = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 16px; color: #333; background: #fff; }</style></head><body>' + source + '</body></html>';
+      
+      var copyBtn = document.createElement('button');
+      copyBtn.type = 'button';
+      copyBtn.className = 'sandbox-copy-btn';
+      copyBtn.innerHTML = COPY_SVG;
+      copyBtn.setAttribute('aria-label', 'Copy sandbox HTML');
+      copyBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'copyCode', text: source, index: -1 }));
+        }
+        copyBtn.classList.add('copied');
+        copyBtn.innerHTML = CHECK_SVG;
+        setTimeout(function() {
+          copyBtn.classList.remove('copied');
+          copyBtn.innerHTML = COPY_SVG;
+        }, 2000);
+      });
+
+      node.appendChild(iframe);
+      node.appendChild(copyBtn);
+    });
+  } catch (e) {}
+})(); true;
+`;
+
 /** Injected into WebView: find math delimited by $ or $$ and evaluate using auto-render. */
 const RENDER_MATH_SCRIPT = `
 (function(){
@@ -360,6 +406,7 @@ export function MarkdownPreviewWebView({
         }
         ${RENDER_MERMAID_SCRIPT}
         ${ENHANCE_MERMAID_SCRIPT}
+        ${ENHANCE_SANDBOX_SCRIPT}
         ${RENDER_MATH_SCRIPT}
       } catch(e) {}
     })(); true;`;
@@ -411,6 +458,7 @@ export function MarkdownPreviewWebView({
           // Post-processing (Heavy stuff should run on the live DOM)
           ${RENDER_MERMAID_SCRIPT} 
           ${ENHANCE_MERMAID_SCRIPT} 
+          ${ENHANCE_SANDBOX_SCRIPT}
           ${RENDER_MATH_SCRIPT}
         } catch(e) { 
            console.error("Injection error:", e);

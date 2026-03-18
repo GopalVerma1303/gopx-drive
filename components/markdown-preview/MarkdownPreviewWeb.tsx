@@ -59,6 +59,8 @@ const TABLE_SCROLL_CLASS = "markdown-table-scroll";
 const IMAGE_WITH_CAPTION_CLASS = "image-with-caption";
 const MERMAID_BLOCK_CLASS = "mermaid-block";
 const MERMAID_CONTROLS_CLASS = "mermaid-controls";
+const SANDBOX_BLOCK_CLASS = "sandbox-block";
+const SANDBOX_COPY_BTN_CLASS = "sandbox-copy-btn";
 
 /**
  * Best-effort clipboard copy that works on more mobile browsers.
@@ -332,6 +334,58 @@ function enhanceMermaidBlocks(container: HTMLDivElement) {
   });
 }
 
+function enhanceSandboxBlocks(container: HTMLDivElement) {
+  const sandboxNodes = container.querySelectorAll<HTMLElement>(".sandbox-block");
+  sandboxNodes.forEach((node) => {
+    if (node.querySelector("iframe")) return;
+
+    const source = node.getAttribute("data-sandbox-source") ?? "";
+    
+    // Create iframe
+    const iframe = document.createElement("iframe");
+    iframe.sandbox.add("allow-scripts");
+    iframe.srcdoc = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              margin: 16px;
+              color: #333;
+              background: #fff;
+            }
+          </style>
+        </head>
+        <body>${source}</body>
+      </html>
+    `;
+
+    // Create copy button
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = SANDBOX_COPY_BTN_CLASS;
+    copyBtn.innerHTML = COPY_ICON_SVG;
+    copyBtn.setAttribute("aria-label", "Copy sandbox HTML");
+    copyBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      await copyTextToClipboard(source);
+      copyBtn.classList.add("copied");
+      copyBtn.innerHTML = CHECK_ICON_SVG;
+      setTimeout(() => {
+        copyBtn.classList.remove("copied");
+        copyBtn.innerHTML = COPY_ICON_SVG;
+      }, COPIED_DURATION_MS);
+    });
+
+    node.appendChild(iframe);
+    node.appendChild(copyBtn);
+  });
+}
+
 const LINE_INDEX_ATTR = "data-line-index";
 
 /**
@@ -527,6 +581,7 @@ export function MarkdownPreviewWeb({
         } catch {}
       }
       enhanceMermaidBlocks(container);
+      enhanceSandboxBlocks(container);
     };
     const debouncedHeavyEnhancers = () => {
       if (debounceTimer) clearTimeout(debounceTimer);

@@ -407,7 +407,7 @@ export default function CodeMirrorDOM({
       },
       {
         support: htmlSupport,
-        names: ["html", "htm", "xhtml"],
+        names: ["html", "htm", "xhtml", "sandbox"],
       },
       {
         support: xmlSupport,

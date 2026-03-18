@@ -130,7 +130,7 @@ if (typeof document !== "undefined") {
     },
     {
       support: htmlSupport,
-      names: ["html", "htm", "xhtml"],
+      names: ["html", "htm", "xhtml", "sandbox"],
     },
     {
       support: xmlSupport,

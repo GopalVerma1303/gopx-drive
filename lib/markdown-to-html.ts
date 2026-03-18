@@ -141,6 +141,71 @@ function rehypeMermaidBlocks() {
 }
 
 /**
+ * Rehype plugin: turn <pre><code class="language-sandbox">…</code></pre>
+ * into <div class="sandbox-block" data-sandbox-source="…"></div>.
+ * This raw HTML source will be rendered inside an isolated iframe by the preview layer.
+ */
+function rehypeSandboxBlocks() {
+  return (tree: HastNode) => {
+    const visit = (node: HastNode, _index: number, parent: HastNode | null) => {
+      if (node.type === "element" && node.tagName === "pre" && node.children) {
+        const children = node.children;
+        const codeChild = children.find(
+          (c) => c.type === "element" && c.tagName === "code"
+        ) as HastNode | undefined;
+
+        if (codeChild && codeChild.properties) {
+          const className = codeChild.properties.className as
+            | string
+            | string[]
+            | undefined;
+          const classes =
+            typeof className === "string"
+              ? className.split(/\s+/)
+              : Array.isArray(className)
+              ? className
+              : [];
+          const isSandbox = classes.includes("language-sandbox");
+
+          if (isSandbox) {
+            let raw = "";
+            if (codeChild.children) {
+              raw = codeChild.children
+                .map((c) => (c.type === "text" ? c.value ?? "" : ""))
+                .join("");
+            }
+
+            const sandboxNode: HastNode = {
+              type: "element",
+              tagName: "div",
+              properties: {
+                className: ["sandbox-block"],
+                "data-sandbox-source": raw,
+              },
+              children: [],
+            };
+
+            if (parent && Array.isArray(parent.children)) {
+              const idx = parent.children.indexOf(node);
+              if (idx !== -1) {
+                parent.children[idx] = sandboxNode;
+              }
+            }
+            return;
+          }
+        }
+      }
+
+      if (node.children && Array.isArray(node.children)) {
+        node.children.forEach((child, idx) => visit(child, idx, node));
+      }
+    };
+
+    visit(tree, 0, null);
+  };
+}
+
+/**
  * Rehype plugin: turn @tags into <span class="mention-tag">@tag</span>
  * Applies to text nodes only.
  */
@@ -469,7 +534,8 @@ const sanitizeSchema = {
       ...(defaultSchema.attributes?.div || []),
       "className",
       "data-mermaid-source",
-      ["className", "math", "math-display"],
+      "data-sandbox-source",
+      ["className", "math", "math-display", "sandbox-block"],
     ],
     annotation: ["encoding"],
   },
@@ -484,6 +550,7 @@ function createProcessor() {
     .use(remarkGfm)
     .use(remarkRehype, { allowDangerousHtml: false })
     .use(rehypeMermaidBlocks)
+    .use(rehypeSandboxBlocks)
     .use(rehypeMentions)
     .use(rehypeMark)
     .use(rehypeUnderline)

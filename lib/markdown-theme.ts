@@ -332,6 +332,59 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
   height: auto;
   transform-origin: center center;
 }
+/* Sandbox blocks: isolated HTML rendering inside an iframe. */
+.markdown-preview .sandbox-block {
+  position: relative;
+  z-index: 0;
+  background: #ffffff;
+  margin: 0 0 1.5em 0;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid ${colors.ring};
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  min-height: 150px;
+}
+.markdown-preview .sandbox-block iframe {
+  width: 100%;
+  height: 300px; /* Default height for the sandbox preview */
+  border: none;
+  background: white;
+  display: block;
+}
+.markdown-preview .sandbox-block .sandbox-copy-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid ${colors.ring};
+  background: ${colors.background};
+  color: ${colors.foreground};
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  z-index: 2;
+}
+.markdown-preview .sandbox-block .sandbox-copy-btn:hover {
+  background: ${colors.background};
+  border-color: ${colors.ring};
+}
+.markdown-preview .sandbox-block .sandbox-copy-btn.copied {
+  color: ${colors.foreground};
+}
+.markdown-preview .sandbox-block .sandbox-copy-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
 ${getHighlightCss(colors)}
 /* Blockquote: border + soft padding; slightly faded inner text (match editor) */
 .markdown-preview blockquote {
