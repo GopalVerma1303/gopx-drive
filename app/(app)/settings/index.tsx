@@ -6,11 +6,11 @@ import { useAlert } from "@/contexts/alert-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { clearAppCache } from "@/lib/clear-cache";
+import { NAV_BAR_HEIGHT } from "@/lib/layout";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { NAV_BAR_HEIGHT } from "@/lib/layout";
 import { Archive, ChevronRight, Eraser, FileText, Heart, ImageIcon, LogOut, Settings2, WandSparkles } from "lucide-react-native";
 import { useState } from "react";
 import {
@@ -457,7 +457,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Footer */}
-        <View className="w-full max-w-2xl mx-auto" style={{ marginTop: 8, marginBottom: 24 }}>
+        <View className="w-full max-w-2xl mx-auto mt-4 mb-12">
           <View
             style={{
               alignItems: "center",
