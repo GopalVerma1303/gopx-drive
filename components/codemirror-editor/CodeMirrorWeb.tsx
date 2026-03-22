@@ -525,6 +525,47 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
         }
       );
 
+      const hashtagPlugin = ViewPlugin.fromClass(
+        class {
+          decorations: any;
+
+          constructor(view: any) {
+            this.decorations = this.getHashtags(view);
+          }
+
+          update(update: any) {
+            if (update.docChanged || update.viewportChanged) {
+              this.decorations = this.getHashtags(update.view);
+            }
+          }
+
+          getHashtags(view: any) {
+            let widgets: any[] = [];
+            const HASHTAG_REGEX = /(^|\s)(#[\w-]+)(?=\b|\s|$)/g;
+
+            for (let { from, to } of view.visibleRanges) {
+              const text: string = view.state.doc.sliceString(from, to);
+              let match;
+              HASHTAG_REGEX.lastIndex = 0;
+
+              while ((match = HASHTAG_REGEX.exec(text)) !== null) {
+                const mSpace = match[1];
+                const mTag = match[2];
+
+                const matchStart = from + match.index + mSpace.length;
+                const matchEnd = matchStart + mTag.length;
+
+                widgets.push(Decoration.mark({ class: "cm-hashtag-tag" }).range(matchStart, matchEnd));
+              }
+            }
+            return Decoration.set(widgets);
+          }
+        },
+        {
+          decorations: (v: any) => v.decorations,
+        }
+      );
+
       const state = EditorState.create({
         doc: initial,
         extensions: [
@@ -543,6 +584,7 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
             decorations: (v: any) => v.decorations
           }),
           mentionPlugin,
+          hashtagPlugin,
           history(),
           keymap.of([...customMarkdownKeymap, ...defaultKeymap, indentWithTab]),
           EditorView.lineWrapping,

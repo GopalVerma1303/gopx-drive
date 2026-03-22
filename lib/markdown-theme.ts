@@ -42,6 +42,8 @@ export interface MarkdownThemeColors {
   blockquoteBorder?: string;
   /** The color for @tags like @dinner */
   mentionTag?: string;
+  /** The color for #hashtags like #notes */
+  hashtagTag?: string;
   /** When true, use dark variant for code block syntax highlighting (e.g. GitHub dark). */
   isDark?: boolean;
 }
@@ -52,6 +54,8 @@ const DEFAULT_CODE_BG = "rgba(128,128,128,0.15)";
 const DEFAULT_QUOTE_BORDER = "rgba(128,128,128,0.5)";
 const DEFAULT_MENTION_TAG_LIGHT = "#0d9488"; // teal-600
 const DEFAULT_MENTION_TAG_DARK = "#2dd4bf"; // teal-400
+const DEFAULT_HASHTAG_TAG_LIGHT = "#9333ea"; // purple-600
+const DEFAULT_HASHTAG_TAG_DARK = "#c084fc"; // purple-400
 
 /** Build theme colors from app palette (useThemeColors). Pass isDark for code block syntax theme (e.g. GitHub dark). */
 export function getMarkdownThemeFromPalette(
@@ -69,6 +73,7 @@ export function getMarkdownThemeFromPalette(
         codeBackground: palette.codeBackground ?? DEFAULT_CODE_BG,
         blockquoteBorder: palette.blockquoteBorder ?? DEFAULT_QUOTE_BORDER,
         mentionTag: isDark ? DEFAULT_MENTION_TAG_DARK : DEFAULT_MENTION_TAG_LIGHT,
+        hashtagTag: isDark ? DEFAULT_HASHTAG_TAG_DARK : DEFAULT_HASHTAG_TAG_LIGHT,
         isDark,
     };
 }
@@ -81,6 +86,7 @@ function resolveColors(colors: MarkdownThemeColors) {
     codeBg: colors.codeBackground ?? DEFAULT_CODE_BG,
     quoteBorder: colors.blockquoteBorder ?? DEFAULT_QUOTE_BORDER,
     mentionTag: colors.mentionTag ?? (colors.isDark ? DEFAULT_MENTION_TAG_DARK : DEFAULT_MENTION_TAG_LIGHT),
+    hashtagTag: colors.hashtagTag ?? (colors.isDark ? DEFAULT_HASHTAG_TAG_DARK : DEFAULT_HASHTAG_TAG_LIGHT),
   };
 }
 
@@ -290,6 +296,9 @@ export function getPreviewCss(colors: MarkdownThemeColors): string {
 }
 .markdown-preview .mention-tag {
   color: ${colors.mentionTag ?? (colors.isDark ? "#facc15" : "#ca8a04")};
+}
+.markdown-preview .hashtag-tag {
+  color: ${colors.hashtagTag ?? (colors.isDark ? "#c084fc" : "#9333ea")};
 }
 .markdown-preview .mermaid-block .mermaid-copy-btn svg {
   width: 16px;
@@ -826,7 +835,11 @@ export function getCodeMirrorThemeConfig(
     },
 
     ".cm-mention-tag": {
-      color: colors.mentionTag ?? (colors.isDark ? "#2dd4bf" : "#0d9488"),
+      color: colors.mentionTag ?? (colors.isDark ? DEFAULT_MENTION_TAG_DARK : DEFAULT_MENTION_TAG_LIGHT),
+      fontWeight: "500",
+    },
+    ".cm-hashtag-tag": {
+      color: colors.hashtagTag ?? (colors.isDark ? DEFAULT_HASHTAG_TAG_DARK : DEFAULT_HASHTAG_TAG_LIGHT),
       fontWeight: "500",
     },
     ".cm-math-marker": {
@@ -876,7 +889,8 @@ export function getCodeMirrorWebViewInjectCss(colors: MarkdownThemeColors): stri
     `.blockquote-wrapper .cm-line { opacity: 0.7 !important; } ` +
     `.cm-underline { text-decoration: underline !important; } ` +
 
-    `.cm-mention-tag { color: ${colors.mentionTag ?? (colors.isDark ? "#facc15" : "#ca8a04")} !important; font-weight: 500 !important; } ` +
+    `.cm-mention-tag { color: ${colors.mentionTag ?? (colors.isDark ? DEFAULT_MENTION_TAG_DARK : DEFAULT_MENTION_TAG_LIGHT)} !important; font-weight: 500 !important; } ` +
+    `.cm-hashtag-tag { color: ${colors.hashtagTag ?? (colors.isDark ? DEFAULT_HASHTAG_TAG_DARK : DEFAULT_HASHTAG_TAG_LIGHT)} !important; font-weight: 500 !important; } ` +
     `.cm-math-marker { opacity: 0.5 !important; } ` +
     `.cm-highlight { background-color: rgb(250 204 21 / 0.4) !important; padding: 0.1em 0.2em !important; border-radius: 0px !important; } ` +
     `.cm-search-match { background-color: ${colors.isDark ? "rgba(255, 255, 0, 0.25)" : "rgba(255, 255, 0, 0.2)"} !important; } ` +

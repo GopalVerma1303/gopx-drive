@@ -263,6 +263,62 @@ function rehypeMentions() {
 }
 
 /**
+ * Rehype plugin: turn #hashtags into <span class="hashtag-tag">#hashtag</span>
+ * Applies to text nodes only.
+ */
+function rehypeHashtags() {
+  return (tree: HastNode) => {
+    visit(tree as any, "text", (node: HastNode, index: number | undefined, parent: HastNode | undefined) => {
+      // Don't parse inside code blocks or already styled elements
+      if (parent && (parent.tagName === "code" || parent.tagName === "pre" || parent.tagName === "a")) {
+        return;
+      }
+
+      if (node.value && typeof node.value === "string") {
+        const text = node.value;
+        const HASHTAG_REGEX = /(^|\s)(#[\w-]+)(?=\b|\s|$)/g;
+
+        if (!HASHTAG_REGEX.test(text)) return;
+        HASHTAG_REGEX.lastIndex = 0; // Reset regex
+
+        const newChildren: HastNode[] = [];
+        let lastIndex = 0;
+        let match;
+
+        while ((match = HASHTAG_REGEX.exec(text)) !== null) {
+          const mSpace = match[1]; // Space or empty
+          const mTag = match[2]; // #hashtag
+          
+          const matchStart = match.index + mSpace.length;
+          
+          if (matchStart > lastIndex) {
+            newChildren.push({ type: "text", value: text.slice(lastIndex, matchStart) });
+          }
+
+          newChildren.push({
+            type: "element",
+            tagName: "span",
+            properties: { className: ["hashtag-tag"] },
+            children: [{ type: "text", value: mTag }]
+          });
+
+          lastIndex = matchStart + mTag.length;
+        }
+
+        if (lastIndex < text.length) {
+          newChildren.push({ type: "text", value: text.slice(lastIndex) });
+        }
+
+        if (parent && Array.isArray(parent.children) && typeof index === "number") {
+          parent.children.splice(index, 1, ...newChildren);
+          return index + newChildren.length;
+        }
+      }
+    });
+  };
+}
+
+/**
  * Rehype plugin: turn ==text== into <mark>text</mark>
  * Applies to text nodes only.
  */
@@ -528,7 +584,7 @@ const sanitizeSchema = {
     ],
     span: [
       ...(defaultSchema.attributes?.span ?? []),
-      ["className", /^hljs-/, /^katex-/, "mention-tag", "math", "math-inline", "math-display"],
+      ["className", /^hljs-/, /^katex-/, "mention-tag", "hashtag-tag", "math", "math-inline", "math-display"],
     ],
     div: [
       ...(defaultSchema.attributes?.div || []),
@@ -552,6 +608,7 @@ function createProcessor() {
     .use(rehypeMermaidBlocks)
     .use(rehypeSandboxBlocks)
     .use(rehypeMentions)
+    .use(rehypeHashtags)
     .use(rehypeMark)
     .use(rehypeUnderline)
     .use(rehypeAlerts)

@@ -52,6 +52,47 @@ const mentionPlugin = ViewPlugin.fromClass(
   }
 );
 
+const hashtagPlugin = ViewPlugin.fromClass(
+  class {
+    decorations;
+
+    constructor(view) {
+      this.decorations = this.getHashtags(view);
+    }
+
+    update(update) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = this.getHashtags(update.view);
+      }
+    }
+
+    getHashtags(view) {
+      let widgets = [];
+      const HASHTAG_REGEX = /(^|\s)(#[\w-]+)(?=\b|\s|$)/g;
+
+      for (let { from, to } of view.visibleRanges) {
+        const text = view.state.doc.sliceString(from, to);
+        let match;
+        HASHTAG_REGEX.lastIndex = 0;
+        
+        while ((match = HASHTAG_REGEX.exec(text)) !== null) {
+          const mSpace = match[1];
+          const mTag = match[2];
+          
+          const matchStart = from + match.index + mSpace.length;
+          const matchEnd = matchStart + mTag.length;
+          
+          widgets.push(Decoration.mark({ class: "cm-hashtag-tag" }).range(matchStart, matchEnd));
+        }
+      }
+      return Decoration.set(widgets);
+    }
+  },
+  {
+    decorations: (v) => v.decorations,
+  }
+);
+
 const CODE_BLOCK_NODES = new Set(["FencedCode", "CodeBlock"]);
 const CODE_BLOCK_WRAPPER_CLASS = "code-block-wrapper";
 const codeBlockWrapper = BlockWrapper.create({
@@ -254,6 +295,7 @@ function createEditor(container, initialValue, placeholder) {
       markdown(),
       history(),
       mentionPlugin,
+      hashtagPlugin,
       blockWrapperField,
       EditorView.blockWrappers.of((view) => view.state.field(blockWrapperField)),
       alertTextPlugin,
