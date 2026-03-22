@@ -36,6 +36,7 @@ import {
   SquareSigma,
   Strikethrough,
   Table,
+  Tag,
   Underline,
   Wrench,
 } from "lucide-react-native";
@@ -340,6 +341,11 @@ export function MarkdownToolbar({
     wrapOrInsert("==", "==", 2);
   };
 
+  const handleTag = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onInsertText("#", 1);
+  };
+
   const handleMention = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onInsertText("@", 1);
@@ -380,6 +386,7 @@ export function MarkdownToolbar({
     insertAlert: handleInsertAlert,
     aiAssistant: handleAIAssistant,
     highlighter: handleHighlighter,
+    tag: handleTag,
     mention: handleMention,
     toolbarSettings: handleToolbarSettings,
   };
@@ -413,6 +420,7 @@ export function MarkdownToolbar({
     insertAlert: CircleAlert,
     aiAssistant: Sparkles,
     highlighter: Highlighter,
+    tag: Tag,
     mention: AtSign,
     toolbarSettings: Wrench,
   };
@@ -446,6 +454,7 @@ export function MarkdownToolbar({
     insertAlert: "Insert Alert",
     aiAssistant: "AI Assistant",
     highlighter: "Highlighter",
+    tag: "Tag",
     mention: "Mention",
     toolbarSettings: "Toolbar Settings",
   };
@@ -479,6 +488,7 @@ export function MarkdownToolbar({
     insertAlert: false,
     aiAssistant: false,
     highlighter: false,
+    tag: false,
     mention: false,
     toolbarSettings: false,
   };

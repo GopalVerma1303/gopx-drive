@@ -11,7 +11,7 @@ import {
 import { useThemeColors } from "@/lib/use-theme-colors";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { ArrowLeft, Bold, Calendar, Check, ChevronDown, ChevronUp, CircleAlert, Clock, Code, Code2, Heading1, Heading2, Heading3, Highlighter, AtSign, Image, IndentDecrease, IndentIncrease, Italic, Link, List, ListChecks, ListOrdered, Minus, Percent, Plus, Quote, RotateCcw, RotateCw, Sparkles, SquareSigma, Strikethrough, Table, Underline, Wrench, X } from "lucide-react-native";
+import { ArrowLeft, Bold, Calendar, Check, ChevronDown, ChevronUp, CircleAlert, Clock, Code, Code2, Heading1, Heading2, Heading3, Highlighter, AtSign, Image, IndentDecrease, IndentIncrease, Italic, Link, List, ListChecks, ListOrdered, Minus, Percent, Plus, Quote, RotateCcw, RotateCw, Sparkles, SquareSigma, Strikethrough, Table, Tag, Underline, Wrench, X } from "lucide-react-native";
 import { NAV_BAR_HEIGHT } from "@/lib/layout";
 import { useEffect, useState } from "react";
 import {
@@ -51,6 +51,7 @@ const TOOLBAR_ITEMS: Record<ToolbarItemId, ToolbarItem> = {
   outdent: { id: "outdent", label: "Outdent", icon: IndentDecrease },
   horizontalRule: { id: "horizontalRule", label: "Horizontal Rule", icon: Minus },
   highlighter: { id: "highlighter", label: "Highlighter", icon: Highlighter },
+  tag: { id: "tag", label: "Tag", icon: Tag },
   mention: { id: "mention", label: "Mention", icon: AtSign },
   date: { id: "date", label: "Date", icon: Calendar },
   timeStamp: { id: "timeStamp", label: "Time Stamp", icon: Clock },

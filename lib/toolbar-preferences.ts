@@ -32,7 +32,8 @@ export type ToolbarItemId =
   | "timeStamp"
   | "comments"
   | "mathBlock"
-  | "insertAlert";
+  | "insertAlert"
+  | "tag";
 
 export interface ToolbarPreferences {
   visible: ToolbarItemId[];
@@ -67,6 +68,7 @@ const DEFAULT_VISIBLE: ToolbarItemId[] = [
   "insertAlert",
   "comments",
   "highlighter",
+  "tag",
   "mention",
   "aiAssistant",
   "toolbarSettings",
