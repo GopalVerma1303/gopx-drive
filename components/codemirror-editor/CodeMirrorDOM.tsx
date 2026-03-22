@@ -575,6 +575,44 @@ export default function CodeMirrorDOM({
       }
     );
 
+    const linkPlugin = ViewPlugin.fromClass(
+      class {
+        decorations: any;
+
+        constructor(view: EditorView) {
+          this.decorations = this.getLinks(view);
+        }
+
+        update(update: any) {
+          if (update.docChanged || update.viewportChanged) {
+            this.decorations = this.getLinks(update.view);
+          }
+        }
+
+        getLinks(view: EditorView) {
+          let widgets: any[] = [];
+          const URL_REGEX = /\b(?:https?:\/\/|www\.)[^\s<>()]+/gi;
+
+          for (let { from, to } of view.visibleRanges) {
+            const text: string = view.state.doc.sliceString(from, to);
+            let match;
+            URL_REGEX.lastIndex = 0;
+
+            while ((match = URL_REGEX.exec(text)) !== null) {
+              const matchStart = from + match.index;
+              const matchEnd = matchStart + match[0].length;
+
+              widgets.push(Decoration.mark({ class: "cm-link" }).range(matchStart, matchEnd));
+            }
+          }
+          return Decoration.set(widgets);
+        }
+      },
+      {
+        decorations: (v: any) => v.decorations,
+      }
+    );
+
     const state = EditorState.create({
       doc: initial,
       extensions: [
@@ -583,6 +621,7 @@ export default function CodeMirrorDOM({
         ...codeBlockAndBlockquotePlugins,
         mentionPlugin,
         hashtagPlugin,
+        linkPlugin,
         ViewPlugin.fromClass(class {
           decorations: DecorationSet;
           constructor(view: EditorView) {
