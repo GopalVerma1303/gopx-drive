@@ -775,6 +775,7 @@ export function getCodeMirrorThemeConfig(
   const fg = colors.foreground;
   const codeBg = colors.codeBackground ?? DEFAULT_CODE_BG;
   const quoteBorder = colors.blockquoteBorder ?? DEFAULT_QUOTE_BORDER;
+  const { link } = resolveColors(colors);
   const codeBlockBg = hexToRgba(colors.background, colors.isDark ? 0.22 : 0.06);
   const editorFontSizePx = Math.round(MARKDOWN_FONT_SIZE * editorFontScale);
   return {
@@ -831,6 +832,10 @@ export function getCodeMirrorThemeConfig(
       opacity: "0.7",
     },
     ".cm-underline": {
+      textDecoration: "underline",
+    },
+    ".cm-link, .cm-url": {
+      color: link,
       textDecoration: "underline",
     },
 

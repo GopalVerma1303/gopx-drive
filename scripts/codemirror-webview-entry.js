@@ -93,6 +93,44 @@ const hashtagPlugin = ViewPlugin.fromClass(
   }
 );
 
+const linkPlugin = ViewPlugin.fromClass(
+  class {
+    decorations;
+
+    constructor(view) {
+      this.decorations = this.getLinks(view);
+    }
+
+    update(update) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = this.getLinks(update.view);
+      }
+    }
+
+    getLinks(view) {
+      let widgets = [];
+      const URL_REGEX = /\b(?:https?:\/\/|www\.)[^\s<>()]+/gi;
+
+      for (let { from, to } of view.visibleRanges) {
+        const text = view.state.doc.sliceString(from, to);
+        let match;
+        URL_REGEX.lastIndex = 0;
+        
+        while ((match = URL_REGEX.exec(text)) !== null) {
+          const matchStart = from + match.index;
+          const matchEnd = matchStart + match[0].length;
+          
+          widgets.push(Decoration.mark({ class: "cm-link" }).range(matchStart, matchEnd));
+        }
+      }
+      return Decoration.set(widgets);
+    }
+  },
+  {
+    decorations: (v) => v.decorations,
+  }
+);
+
 const CODE_BLOCK_NODES = new Set(["FencedCode", "CodeBlock"]);
 const CODE_BLOCK_WRAPPER_CLASS = "code-block-wrapper";
 const codeBlockWrapper = BlockWrapper.create({
@@ -296,6 +334,7 @@ function createEditor(container, initialValue, placeholder) {
       history(),
       mentionPlugin,
       hashtagPlugin,
+      linkPlugin,
       blockWrapperField,
       EditorView.blockWrappers.of((view) => view.state.field(blockWrapperField)),
       alertTextPlugin,
