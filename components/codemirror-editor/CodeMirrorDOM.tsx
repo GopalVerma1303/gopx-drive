@@ -247,6 +247,7 @@ function buildThemeFromProps(props: {
   blockquoteBorder?: string;
   ringColor?: string;
   mentionTag?: string;
+  hashtagTag?: string;
   isDark?: boolean;
 }): MarkdownThemeColors {
   return {
@@ -260,6 +261,7 @@ function buildThemeFromProps(props: {
     codeBackground: props.codeBackground,
     blockquoteBorder: props.blockquoteBorder,
     mentionTag: props.mentionTag,
+    hashtagTag: props.hashtagTag,
     isDark: props.isDark,
   };
 }
@@ -294,6 +296,7 @@ interface CodeMirrorDOMProps {
   muted?: string;
   mutedForeground?: string;
   mentionTag?: string;
+  hashtagTag?: string;
   isDark?: boolean;
   extraBottomPadding?: number;
   dom?: import("expo/dom").DOMProps;
@@ -316,6 +319,7 @@ export default function CodeMirrorDOM({
   muted,
   mutedForeground,
   mentionTag,
+  hashtagTag,
   isDark,
   extraBottomPadding,
   ref: refProp,
@@ -352,6 +356,7 @@ export default function CodeMirrorDOM({
       codeBackground,
       blockquoteBorder,
       mentionTag,
+      hashtagTag,
       ringColor,
       isDark,
     });
@@ -529,6 +534,47 @@ export default function CodeMirrorDOM({
       }
     );
 
+    const hashtagPlugin = ViewPlugin.fromClass(
+      class {
+        decorations: any;
+
+        constructor(view: EditorView) {
+          this.decorations = this.getHashtags(view);
+        }
+
+        update(update: any) {
+          if (update.docChanged || update.viewportChanged) {
+            this.decorations = this.getHashtags(update.view);
+          }
+        }
+
+        getHashtags(view: EditorView) {
+          let widgets: any[] = [];
+          const HASHTAG_REGEX = /(^|\s)(#[\w-]+)(?=\b|\s|$)/g;
+
+          for (let { from, to } of view.visibleRanges) {
+            const text: string = view.state.doc.sliceString(from, to);
+            let match;
+            HASHTAG_REGEX.lastIndex = 0;
+
+            while ((match = HASHTAG_REGEX.exec(text)) !== null) {
+              const mSpace = match[1];
+              const mTag = match[2];
+
+              const matchStart = from + match.index + mSpace.length;
+              const matchEnd = matchStart + mTag.length;
+
+              widgets.push(Decoration.mark({ class: "cm-hashtag-tag" }).range(matchStart, matchEnd));
+            }
+          }
+          return Decoration.set(widgets);
+        }
+      },
+      {
+        decorations: (v: any) => v.decorations,
+      }
+    );
+
     const state = EditorState.create({
       doc: initial,
       extensions: [
@@ -536,6 +582,7 @@ export default function CodeMirrorDOM({
         syntaxHighlighting(highlightStyle),
         ...codeBlockAndBlockquotePlugins,
         mentionPlugin,
+        hashtagPlugin,
         ViewPlugin.fromClass(class {
           decorations: DecorationSet;
           constructor(view: EditorView) {

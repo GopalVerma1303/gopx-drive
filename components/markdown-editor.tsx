@@ -2915,6 +2915,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
               blockquoteBorder={colors.blockquoteBorder}
               ringColor={colors.ring}
               mentionTag={theme.mentionTag}
+              hashtagTag={theme.hashtagTag}
               isDark={isDark}
               extraBottomPadding={extraBottomPadding}
             />
