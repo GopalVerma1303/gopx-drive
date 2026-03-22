@@ -144,8 +144,8 @@ export default function FoldersScreen() {
     .filter((folder) =>
       folder.name.toLowerCase().includes(searchQuery.toLowerCase())
     )
-    .sort((a, b) =>
-      (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" })
+    .sort((a, b) => 
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
     );
 
   const openEditFolderModal = (folder: Folder) => {
