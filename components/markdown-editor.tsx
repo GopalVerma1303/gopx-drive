@@ -2480,6 +2480,20 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           </View>
         );
       },
+      ins: (node: any, children: any, parent: any, styles: any) => {
+        return (
+          <RNText key={node.key} style={{ textDecorationLine: "underline" as const }} selectable={true}>
+            {children}
+          </RNText>
+        );
+      },
+      u: (node: any, children: any, parent: any, styles: any) => {
+        return (
+          <RNText key={node.key} style={{ textDecorationLine: "underline" as const }} selectable={true}>
+            {children}
+          </RNText>
+        );
+      },
       hr: (node: any, children: any, parent: any, styles: any) => {
         return (
           <View
@@ -2834,7 +2848,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     const showPreview = isPreview || previewOnly;
     const previewValue = useMemo(() => {
       if (!showPreview) return value;
-      return linkifyMarkdown(value);
+      // Pre-process ++text++ into <u>text</u> for the native renderer if needed, 
+      // or just ensure the parser sees it as an 'ins' or 'u' node.
+      // react-native-markdown-display doesn't support ++ by default, so we convert to <u>
+      const linked = linkifyMarkdown(value);
+      return linked.replace(/\+\+(?=[^ \s])((?:[^]*?[^ \s])?)\+\+/g, '<u>$1</u>');
     }, [value, showPreview]);
 
     const markdownContent = value ? (

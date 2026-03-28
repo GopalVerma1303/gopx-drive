@@ -386,7 +386,7 @@ function rehypeUnderline() {
 
       if (node.value && typeof node.value === "string") {
         const text = node.value;
-        const UNDERLINE_REGEX = /__(?=[^ \s])(?:[^]*?[^ \s])?__/g;
+        const UNDERLINE_REGEX = /\+\+(?=[^ \s])(?:[^]*?[^ \s])?\+\+/g;
 
         if (!UNDERLINE_REGEX.test(text)) return;
         UNDERLINE_REGEX.lastIndex = 0;
@@ -629,9 +629,8 @@ function getProcessor() {
  */
 export async function markdownToHtml(markdown: string): Promise<string> {
   if (!markdown || !markdown.trim()) return "";
-  // Escape double underscores so they remain as text nodes for rehypeUnderline to find.
-  // This prevents remark-gfm from converting __abc__ into <strong>abc</strong>.
-  const escapedMarkdown = markdown.replace(/__(?=[^ \s])((?:[^]*?[^ \s])?)__/g, '\\_\\_$1\\_\\_');
+  // Escape double plusses so they remain as text nodes for rehypeUnderline to find.
+  const escapedMarkdown = markdown.replace(/\+\+(?=[^ \s])((?:[^]*?[^ \s])?)\+\+/g, '\\+\\+$1\\+\\+');
   
   // Strip <!-- comments --> so they do not appear in preview
   const strippedMarkdown = escapedMarkdown.replace(/<!--[\s\S]*?-->/g, '');

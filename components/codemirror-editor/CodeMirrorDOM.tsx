@@ -84,15 +84,31 @@ const blockWrapperField = StateField.define<any>({
 function getUnderlineDecorations(state: EditorState) {
   const decos: Array<{ from: number, to: number, decoration: any }> = [];
   const text = state.doc.toString();
-  // Regex for __abc__
-  const UNDERLINE_REGEX = /__(?=[^ \s])(?:[^]*?[^ \s])?__/g;
+  // Regex for ++abc++
+  const UNDERLINE_REGEX = /\+\+(?=[^ \s])(?:[^]*?[^ \s])?\+\+/g;
   let match;
   while ((match = UNDERLINE_REGEX.exec(text)) !== null) {
+    const start = match.index;
+    const end = start + match[0].length;
+    // Markers (++)
     decos.push({
-      from: match.index,
-      to: match.index + match[0].length,
-      decoration: Decoration.mark({ class: "cm-underline" })
+      from: start,
+      to: start + 2,
+      decoration: Decoration.mark({ class: "cm-math-marker" })
     });
+    decos.push({
+      from: end - 2,
+      to: end,
+      decoration: Decoration.mark({ class: "cm-math-marker" })
+    });
+    // Content
+    if (start + 2 < end - 2) {
+      decos.push({
+        from: start + 2,
+        to: end - 2,
+        decoration: Decoration.mark({ class: "cm-underline" })
+      });
+    }
   }
   if (decos.length === 0) return Decoration.none;
   return Decoration.set(decos.sort((a, b) => a.from - b.from).map(d => d.decoration.range(d.from, d.to)), true);

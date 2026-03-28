@@ -200,7 +200,7 @@ export function MarkdownToolbar({
 
   const handleUnderline = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    wrapOrInsert("__", "__", 2); // __|__
+    wrapOrInsert("++", "++", 2); // ++|++
   };
 
   const handleHeading1 = () => {
