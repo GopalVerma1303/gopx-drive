@@ -22,7 +22,10 @@ let markdown: any;
 let keymap: any;
 let defaultKeymap: any;
 let indentWithTab: any;
+let indentMore: any;
+let indentLess: any;
 let history: any;
+let redo: any;
 let syntaxHighlighting: any;
 let HighlightStyle: any;
 let syntaxTree: any;
@@ -67,7 +70,10 @@ if (typeof document !== "undefined") {
   keymap = cmView.keymap;
   defaultKeymap = cmCommands.defaultKeymap;
   indentWithTab = cmCommands.indentWithTab;
+  indentMore = cmCommands.indentMore;
+  indentLess = cmCommands.indentLess;
   history = cmCommands.history;
+  redo = cmCommands.redo;
   syntaxHighlighting = cmLanguage.syntaxHighlighting;
   HighlightStyle = cmLanguage.HighlightStyle;
   syntaxTree = cmLanguage.syntaxTree;
@@ -985,6 +991,18 @@ export const CodeMirrorWeb = React.forwardRef<CodeMirrorEditorHandle, CodeMirror
               changes,
               userEvent: "input.replace.all",
             });
+          }
+        },
+        indent: () => {
+          const view = viewRef.current;
+          if (view) {
+            indentMore(view);
+          }
+        },
+        outdent: () => {
+          const view = viewRef.current;
+          if (view) {
+            indentLess(view);
           }
         }
       }),

@@ -691,8 +691,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       applyTextAndSelection(nextText, { start: newCursorPosition, end: newCursorPosition });
     };
 
-    // Marker type helpers are now imported from list-markers utils
-
     const indentAtSelection = () => {
       if (isPreview || !inputRef.current) return;
 
@@ -708,7 +706,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         const lines = currentText.split('\n');
         const beforeCursor = currentText.substring(0, start);
         const lineIndex = beforeCursor.split('\n').length - 1;
-        const currentLine = lines[lineIndex] || '';
 
         // Determine which lines to indent (single line or selection)
         const blockStart = currentText.lastIndexOf("\n", start - 1) + 1;
@@ -723,14 +720,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           lineStartPos += (lines[i]?.length || 0) + 1;
         }
 
-        const updatedLines = [...lines];
+        let updatedLines = [...lines];
         let startOffset = 0;
         let endOffset = 0;
         let cumulativeOffset = 0;
 
         for (const idx of affectedLines) {
           const line = updatedLines[idx] || '';
-          // Calculate cursor position at the start of this line
           let lineStartPos = 0;
           for (let i = 0; i < idx; i++) {
             lineStartPos += (lines[i]?.length || 0) + 1;
@@ -738,184 +734,56 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           const lineListInfo = getListInfo(currentText, lineStartPos);
 
           const oldLineLength = line.length;
-          let newLineLength = oldLineLength;
-
+          
           if (lineListInfo && lineListInfo.isList) {
+            const newIndent = lineListInfo.indent + TAB_SPACES;
+            
             if (lineListInfo.markerType === 'ordered' && lineListInfo.markerSubtype) {
-              // Ordered list: increase indentation and cycle marker type
-              // Be aware of nested level - continue from existing items at that level if they exist
-              const newIndent = lineListInfo.indent + TAB_SPACES;
-              const nextMarkerType = getNextMarkerType(lineListInfo.markerSubtype);
-
-              // Check if there are already items at this nested level
-              // If yes, continue from the last item; if no, start from 1/i/a
-              let currentValue = 1;
-
-              // Build regex pattern for the new marker type at the new indentation level
-              let nestedRegex: RegExp;
-              if (nextMarkerType === 'numeric') {
-                nestedRegex = /^(\s*)(\d+)\.\s+(.*)$/;
-              } else if (nextMarkerType === 'lowercase-roman') {
-                nestedRegex = /^(\s*)([ivxlcdm]+)\.\s+(.*)$/;
-              } else { // lowercase-alpha
-                nestedRegex = /^(\s*)([a-z]+)\.\s+(.*)$/;
-              }
-
-              // Look backwards to find the LAST item at the new nested indentation level
-              // This ensures we continue the sequence correctly at any nested level
-              let lastNestedValue = 0;
-              for (let i = idx - 1; i >= 0; i--) {
-                const prevLine = lines[i] ?? '';
-                if (prevLine.trim() === '') continue;
-
-                const lineIndent = (prevLine.match(/^(\s*)/)?.[1]) ?? '';
-
-                // If indentation is less than the new nested level, we've left that level
-                if (lineIndent.length < newIndent.length) {
-                  break;
-                }
-
-                // Check if this line is at the new nested indentation level
-                if (lineIndent === newIndent) {
-                  const nestedMatch = prevLine.match(nestedRegex);
-                  if (nestedMatch) {
-                    const nestedMarker = nestedMatch[2] ?? '';
-                    let markerValue = 0;
-
-                    // Extract the value from the marker
-                    if (nextMarkerType === 'numeric') {
-                      markerValue = parseInt(nestedMarker, 10);
-                    } else if (nextMarkerType === 'lowercase-roman') {
-                      if (isValidRoman(nestedMarker)) {
-                        markerValue = romanToNumber(nestedMarker);
-                      }
-                    } else { // lowercase-alpha
-                      if (/^[a-z]+$/.test(nestedMarker) && !isValidRoman(nestedMarker)) {
-                        markerValue = alphabetToNumber(nestedMarker);
-                      }
-                    }
-
-                    // Keep track of the last (highest) value we find at this nested level
-                    if (markerValue > lastNestedValue) {
-                      lastNestedValue = markerValue;
-                    }
-                  }
-                }
-              }
-
-              // If we found items at this nested level, continue from the last value + 1
-              // Otherwise, start from 1 (or i, or a)
-              if (lastNestedValue > 0) {
-                currentValue = lastNestedValue + 1;
-              }
-
-              // Extract content after marker
+              // Create new marker - reset to 1/a/i at the new level
+              const resetMarker = lineListInfo.markerSubtype === 'numeric' ? '1. ' : 
+                                 lineListInfo.markerSubtype === 'lowercase-alpha' ? 'a. ' :
+                                 lineListInfo.markerSubtype === 'uppercase-alpha' ? 'A. ' :
+                                 lineListInfo.markerSubtype === 'lowercase-roman' ? 'i. ' : 'I. ';
+              
               const contentMatch = line.match(/^(\s*)([-*+]|\d+|[a-zA-Z]+|[ivxlcdmIVXLCDM]+)\.\s+(.*)$/);
               const content = contentMatch ? contentMatch[3] : '';
-
-              // Create new marker - dynamically continue from existing items at this nested level
-              const newMarker = getMarkerString(nextMarkerType, currentValue);
-              updatedLines[idx] = newIndent + newMarker + content;
-              newLineLength = updatedLines[idx].length;
-
-              // Track offset for cursor adjustment
-              const lineOffset = newLineLength - oldLineLength;
-              if (idx === lineIndex) {
-                startOffset = cumulativeOffset + lineOffset;
-              }
-              cumulativeOffset += lineOffset;
-            } else if (lineListInfo.markerType === 'unordered') {
-              // Unordered list: just increase indentation
-              const newIndent = lineListInfo.indent + TAB_SPACES;
-              const contentMatch = line.match(/^(\s*)([-*+])\s+(.*)$/);
-              const marker = contentMatch ? contentMatch[2] : '-';
-              const content = contentMatch ? contentMatch[3] : '';
-              updatedLines[idx] = newIndent + marker + ' ' + content;
-              newLineLength = updatedLines[idx].length;
-
-              const lineOffset = TAB_SPACES.length;
-              if (idx === lineIndex) {
-                startOffset = cumulativeOffset + lineOffset;
-              }
-              cumulativeOffset += lineOffset;
-            } else if (lineListInfo.markerType === 'checkbox') {
-              // Checkbox list: increase indentation and keep checkbox marker (nested checkbox)
-              const newIndent = lineListInfo.indent + TAB_SPACES;
-              const contentMatch = line.match(/^(\s*)([-*+])\s+\[([\s*xX*])\]\s*(.*)$/);
-              const marker = contentMatch ? contentMatch[2] : '-';
-              const checkboxState = contentMatch ? contentMatch[3] : ' ';
-              const content = contentMatch ? contentMatch[4] : '';
-              updatedLines[idx] = newIndent + marker + ' [' + checkboxState + '] ' + content;
-              newLineLength = updatedLines[idx].length;
-
-              const lineOffset = TAB_SPACES.length;
-              if (idx === lineIndex) {
-                startOffset = cumulativeOffset + lineOffset;
-              }
-              cumulativeOffset += lineOffset;
+              updatedLines[idx] = newIndent + resetMarker + content;
+              
+              // Renumber the list at the new level
+              updatedLines = renumberOrderedList(updatedLines, idx + 1, newIndent, lineListInfo.markerSubtype);
+            } else {
+              // Unordered or Checkbox list: just increase indentation
+              const contentMatch = line.match(/^(\s*)([-*+]|([-*+])\s+\[([\s*xX*])\])\s*(.*)$/);
+              const markerAndMore = contentMatch ? line.substring(lineListInfo.indent.length) : '- ';
+              updatedLines[idx] = newIndent + markerAndMore;
             }
+
+            const lineOffset = updatedLines[idx].length - oldLineLength;
+            if (idx === lineIndex) startOffset = cumulativeOffset + (updatedLines[idx].length - oldLineLength);
+            cumulativeOffset += lineOffset;
           } else {
-            // Not a list line, use default behavior
+            // Not a list line, default indent
             updatedLines[idx] = TAB_SPACES + line;
-            newLineLength = updatedLines[idx].length;
-
             const lineOffset = TAB_SPACES.length;
-            if (idx === lineIndex) {
-              startOffset = cumulativeOffset + lineOffset;
-            }
+            if (idx === lineIndex) startOffset = cumulativeOffset + lineOffset;
             cumulativeOffset += lineOffset;
           }
 
-          // Calculate end offset for multi-line selections
-          if (idx === affectedLines[affectedLines.length - 1]) {
-            endOffset = cumulativeOffset;
-          }
+          if (idx === affectedLines[affectedLines.length - 1]) endOffset = cumulativeOffset;
         }
 
         const nextText = updatedLines.join('\n');
-        const newStart = start + startOffset;
-        const newEnd = end + endOffset;
-        applyTextAndSelection(nextText, { start: newStart, end: newEnd });
+        applyTextAndSelection(nextText, { start: start + startOffset, end: end + endOffset });
         return;
       }
 
-      // Not in a list: use default behavior
-      // No selection: behave like inserting TAB_SPACES at cursor
-      if (start === end) {
+      // Not in a list: call native indent if possible, or manual indent
+      const input = inputRef.current as any;
+      if (input && typeof input.indent === "function") {
+        input.indent();
+      } else {
         insertTextAtSelection(TAB_SPACES, TAB_SPACES.length);
-        return;
       }
-
-      // Selection: indent each line touched by the selection (prepend TAB_SPACES)
-      const blockStart = currentText.lastIndexOf("\n", start - 1) + 1;
-      let blockEnd = value.indexOf("\n", end);
-      if (blockEnd === -1) blockEnd = currentText.length;
-
-      const block = currentText.slice(blockStart, blockEnd);
-      const lines = block.split("\n");
-
-      const insertionStarts: number[] = [];
-      let runningIndex = blockStart;
-      const nextLines = lines.map((line) => {
-        insertionStarts.push(runningIndex);
-        // advance using ORIGINAL line length (+ newline)
-        runningIndex += line.length + 1;
-        return TAB_SPACES + line;
-      });
-
-      const nextBlock = nextLines.join("\n");
-      const nextText = currentText.slice(0, blockStart) + nextBlock + currentText.slice(blockEnd);
-
-      const adjustPos = (pos: number) => {
-        let nextPos = pos;
-        for (const p of insertionStarts) {
-          if (pos < p) continue;
-          nextPos += TAB_SPACES.length;
-        }
-        return nextPos;
-      };
-
-      applyTextAndSelection(nextText, { start: adjustPos(start), end: adjustPos(end) });
     };
 
     const unindentAtSelection = () => {
@@ -925,17 +793,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       const end = selection.end;
       const currentText = previousValueRef.current;
 
-      // Check if we're in a list at the cursor position
       const listInfo = getListInfoLocal(currentText, start);
 
       if (listInfo && listInfo.isList && listInfo.indent.length >= TAB_SPACES.length) {
-        // Handle list outdentation
         const lines = currentText.split('\n');
         const beforeCursor = currentText.substring(0, start);
         const lineIndex = beforeCursor.split('\n').length - 1;
-        const currentLine = lines[lineIndex] || '';
 
-        // Determine which lines to outdent (single line or selection)
         const blockStart = currentText.lastIndexOf("\n", start - 1) + 1;
         let blockEnd = currentText.indexOf("\n", end);
         if (blockEnd === -1) blockEnd = currentText.length;
@@ -948,210 +812,59 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           lineStartPos += (lines[i]?.length || 0) + 1;
         }
 
-        const updatedLines = [...lines];
+        let updatedLines = [...lines];
         let startOffset = 0;
-        let endOffset = 0;
         let cumulativeOffset = 0;
 
         for (const idx of affectedLines) {
           const line = updatedLines[idx] || '';
-          // Calculate cursor position at the start of this line
-          let lineStartPos = 0;
-          for (let i = 0; i < idx; i++) {
-            lineStartPos += (lines[i]?.length || 0) + 1;
-          }
-          const lineListInfo = getListInfo(currentText, lineStartPos);
-
           const oldLineLength = line.length;
-          let newLineLength = oldLineLength;
 
-          if (lineListInfo && lineListInfo.isList && lineListInfo.indent.length >= TAB_SPACES.length) {
-            if (lineListInfo.markerType === 'ordered' && lineListInfo.markerSubtype) {
-              // Ordered list: decrease indentation and cycle marker type backwards
-              const newIndent = lineListInfo.indent.slice(TAB_SPACES.length);
-              const prevMarkerType = getPreviousMarkerType(lineListInfo.markerSubtype);
-
-              // When outdenting, we need to find the LAST item at the parent indentation level
-              // This ensures we continue the sequence correctly (e.g., iv. -> v., not i.)
-              // Professional markdown editors continue the parent sequence when outdenting
-              let currentValue = 1;
-
-              // Build regex pattern for the parent marker type
-              let parentRegex: RegExp;
-              if (prevMarkerType === 'numeric') {
-                parentRegex = /^(\s*)(\d+)\.\s+(.*)$/;
-              } else if (prevMarkerType === 'lowercase-roman') {
-                parentRegex = /^(\s*)([ivxlcdm]+)\.\s+(.*)$/;
-              } else { // lowercase-alpha
-                parentRegex = /^(\s*)([a-z]+)\.\s+(.*)$/;
-              }
-
-              // Look backwards to find the LAST item at the parent indentation level
-              // This is the item we should continue from
-              let lastParentValue = 0;
-              for (let i = idx - 1; i >= 0; i--) {
-                const prevLine = lines[i] ?? '';
-                if (prevLine.trim() === '') continue;
-
-                const lineIndent = (prevLine.match(/^(\s*)/)?.[1]) ?? '';
-
-                // If indentation is less than parent, we've left the parent list
-                if (lineIndent.length < newIndent.length) {
-                  break;
-                }
-
-                // Check if this line is at the parent indentation level
-                if (lineIndent === newIndent) {
-                  const parentMatch = prevLine.match(parentRegex);
-                  if (parentMatch) {
-                    const prevMarker = parentMatch[2] ?? '';
-                    let markerValue = 0;
-
-                    // Extract the value from the marker
-                    if (prevMarkerType === 'numeric') {
-                      markerValue = parseInt(prevMarker, 10);
-                    } else if (prevMarkerType === 'lowercase-roman') {
-                      if (isValidRoman(prevMarker)) {
-                        markerValue = romanToNumber(prevMarker);
-                      }
-                    } else { // lowercase-alpha
-                      if (/^[a-z]+$/.test(prevMarker) && !isValidRoman(prevMarker)) {
-                        markerValue = alphabetToNumber(prevMarker);
-                      }
-                    }
-
-                    // Keep track of the last (highest) value we find
-                    if (markerValue > lastParentValue) {
-                      lastParentValue = markerValue;
-                    }
-                  }
-                }
-              }
-
-              // If we found a parent item, continue from its value + 1
-              // Otherwise, start from 1
-              if (lastParentValue > 0) {
-                currentValue = lastParentValue + 1;
-              }
-
-              // Extract content after marker
-              const contentMatch = line.match(/^(\s*)([-*+]|\d+|[a-zA-Z]+|[ivxlcdmIVXLCDM]+)\.\s+(.*)$/);
-              const content = contentMatch ? contentMatch[3] : '';
-
-              // Create new marker with the correct value at parent level
-              const newMarker = getMarkerString(prevMarkerType, currentValue);
-              updatedLines[idx] = newIndent + newMarker + content;
-              newLineLength = updatedLines[idx].length;
-
-              // Track offset for cursor adjustment
-              const lineOffset = newLineLength - oldLineLength;
-              if (idx === lineIndex) {
-                startOffset = cumulativeOffset + lineOffset;
-              }
-              cumulativeOffset += lineOffset;
-            } else if (lineListInfo.markerType === 'unordered') {
-              // Unordered list: just decrease indentation
-              const newIndent = lineListInfo.indent.slice(TAB_SPACES.length);
-              const contentMatch = line.match(/^(\s*)([-*+])\s+(.*)$/);
-              const marker = contentMatch ? contentMatch[2] : '-';
-              const content = contentMatch ? contentMatch[3] : '';
-              updatedLines[idx] = newIndent + marker + ' ' + content;
-              newLineLength = updatedLines[idx].length;
-
-              const lineOffset = -TAB_SPACES.length;
-              if (idx === lineIndex) {
-                startOffset = cumulativeOffset + lineOffset;
-              }
-              cumulativeOffset += lineOffset;
-            } else if (lineListInfo.markerType === 'checkbox') {
-              // Checkbox list: decrease indentation and keep checkbox marker
-              const newIndent = lineListInfo.indent.slice(TAB_SPACES.length);
-              const contentMatch = line.match(/^(\s*)([-*+])\s+\[([\s*xX*])\]\s*(.*)$/);
-              const marker = contentMatch ? contentMatch[2] : '-';
-              const checkboxState = contentMatch ? contentMatch[3] : ' ';
-              const content = contentMatch ? contentMatch[4] : '';
-              updatedLines[idx] = newIndent + marker + ' [' + checkboxState + '] ' + content;
-              newLineLength = updatedLines[idx].length;
-
-              const lineOffset = newLineLength - oldLineLength;
-              if (idx === lineIndex) {
-                startOffset = cumulativeOffset + lineOffset;
-              }
-              cumulativeOffset += lineOffset;
+          if (line.startsWith(TAB_SPACES)) {
+            const nextLine = line.slice(TAB_SPACES.length);
+            updatedLines[idx] = nextLine;
+            
+            // If it's an ordered list, renumber at the parent level
+            const nextLineListInfo = getListInfo(nextLine, 0);
+            if (nextLineListInfo && nextLineListInfo.isList && nextLineListInfo.markerType === 'ordered') {
+              const newIndent = line.substring(TAB_SPACES.length).match(/^(\s*)/)?.[1] || '';
+              updatedLines = renumberOrderedList(updatedLines, idx, newIndent, nextLineListInfo.markerSubtype!);
             }
-          } else if (line.startsWith(TAB_SPACES)) {
-            // Not a list line but has TAB_SPACES, use default behavior
-            updatedLines[idx] = line.slice(TAB_SPACES.length);
-            newLineLength = updatedLines[idx].length;
-
-            const lineOffset = -TAB_SPACES.length;
-            if (idx === lineIndex) {
-              startOffset = cumulativeOffset + lineOffset;
-            }
-            cumulativeOffset += lineOffset;
           }
 
-          // Calculate end offset for multi-line selections
-          if (idx === affectedLines[affectedLines.length - 1]) {
-            endOffset = cumulativeOffset;
-          }
+          const lineOffset = updatedLines[idx].length - oldLineLength;
+          if (idx === lineIndex) startOffset = cumulativeOffset + lineOffset;
+          cumulativeOffset += lineOffset;
         }
 
         const nextText = updatedLines.join('\n');
-        const newStart = Math.max(0, start + startOffset);
-        const newEnd = Math.max(0, end + endOffset);
-        applyTextAndSelection(nextText, { start: newStart, end: newEnd });
+        applyTextAndSelection(nextText, { start: Math.max(0, start + startOffset), end: Math.max(0, end + cumulativeOffset) });
         return;
       }
 
-      // Not in a list or can't outdent: use default behavior
-      // No selection: remove one indent level immediately before cursor if present
-      if (start === end) {
-        if (start >= TAB_SPACES.length && currentText.substring(start - TAB_SPACES.length, start) === TAB_SPACES) {
-          const nextText = currentText.substring(0, start - TAB_SPACES.length) + currentText.substring(end);
-          const nextPos = start - TAB_SPACES.length;
-          applyTextAndSelection(nextText, { start: nextPos, end: nextPos });
-        }
-        return;
+      // Not in a list: call native outdent if possible, or manual outdent
+      const input = inputRef.current as any;
+      if (input && typeof input.outdent === "function") {
+        input.outdent();
+      } else if (start >= TAB_SPACES.length && currentText.substring(start - TAB_SPACES.length, start) === TAB_SPACES) {
+        const nextText = currentText.substring(0, start - TAB_SPACES.length) + currentText.substring(end);
+        applyTextAndSelection(nextText, { start: start - TAB_SPACES.length, end: end - TAB_SPACES.length });
       }
+    };
 
-      // Selection: unindent each line touched by the selection (remove leading TAB_SPACES)
-      const blockStart = currentText.lastIndexOf("\n", start - 1) + 1;
-      let blockEnd = currentText.indexOf("\n", end);
-      if (blockEnd === -1) blockEnd = currentText.length;
+    const handleTabKey = (e: any) => {
+      const key = e?.key ?? e?.nativeEvent?.key;
+      if (key !== "Tab" && key !== "tab") return;
 
-      const block = currentText.slice(blockStart, blockEnd);
-      const lines = block.split("\n");
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      e?.stopImmediatePropagation?.();
 
-      const removalStarts: number[] = [];
-      let runningIndex = blockStart;
-      const nextLines = lines.map((line) => {
-        const didRemove = line.startsWith(TAB_SPACES);
-        if (didRemove) {
-          removalStarts.push(runningIndex);
-        }
-        // advance using ORIGINAL line length (+ newline)
-        runningIndex += line.length + 1;
-        return didRemove ? line.slice(TAB_SPACES.length) : line;
-      });
-
-      // If nothing to unindent, keep selection as-is
-      if (removalStarts.length === 0) return;
-
-      const nextBlock = nextLines.join("\n");
-      const nextText = currentText.slice(0, blockStart) + nextBlock + currentText.slice(blockEnd);
-
-      const adjustPos = (pos: number) => {
-        let nextPos = pos;
-        for (const p of removalStarts) {
-          if (pos <= p) continue;
-          const delta = pos - p;
-          nextPos -= delta < TAB_SPACES.length ? delta : TAB_SPACES.length;
-        }
-        return nextPos;
-      };
-
-      applyTextAndSelection(nextText, { start: adjustPos(start), end: adjustPos(end) });
+      if (e?.shiftKey) {
+        unindentAtSelection();
+      } else {
+        indentAtSelection();
+      }
     };
 
     const getWebInputElement = (): any => {
@@ -1176,21 +889,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       return null;
     };
 
-    const handleTabKey = (e: any) => {
-      const key = e?.key ?? e?.nativeEvent?.key;
-      if (key !== "Tab") return;
-
-      e?.preventDefault?.();
-      e?.stopPropagation?.();
-      e?.stopImmediatePropagation?.();
-
-      // Shift+Tab: unindent; Tab: indent
-      if (e?.shiftKey) {
-        unindentAtSelection();
-      } else {
-        indentAtSelection();
-      }
-    };
 
     // Web: ensure Tab doesn't move focus away (RNW doesn't always forward onKeyDown for Tab).
     useEffect(() => {
@@ -1310,9 +1008,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
           return;
         }
 
-        // Tab indentation
-        if (e?.key === "Tab") {
+        // Tab handling: use smart indentation logic
+        if (key === "tab") {
           handleTabKey(e);
+          return;
         }
       };
 
@@ -2840,10 +2539,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       },
     };
 
-    const handleWebKeyDown = (e: any) => {
-      // On web, `Tab` defaults to moving focus. Instead, insert spaces (same as toolbar "Tab").
-      handleTabKey(e);
-    };
 
     const showPreview = isPreview || previewOnly;
     const previewValue = useMemo(() => {

@@ -16,7 +16,7 @@ import {
   getScrollbarCss,
   type MarkdownThemeColors,
 } from "@/lib/markdown-theme";
-import { defaultKeymap, history, indentWithTab } from "@codemirror/commands";
+import { defaultKeymap, history, indentWithTab, indentMore, indentLess } from "@codemirror/commands";
 import { cpp } from "@codemirror/lang-cpp";
 import { css } from "@codemirror/lang-css";
 import { html } from "@codemirror/lang-html";
@@ -945,6 +945,18 @@ export default function CodeMirrorDOM({
               changes,
               userEvent: "input.replace.all",
             });
+          }
+        },
+        indent: () => {
+          const view = viewRef.current;
+          if (view) {
+            indentMore(view);
+          }
+        },
+        outdent: () => {
+          const view = viewRef.current;
+          if (view) {
+            indentLess(view);
           }
         }
       }) as DOMImperativeFactory,
