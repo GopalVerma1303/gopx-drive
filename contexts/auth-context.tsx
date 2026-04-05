@@ -18,6 +18,7 @@ interface AuthContextValue {
   updatePassword: (newPassword: string) => Promise<void>;
   verifyPassword: (password: string) => Promise<void>;
   deleteAccount: () => Promise<void>;
+  deleteAllContent: () => Promise<void>;
   isRecoveringPassword: boolean;
   setIsRecoveringPassword: (value: boolean) => void;
 }
@@ -297,6 +298,48 @@ export const [AuthProvider, useAuth] = createContextHook(
       await signOut();
     };
 
+    const deleteAllContent = async () => {
+      if (UI_DEV) {
+        return;
+      }
+
+      if (!user) throw new Error("User not found");
+
+      // 1. Delete Files from Storage
+      // First list all files in the user's storage folder
+      const { data: storageFiles, error: listError } = await supabase.storage
+        .from("files")
+        .list(user.id);
+
+      if (listError) {
+        console.error("Failed to list storage files:", listError);
+      } else if (storageFiles && storageFiles.length > 0) {
+        const pathsToRemove = storageFiles.map((f) => `${user.id}/${f.name}`);
+        const { error: removeError } = await supabase.storage
+          .from("files")
+          .remove(pathsToRemove);
+        if (removeError) {
+          console.error("Failed to remove storage files:", removeError);
+        }
+      }
+
+      // 2. Delete from database tables
+      // We do this sequentially to handle potential dependencies (though RLS/cascade should ideally handle it)
+      const tables = ["notes", "files", "events", "folders"];
+      
+      for (const table of tables) {
+        const { error } = await supabase
+          .from(table)
+          .delete()
+          .eq("user_id", user.id);
+        
+        if (error) {
+          console.error(`Failed to delete from ${table}:`, error);
+          throw new Error(`Failed to clear ${table}: ${error.message}`);
+        }
+      }
+    };
+
     return {
       user,
       session,
@@ -309,6 +352,7 @@ export const [AuthProvider, useAuth] = createContextHook(
       updatePassword,
       verifyPassword,
       deleteAccount,
+      deleteAllContent,
       isRecoveringPassword,
       setIsRecoveringPassword,
     };

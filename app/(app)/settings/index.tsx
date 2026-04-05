@@ -11,9 +11,11 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { Archive, ChevronRight, Eraser, FileText, Heart, ImageIcon, LogOut, Settings2, WandSparkles } from "lucide-react-native";
-import { useState } from "react";
+import { Archive, ChevronRight, Eraser, Eye, EyeOff, FileText, Heart, ImageIcon, Lock, LogOut, Settings2, Trash2, WandSparkles } from "lucide-react-native";
+import { useState, useEffect } from "react";
 import {
+  ActivityIndicator,
+  Keyboard,
   Linking,
   Modal,
   Platform,
@@ -21,7 +23,9 @@ import {
   ScrollView,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Input } from "@/components/ui/input";
 
 export default function SettingsScreen() {
   const { colors } = useThemeColors();
@@ -35,6 +39,78 @@ export default function SettingsScreen() {
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [clearCacheDialogOpen, setClearCacheDialogOpen] = useState(false);
   const [clearingCache, setClearingCache] = useState(false);
+
+  // Data Deletion State
+  const { verifyPassword, deleteAllContent } = useAuth();
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === "web" || !isVerifyModalOpen) return;
+    const showSub = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [isVerifyModalOpen]);
+
+  const handleClearDataPress = () => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    setIsVerifyModalOpen(true);
+  };
+
+  const handleVerifyConfirm = async () => {
+    if (!password) {
+      alert("Error", "Please enter your password");
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      await verifyPassword(password);
+      setIsVerifyModalOpen(false);
+      setPassword("");
+      
+      // Final confirmation Alert after password check
+      setTimeout(() => {
+        alert(
+          "Final Confirmation",
+          "Are you sure you want to permanently clear ALL your data? This includes all notes, files, events, and folders. This cannot be undone.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { 
+              text: "Clear Everything", 
+              style: "destructive",
+              onPress: handleFinalDeleteContent
+            }
+          ]
+        );
+      }, 300);
+    } catch (error: any) {
+      alert("Error", error.message || "Incorrect password");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleFinalDeleteContent = async () => {
+    try {
+      await deleteAllContent();
+      queryClient.clear();
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      alert("Done", "All your data has been permanently cleared.");
+    } catch (error: any) {
+      alert("Error", error.message || "Failed to clear all data");
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -415,6 +491,26 @@ export default function SettingsScreen() {
                 </Text>
               </View>
             </Pressable>
+            <Pressable
+              className="flex flex-row items-center gap-12 p-4 border-t border-border"
+              onPress={handleClearDataPress}
+            >
+              <View className="flex flex-row items-center gap-2">
+                <Trash2
+                  color={"#ef4444"}
+                  size={20}
+                />
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: "#ef4444",
+                    fontWeight: "500",
+                  }}
+                >
+                  Clear All Data
+                </Text>
+              </View>
+            </Pressable>
           </View>
         </View>
 
@@ -649,6 +745,163 @@ export default function SettingsScreen() {
               </View>
             </View>
           </View>
+        </Modal>
+      )}
+      
+      {/* Password Verification Modal for Content Deletion */}
+      {Platform.OS === "web" ? (
+        isVerifyModalOpen && (
+          <View 
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4"
+            style={{ position: "fixed" as any, top: 0, left: 0, right: 0, bottom: 0 }}
+          >
+            <Pressable
+              className="absolute inset-0"
+              style={{ position: "absolute" as any, top: 0, left: 0, right: 0, bottom: 0 }}
+              onPress={() => setIsVerifyModalOpen(false)}
+            />
+            <View 
+              className="w-full max-w-[500px] rounded-lg border border-border bg-muted p-6 shadow-lg"
+            >
+              <Text className="mb-2 text-lg font-semibold text-foreground">
+                Verify Identity
+              </Text>
+              <Text className="mb-4 text-sm text-muted-foreground">
+                Please enter your password to continue with clearing ALL data.
+              </Text>
+
+              <View className="gap-2 mb-6">
+                <View 
+                  className="flex-row items-center rounded-md px-4 h-14 border border-border bg-background"
+                >
+                  <Lock
+                    className="text-muted-foreground"
+                    color={colors.mutedForeground}
+                    size={20}
+                  />
+                  <Input
+                    className="flex-1 ml-2 border-0 bg-transparent h-full shadow-none text-sm"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    editable={!isVerifying}
+                    style={{ color: colors.foreground }}
+                  />
+                  <Pressable
+                    onPress={() => setShowPassword(!showPassword)}
+                    className="p-2"
+                  >
+                    {showPassword ? (
+                      <EyeOff color={colors.mutedForeground} size={20} />
+                    ) : (
+                      <Eye color={colors.mutedForeground} size={20} />
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+
+              <View className="flex-row items-center justify-end gap-3">
+                <Pressable
+                  className="px-4 py-2"
+                  onPress={() => setIsVerifyModalOpen(false)}
+                  disabled={isVerifying}
+                >
+                  <Text className="text-foreground">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className={`rounded-md px-4 py-2 ${password.trim() && !isVerifying ? "opacity-100" : "opacity-50"}`}
+                  onPress={handleVerifyConfirm}
+                  disabled={!password.trim() || isVerifying}
+                >
+                  <Text className="font-semibold text-red-500">
+                    {isVerifying ? "Verifying..." : "Verify"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )
+      ) : (
+        <Modal
+          visible={isVerifyModalOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsVerifyModalOpen(false)}
+        >
+          <KeyboardAvoidingView
+            className="flex-1"
+            behavior="padding"
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+            enabled={keyboardVisible}
+          >
+            <View className="flex-1 bg-black/50 p-4 justify-center items-center">
+              <Pressable
+                className="absolute inset-0"
+                onPress={() => setIsVerifyModalOpen(false)}
+              />
+              <View 
+                className="w-full max-w-[500px] rounded-lg border border-border bg-muted p-6 shadow-lg"
+              >
+                <Text className="mb-2 text-lg font-semibold text-foreground">
+                  Verify Identity
+                </Text>
+                <Text className="mb-4 text-sm text-muted-foreground">
+                  Please enter your password to continue with clearing ALL data.
+                </Text>
+
+                <View className="gap-2 mb-6">
+                  <View 
+                    className="flex-row items-center rounded-md px-4 h-14 border border-border bg-background"
+                  >
+                    <Lock
+                      className="text-muted-foreground"
+                      color={colors.mutedForeground}
+                      size={20}
+                    />
+                    <Input
+                      className="flex-1 ml-2 border-0 bg-transparent h-full shadow-none text-sm"
+                      placeholder="Enter your password"
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                      editable={!isVerifying}
+                      style={{ color: colors.foreground }}
+                    />
+                    <Pressable
+                      onPress={() => setShowPassword(!showPassword)}
+                      className="p-2"
+                    >
+                      {showPassword ? (
+                        <EyeOff color={colors.mutedForeground} size={20} />
+                      ) : (
+                        <Eye color={colors.mutedForeground} size={20} />
+                      )}
+                    </Pressable>
+                  </View>
+                </View>
+
+                <View className="flex-row items-center justify-end gap-3">
+                  <Pressable
+                    className="px-4 py-2"
+                    onPress={() => setIsVerifyModalOpen(false)}
+                    disabled={isVerifying}
+                  >
+                    <Text className="text-foreground">Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    className={`rounded-md px-4 py-2 ${password.trim() && !isVerifying ? "opacity-100" : "opacity-50"}`}
+                    onPress={handleVerifyConfirm}
+                    disabled={!password.trim() || isVerifying}
+                  >
+                    <Text className="font-semibold text-red-500">
+                      {isVerifying ? "Verifying..." : "Verify"}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
         </Modal>
       )}
     </View>
