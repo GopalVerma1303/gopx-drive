@@ -76,7 +76,7 @@ export default function ArchiveScreen() {
   const queryClient = useQueryClient();
   const { colors } = useThemeColors();
   const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState<"notes" | "files" | "folders">("notes");
+  const [activeTab, setActiveTab] = useState<"notes" | "files" | "folders">("folders");
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set());
@@ -662,6 +662,14 @@ export default function ArchiveScreen() {
                 <DropdownMenuContent side="bottom" align="end" sideOffset={8}>
                   <DropdownMenuItem
                     onPress={() => {
+                      setActiveTab("folders");
+                    }}
+                  >
+                    <FolderIcon color={colors.foreground} size={18} />
+                    <Text className="text-foreground ml-2">Folders</Text>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onPress={() => {
                       setActiveTab("notes");
                     }}
                   >
@@ -676,18 +684,88 @@ export default function ArchiveScreen() {
                     <Files color={colors.foreground} size={18} />
                     <Text className="text-foreground ml-2">Files</Text>
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onPress={() => {
-                      setActiveTab("folders");
-                    }}
-                  >
-                    <FolderIcon color={colors.foreground} size={18} />
-                    <Text className="text-foreground ml-2">Folders</Text>
-                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </View>
           </View>
+
+          <TabsContent value="folders" className="flex-1 -mt-2" style={{ flex: 1 }}>
+            {foldersLoading ? (
+              <View className="flex-1 justify-center items-center" style={{ flex: 1 }}>
+                <ActivityIndicator size="large" color={colors.foreground} />
+              </View>
+            ) : (
+              <ScrollView
+                className="flex-1"
+                style={{ flex: 1 }}
+                contentContainerStyle={{
+                  padding: 16,
+                  paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32,
+                  flexGrow: 0,
+                }}
+                refreshControl={
+                  <RefreshControl
+                    progressBackgroundColor={colors.background}
+                    refreshing={notesFetching || filesFetching || foldersFetching}
+                    onRefresh={onRefresh}
+                    tintColor={colors.foreground}
+                    colors={[colors.foreground]}
+                  />
+                }
+              >
+                {filteredFolders.length === 0 ? (
+                  <View className="w-full max-w-2xl mx-auto flex-1 justify-center items-center pt-24">
+                    <Archive
+                      color={colors.mutedForeground}
+                      size={48}
+                      style={{ marginBottom: 16 }}
+                    />
+                    <Text className="text-xl font-semibold text-muted-foreground mb-2">
+                      {searchQuery.trim() ? "No matching folders" : "No archived folders"}
+                    </Text>
+                    <Text className="text-sm text-muted-foreground text-center">
+                      {searchQuery.trim() ? "Try a different search term" : "Folders you archive will appear here"}
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="w-full max-w-2xl mx-auto">
+                    {(() => {
+                      const maxWidth = 672;
+                      const containerPadding = 16;
+                      const gap = 12;
+                      const availableWidth =
+                        Math.min(screenWidth, maxWidth) - containerPadding * 2;
+                      const cardWidth = availableWidth;
+
+                      return (
+                        <View style={{ width: cardWidth, alignSelf: "center" }}>
+                          {filteredFolders.map((folder: Folder, index: number) => (
+                            <View
+                              key={folder.id}
+                              style={{
+                                marginBottom:
+                                  index < filteredFolders.length - 1 ? gap : 0,
+                              }}
+                            >
+                              <FolderCard
+                                folder={folder}
+                                cardWidth={cardWidth}
+                                variant="list"
+                                isArchived
+                                isSelected={selectedFolders.has(folder.id)}
+                                onToggleSelect={() => toggleFolderSelection(folder.id)}
+                                onPress={() => {}}
+                              />
+                            </View>
+                          ))}
+                        </View>
+                      );
+                    })()}
+                  </View>
+                )}
+              </ScrollView>
+            )}
+          </TabsContent>
 
           <TabsContent value="notes" className="flex-1 -mt-2" style={{ flex: 1 }}>
             {notesLoading ? (
@@ -838,84 +916,6 @@ export default function ArchiveScreen() {
                                 onDelete={() =>
                                   handleDeleteSingle(file.id)
                                 }
-                              />
-                            </View>
-                          ))}
-                        </View>
-                      );
-                    })()}
-                  </View>
-                )}
-              </ScrollView>
-            )}
-          </TabsContent>
-
-          <TabsContent value="folders" className="flex-1 -mt-2" style={{ flex: 1 }}>
-            {foldersLoading ? (
-              <View className="flex-1 justify-center items-center" style={{ flex: 1 }}>
-                <ActivityIndicator size="large" color={colors.foreground} />
-              </View>
-            ) : (
-              <ScrollView
-                className="flex-1"
-                style={{ flex: 1 }}
-                contentContainerStyle={{
-                  padding: 16,
-                  paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 32,
-                  flexGrow: 0,
-                }}
-                refreshControl={
-                  <RefreshControl
-                    progressBackgroundColor={colors.background}
-                    refreshing={notesFetching || filesFetching || foldersFetching}
-                    onRefresh={onRefresh}
-                    tintColor={colors.foreground}
-                    colors={[colors.foreground]}
-                  />
-                }
-              >
-                {filteredFolders.length === 0 ? (
-                  <View className="w-full max-w-2xl mx-auto flex-1 justify-center items-center pt-24">
-                    <Archive
-                      color={colors.mutedForeground}
-                      size={48}
-                      style={{ marginBottom: 16 }}
-                    />
-                    <Text className="text-xl font-semibold text-muted-foreground mb-2">
-                      {searchQuery.trim() ? "No matching folders" : "No archived folders"}
-                    </Text>
-                    <Text className="text-sm text-muted-foreground text-center">
-                      {searchQuery.trim() ? "Try a different search term" : "Folders you archive will appear here"}
-                    </Text>
-                  </View>
-                ) : (
-                  <View className="w-full max-w-2xl mx-auto">
-                    {(() => {
-                      const maxWidth = 672;
-                      const containerPadding = 16;
-                      const gap = 12;
-                      const availableWidth =
-                        Math.min(screenWidth, maxWidth) - containerPadding * 2;
-                      const cardWidth = availableWidth;
-
-                      return (
-                        <View style={{ width: cardWidth, alignSelf: "center" }}>
-                          {filteredFolders.map((folder: Folder, index: number) => (
-                            <View
-                              key={folder.id}
-                              style={{
-                                marginBottom:
-                                  index < filteredFolders.length - 1 ? gap : 0,
-                              }}
-                            >
-                              <FolderCard
-                                folder={folder}
-                                cardWidth={cardWidth}
-                                variant="list"
-                                isArchived
-                                isSelected={selectedFolders.has(folder.id)}
-                                onToggleSelect={() => toggleFolderSelection(folder.id)}
-                                onPress={() => {}}
                               />
                             </View>
                           ))}
