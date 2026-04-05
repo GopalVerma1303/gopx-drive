@@ -8,7 +8,6 @@ import * as Haptics from "expo-haptics";
 import { FileUp } from "lucide-react-native";
 import { useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -186,11 +185,9 @@ export function FileUploadModal({
           disabled={uploading || !pickedFile}
           className="rounded-lg px-4 py-2"
         >
-          {uploading ? (
-            <ActivityIndicator size="small" color="#3b82f6" />
-          ) : (
-            <Text className="text-base font-semibold text-blue-500">Upload</Text>
-          )}
+          <Text className="text-base font-semibold text-blue-500">
+            {uploading ? "Uploading..." : "Upload"}
+          </Text>
         </Pressable>
       </View>
     </View>
