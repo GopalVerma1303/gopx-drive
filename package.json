@@ -1,7 +1,7 @@
 {
   "name": "gopx-drive",
   "main": "index.js",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "scripts": {
     "build:codemirror-editor": "node scripts/build-codemirror-editor.js",
     "start": "expo start",
