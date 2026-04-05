@@ -1429,6 +1429,9 @@ function ArchivedFileListCard({
   const cardHeight = 80;
   const iconSize = 56;
   const padding = 12;
+  // Use same icon color scheme as regular FileListCard for premium look
+  const iconBg = colors.foreground + "90";
+  const iconText = colors.background;
   const foldSize = Math.max(12, iconSize * 0.2);
 
   return (
@@ -1444,8 +1447,12 @@ function ArchivedFileListCard({
         >
           <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} />
           <View
-            className="bg-background border border-muted rounded overflow-hidden relative"
-            style={{ width: iconSize, height: iconSize }}
+            className="border border-muted rounded-tl-md rounded-br-md rounded-bl-md overflow-hidden relative"
+            style={{ 
+              width: iconSize, 
+              height: iconSize,
+              backgroundColor: iconBg,
+            }}
           >
             <View
               style={{
@@ -1469,13 +1476,17 @@ function ArchivedFileListCard({
               style={{ padding: 6, paddingRight: foldSize + 2 }}
             >
               <Text
-                className="text-[8px] font-semibold text-foreground"
+                className="text-[8px] font-semibold"
+                style={{ color: iconText }}
                 numberOfLines={1}
               >
                 {file.extension.toUpperCase().slice(0, 3)}
               </Text>
               <View className="mt-auto">
-                <Text className="text-[6px] text-muted-foreground opacity-70">
+                <Text 
+                  className="text-[6px] opacity-70"
+                  style={{ color: iconText }}
+                >
                   {formatFileSize(file.file_size).split(" ")[0]}
                 </Text>
               </View>
