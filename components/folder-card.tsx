@@ -135,19 +135,12 @@ export function FolderCard({
               onCheckedChange={() => onToggleSelect()}
             />
           )}
-          <View
-            className="rounded-lg items-center justify-center"
-            style={{
-              width: iconSize,
-              height: iconSize,
-              backgroundColor: colors.foreground + "90",
-            }}
-          >
+          <View style={{ width: iconSize, height: iconSize, alignItems: "center", justifyContent: "center" }}>
             <FolderIcon
-              color={colors.background}
-              fill={colors.background}
-              size={Math.round(iconSize * 0.6)}
-              strokeWidth={0}
+              color={colors.foreground + "50"}
+              fill={colors.foreground + "20"}
+              size={28}
+              strokeWidth={1}
             />
           </View>
           <View
