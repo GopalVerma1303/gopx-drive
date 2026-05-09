@@ -243,24 +243,30 @@ export default function NoteEditorScreen() {
   }, [router]);
 
 
-  type SaveVariables = { openInEditAfterSave?: boolean };
+  type SaveVariables = { 
+    openInEditAfterSave?: boolean;
+    title?: string;
+    content?: string;
+  };
 
   const saveMutation = useMutation({
-    mutationFn: async (_variables?: SaveVariables) => {
+    mutationFn: async (variables?: SaveVariables) => {
       const userId = user?.id ?? "demo-user";
+      const finalTitle = variables?.title ?? title;
+      const finalContent = variables?.content ?? content;
 
       if (isNewNote) {
         const created = await createNote({
           user_id: userId,
-          title: title || "Untitled",
-          content,
+          title: finalTitle || "Untitled",
+          content: finalContent,
           folder_id: initialFolderId,
         });
         return created;
       } else {
         const updated = await updateNote(id, {
-          title: title || "Untitled",
-          content,
+          title: finalTitle || "Untitled",
+          content: finalContent,
         });
         if (!updated) {
           throw new Error("Note not found");
@@ -269,12 +275,12 @@ export default function NoteEditorScreen() {
       }
     },
     onSuccess: (savedNote, variables) => {
-      const updatedTitle = savedNote.title ?? title;
+      const displayTitle = savedNote.title ?? "Untitled";
       const updatedContent = savedNote.content ?? content;
 
-      setTitle(updatedTitle);
+      setTitle(displayTitle);
       setContent(updatedContent);
-      setLastSavedTitle(updatedTitle);
+      setLastSavedTitle(displayTitle);
       setLastSavedContent(updatedContent);
 
       // Optimistically update cache instead of invalidating
@@ -405,19 +411,44 @@ export default function NoteEditorScreen() {
     });
   };
 
-  const handleSave = () => {
-    if (!title.trim() && !content.trim()) {
+  const handleSave = async () => {
+    let finalTitle = title;
+    let finalContent = content;
+
+    // On native, ensure we have the absolute latest content from the WebView before saving
+    if (Platform.OS !== "web" && !isPreview) {
+      try {
+        const flushed = await editorRef.current?.getContentAsync?.();
+        if (typeof flushed === "string") {
+          finalContent = flushed;
+          setContent(flushed);
+        }
+      } catch (e) {
+        console.warn("[NoteEditorScreen] Failed to flush content before save:", e);
+      }
+    }
+
+    if (!finalTitle.trim() && !finalContent.trim()) {
       alert("Empty Note", "Please add a title or content");
       return;
     }
+    
     if (!isDirty) {
-      return;
+      // Still allow save if we flushed new content that wasn't in state yet
+      if (finalContent === content && finalTitle === title) {
+        return;
+      }
     }
+    
     // Prevent double submission (e.g. double-tap or slow network) before isPending updates
     if (saveInProgressRef.current) return;
     saveInProgressRef.current = true;
-    // Pass whether to open in edit mode after save: only true when user was editing (not in preview)
-    saveMutation.mutate({ openInEditAfterSave: !isPreview });
+    
+    saveMutation.mutate({ 
+      openInEditAfterSave: !isPreview,
+      title: finalTitle,
+      content: finalContent
+    });
   };
 
   const handleRefresh = async () => {
@@ -809,9 +840,9 @@ export default function NoteEditorScreen() {
                       minHeight: nativeEditorContentMinHeight,
                     }}
                   >
-                    {(!isNewNote && isLoading && !note) ? null : (
+                    {false ? null : ( // Keep mounted to avoid WebView resets on save
                       <MarkdownEditor
-                        key={`note-editor-${id}`}
+                        key="note-editor"
                         id={id}
                         ref={editorRef}
                         value={content}

@@ -108,7 +108,7 @@ export function MarkdownPreview({
             }
           }
         });
-    }, 200);
+    }, 50);
 
     return () => {
       if (debounceTimerRef.current != null) {
@@ -118,7 +118,7 @@ export function MarkdownPreview({
     };
   }, [content, onFirstHtmlRendered]);
 
-  const isEmpty = !content || !content.trim();
+  const isEmpty = !content;
   const placeholderHtml = `<p class="preview-placeholder">${escapeHtml(placeholder)}</p>`;
   
   const displayHtml = isEmpty

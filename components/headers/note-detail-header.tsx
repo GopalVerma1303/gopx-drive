@@ -74,7 +74,7 @@ export function NoteDetailHeader({
     setIsEditingTitle(false);
   };
 
-  const displayTitle = title || (isNewNote ? "New Note" : "Untitled");
+  const displayTitle = title || "Untitled";
 
   return (
     <View

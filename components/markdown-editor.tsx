@@ -614,11 +614,24 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
       onContentSync?.(newText);
     };
 
+    const lastPropValueRef = useRef(value);
+    const lastIdRef = useRef(id);
+
     // Update previousValueRef when value changes externally
     useEffect(() => {
+      // If the prop value itself hasn't changed since last render AND id is same, ignore this update.
+      // This prevents re-renders with stale state (before parent setContent has finished) 
+      // from overwriting our fresh internal previousValueRef.
+      if (value === lastPropValueRef.current && id === lastIdRef.current) {
+        return;
+      }
+      const idChanged = id !== lastIdRef.current;
+      lastPropValueRef.current = value;
+      lastIdRef.current = id;
+
       if (!isProcessingListRef.current) {
         if (pendingInternalValueRef.current !== null) {
-          if (pendingInternalValueRef.current === value) {
+          if (pendingInternalValueRef.current === value && !idChanged) {
             pendingInternalValueRef.current = null;
             previousValueRef.current = value;
             return;
@@ -630,7 +643,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         previousValueRef.current = value;
         clearHistory();
       }
-    }, [value]);
+    }, [value, id]);
 
     const applyTextAndSelection = (
       nextText: string,
@@ -839,7 +852,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
         const nextText = updatedLines.join('\n');
         applyTextAndSelection(nextText, { start: Math.max(0, start + startOffset), end: Math.max(0, end + cumulativeOffset) });
-        return;
       }
 
       // Not in a list: call native outdent if possible, or manual outdent
@@ -1124,6 +1136,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         inputRef.current?.replaceAll?.(query, replacement);
       },
       getContentAsync: async () => {
+        if (inputRef.current && typeof inputRef.current.getValue === 'function') {
+          const val = await inputRef.current.getValue();
+          if (typeof val === 'string') {
+            previousValueRef.current = val;
+            return val;
+          }
+        }
         return previousValueRef.current;
       },
     }));
@@ -2603,7 +2622,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
         ) : (
           <CodeMirrorNativeErrorBoundary>
             <CodeMirrorDOM
-              key={id ? `cm-dom-${id}-${isDark ? "dark" : "light"}` : (isDark ? "editor-dark" : "editor-light")}
+              key={isDark ? "cm-dom-dark" : "cm-dom-light"}
               ref={inputRef as React.Ref<import("@/components/codemirror-editor/CodeMirrorDOM").CodeMirrorDOMRef>}
               value={value}
               placeholder={placeholder}

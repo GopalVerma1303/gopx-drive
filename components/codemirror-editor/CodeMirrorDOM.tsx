@@ -289,6 +289,7 @@ export interface CodeMirrorDOMRef extends DOMImperativeFactory {
   scrollToMatch: (...args: JSONValue[]) => void;
   replace: (...args: JSONValue[]) => void;
   replaceAll: (...args: JSONValue[]) => void;
+  getValue: () => string;
 }
 
 interface CodeMirrorDOMProps {
@@ -347,6 +348,7 @@ export default function CodeMirrorDOM({
   const prevValueRef = useRef(value);
   const onContentChangeRef = useRef(onContentChange);
   const onSelectionChangeRef = useRef(onSelectionChange);
+  const lastIdRef = useRef(id);
   onContentChangeRef.current = onContentChange;
   onSelectionChangeRef.current = onSelectionChange;
 
@@ -739,40 +741,39 @@ export default function CodeMirrorDOM({
   // Sync value from native only when the change is external (toolbar, undo, paste).
   // When the user types fast, value prop can lag behind editor content due to async bridge.
   // Only overwrite editor when editor content still matches the previous value we had
-  // (i.e. no typing happened in the meantime).
+  // (i.e. no typing happened in the meantime)
   useEffect(() => {
     if (!viewRef.current) return;
     const current = viewRef.current.state.doc.toString();
     const prevValue = prevValueRef.current;
-    prevValueRef.current = value;
-    if (value !== current && current === prevValue) {
-      // Find common prefix
-      let prefixLen = 0;
-      const minLength = Math.min(current.length, value.length);
-      while (prefixLen < minLength && current[prefixLen] === value[prefixLen]) {
-        prefixLen++;
-      }
+    
+    const idChanged = id !== lastIdRef.current;
+    lastIdRef.current = id;
 
-      // Find common suffix
-      let currentSuffixIdx = current.length - 1;
-      let valueSuffixIdx = value.length - 1;
-      while (
-        currentSuffixIdx >= prefixLen &&
-        valueSuffixIdx >= prefixLen &&
-        current[currentSuffixIdx] === value[valueSuffixIdx]
-      ) {
-        currentSuffixIdx--;
-        valueSuffixIdx--;
-      }
+    const sync = (val: string) => {
+      if (!viewRef.current) return;
+      const cur = viewRef.current.state.doc.toString();
+      if (val === cur) return; // Already in sync
 
-      const insert = value.slice(prefixLen, valueSuffixIdx + 1);
-
+      prevValueRef.current = val;
       viewRef.current.dispatch({
-        changes: { from: prefixLen, to: currentSuffixIdx + 1, insert },
+        changes: { from: 0, to: cur.length, insert: val || "" },
         annotations: programmatic.of(true),
       });
+    };
+
+    // Suppression logic for normal typing: 
+    // Only overwrite editor when editor content still matches the previous value we had
+    // (i.e. no typing happened in the meantime).
+    if (value !== current && current === prevValue && !idChanged) {
+      sync(value);
+    } else if (idChanged) {
+      // If ID changed (saved a new note), nudge the editor to ensure it's in a good state.
+      // Use a tiny delay to allow WebView layout to stabilize after route transition.
+      const timer = setTimeout(() => sync(value), 50);
+      return () => clearTimeout(timer);
     }
-  }, [value]);
+  }, [value, id]);
 
   // Expose ref methods for native (focus, setSelection). getValueAsync is not
   // supported here; native should rely on onContentChange so state is always in sync.
@@ -798,6 +799,9 @@ export default function CodeMirrorDOM({
           }
 
           view.focus();
+        },
+        getValue: () => {
+          return viewRef.current?.state.doc.toString() ?? "";
         },
         setSelection: (...args: JSONValue[]) => {
           const [start, end] = args as [number, number];
