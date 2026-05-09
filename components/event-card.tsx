@@ -53,7 +53,7 @@ export function EventCard({ event, onSelectDate, onEdit }: EventCardProps) {
     desc.toLowerCase().includes("leave");
   const showRed = isWeekend || hasHolidayOrLeave;
 
-  let eventTime = "12:01 AM";
+  let eventTime = "10:00 AM";
   if (event.event_date.includes("T") && event.event_date.split("T")[1]) {
     const timePart = event.event_date.split("T")[1];
     const timeMatch = timePart.match(/^(\d{2}):(\d{2})/);

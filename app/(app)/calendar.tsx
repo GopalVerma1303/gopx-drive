@@ -329,10 +329,10 @@ export default function CalendarScreen() {
         // If same date, sort by time
         const timeA = a.event_date.includes("T") && a.event_date.split("T")[1]
           ? a.event_date.split("T")[1].substring(0, 5)
-          : "12:01";
+          : "10:00";
         const timeB = b.event_date.includes("T") && b.event_date.split("T")[1]
           ? b.event_date.split("T")[1].substring(0, 5)
-          : "12:01";
+          : "10:00";
         return timeA.localeCompare(timeB);
       });
   }, [expandedEvents, searchQuery, selectedDate, monthStart, monthEnd, today]);

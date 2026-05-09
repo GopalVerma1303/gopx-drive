@@ -65,7 +65,7 @@ export function EventModal({
   const [eventDate, setEventDate] = useState(
     formatDateToLocalString(new Date())
   );
-  const [eventTime, setEventTime] = useState("12:01 AM");
+  const [eventTime, setEventTime] = useState("10:00 AM");
   const [repeatInterval, setRepeatInterval] = useState<"once" | "daily" | "weekly" | "monthly" | "yearly">("once");
   const [dateError, setDateError] = useState("");
   const [timeError, setTimeError] = useState("");
@@ -89,17 +89,17 @@ export function EventModal({
             const hours12 = hours24 === 0 ? 12 : hours24 > 12 ? hours24 - 12 : hours24;
             setEventTime(`${hours12}:${minutes} ${period}`);
           } else {
-            setEventTime("12:01 AM");
+            setEventTime("10:00 AM");
           }
         } else {
-          setEventTime("12:01 AM");
+          setEventTime("10:00 AM");
         }
         setRepeatInterval(event.repeat_interval || "once");
       } else {
         setTitle("");
         setDescription("");
         setEventDate(prefillDate || formatDateToLocalString(new Date()));
-        setEventTime("12:01 AM");
+        setEventTime("10:00 AM");
         setRepeatInterval("once");
       }
       setDeleteDialogOpen(false);
@@ -148,7 +148,7 @@ export function EventModal({
 
   const convert12To24Hour = (time12: string): string => {
     const match = time12.match(/^(\d{1,2}):(\d{2})\s?(AM|PM|am|pm)$/);
-    if (!match) return "12:01";
+    if (!match) return "10:00";
     let hours = parseInt(match[1], 10);
     const minutes = match[2];
     const period = match[3].toUpperCase();
@@ -180,7 +180,7 @@ export function EventModal({
     }
     let finalTime = eventTime.trim();
     if (!finalTime || !validateTime(finalTime)) {
-      finalTime = "12:01 AM";
+      finalTime = "10:00 AM";
     }
     const time24Hour = convert12To24Hour(finalTime);
     const eventDateTime = `${eventDate}T${time24Hour}:00`;
