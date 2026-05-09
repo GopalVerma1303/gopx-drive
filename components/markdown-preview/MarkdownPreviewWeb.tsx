@@ -61,6 +61,68 @@ const MERMAID_BLOCK_CLASS = "mermaid-block";
 const MERMAID_CONTROLS_CLASS = "mermaid-controls";
 const SANDBOX_BLOCK_CLASS = "sandbox-block";
 const SANDBOX_COPY_BTN_CLASS = "sandbox-copy-btn";
+const SOCIAL_EMBED_CONTAINER_CLASS = "social-embed-container";
+
+import { fetchSocialMetadata } from "@/lib/social-metadata";
+
+function getYoutubeId(url: string) {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
+async function enhanceSocialEmbeds(container: HTMLDivElement) {
+  const containers = container.querySelectorAll<HTMLElement>(`.${SOCIAL_EMBED_CONTAINER_CLASS}`);
+  
+  for (const el of Array.from(containers)) {
+    if (el.innerHTML.trim()) continue; // Already processed
+
+    const url = el.getAttribute("data-url");
+    const platform = el.getAttribute("data-platform");
+    if (!url || !platform) continue;
+
+    if (platform === "youtube") {
+      const videoId = getYoutubeId(url);
+      if (videoId) {
+        el.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>`;
+        continue;
+      }
+    }
+
+    // For other platforms, fetch metadata
+    el.innerHTML = `<div class="social-loader"><div class="social-loader-spinner"></div><span>Loading ${platform}...</span></div>`;
+    
+    try {
+      const data = await fetchSocialMetadata(url);
+      if (!data || (data as any).error || (!data.title && !data.image)) throw new Error("Failed to load");
+
+      let hostname = "";
+      try { hostname = new URL(url).hostname; } catch(e) { hostname = url; }
+
+      let html = `<a href="${url}" target="_blank" class="social-card">`;
+      if (data.image) {
+        html += `<div class="social-card-image" style="background-image: url(${data.image})"></div>`;
+      }
+      html += `<div class="social-card-content">`;
+      html += `<div class="social-card-header">${data.platform || "Link"}</div>`;
+      if (data.title) {
+        html += `<div class="social-card-title">${data.title}</div>`;
+      }
+      if (data.description) {
+        html += `<div class="social-card-description">${data.description}</div>`;
+      }
+      html += `<div class="social-card-footer"><span class="social-card-url">${hostname}</span></div>`;
+      html += `</div></a>`;
+      
+      el.innerHTML = html;
+    } catch (err) {
+      el.innerHTML = `<div style="padding:16px;font-size:14px;opacity:0.7;border-radius:12px;border:1px solid #ddd;display:flex;align-items:center;gap:8px;">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        <a href="${url}" target="_blank" style="color:inherit;text-decoration:underline;">${url}</a>
+      </div>`;
+    }
+  }
+}
 
 /**
  * Best-effort clipboard copy that works on more mobile browsers.
@@ -582,6 +644,7 @@ export function MarkdownPreviewWeb({
       }
       enhanceMermaidBlocks(container);
       enhanceSandboxBlocks(container);
+      enhanceSocialEmbeds(container);
     };
     const debouncedHeavyEnhancers = () => {
       if (debounceTimer) clearTimeout(debounceTimer);

@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import WebView from "react-native-webview";
 import { getPreviewFullHtml } from "./getPreviewHtml";
+import { fetchSocialMetadata } from "@/lib/social-metadata";
 
 /** Injected into WebView: replace native checkboxes with custom ones; on tap toggle visual and postMessage so React can update markdown. */
 const REPLACE_CHECKBOXES_SCRIPT = `
@@ -452,6 +453,10 @@ export function MarkdownPreviewWebView({
           };
           run(buffer);
           
+          if (window.__processSocialEmbeds) {
+            window.__processSocialEmbeds(buffer);
+          }
+          
           // Atomic Swap
           container.innerHTML = buffer.innerHTML;
           
@@ -525,6 +530,17 @@ export function MarkdownPreviewWebView({
           await Clipboard.setStringAsync(data.text);
           const index = typeof data.index === "number" ? data.index : 0;
           webViewRef.current?.injectJavaScript(showCopyCheckmarkScript(index));
+          return;
+        }
+        if (data?.type === "fetchSocialMetadata" && typeof data.url === "string") {
+          try {
+            const metadata = await fetchSocialMetadata(data.url);
+            const script = `if(window.updateSocialEmbed) window.updateSocialEmbed(${JSON.stringify(data.url)}, ${JSON.stringify(metadata)}); true;`;
+            webViewRef.current?.injectJavaScript(script);
+          } catch (err) {
+            const script = `if(window.updateSocialEmbed) window.updateSocialEmbed(${JSON.stringify(data.url)}, { error: true }); true;`;
+            webViewRef.current?.injectJavaScript(script);
+          }
         }
       } catch {
         // ignore non-JSON or invalid messages

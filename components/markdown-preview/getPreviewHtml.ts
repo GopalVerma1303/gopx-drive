@@ -189,6 +189,69 @@ export function getPreviewFullHtml(bodyHtml: string, colors: PreviewThemeColors)
       
       // Export for use in pre-rendering
       window.__highlightElement = highlight;
+
+      // 3. Social Embeds
+      function getYoutubeId(url) {
+        var regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        var match = url.match(regExp);
+        return (match && match[2].length == 11) ? match[2] : null;
+      }
+
+      window.updateSocialEmbed = function(url, data) {
+        var containers = document.querySelectorAll('.social-embed-container[data-url="' + url + '"]');
+        containers.forEach(function(container) {
+          if (!data || data.error || (!data.title && !data.image)) {
+            container.innerHTML = '<div style="padding:16px;font-size:14px;opacity:0.7;border-radius:12px;border:1px solid #ddd;display:flex;align-items:center;gap:8px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><a href="' + url + '" target="_blank" style="color:inherit;text-decoration:underline;">' + url + '</a></div>';
+            return;
+          }
+
+          var hostname = "";
+          try { hostname = new URL(url).hostname; } catch(e) { hostname = url; }
+
+          var html = '<a href="' + url + '" target="_blank" class="social-card">';
+          if (data.image) {
+            html += '<div class="social-card-image" style="background-image: url(' + data.image + ')"></div>';
+          }
+          html += '<div class="social-card-content">';
+          html += '<div class="social-card-header">' + (data.platform || "Link") + '</div>';
+          if (data.title) {
+            html += '<div class="social-card-title">' + data.title + '</div>';
+          }
+          if (data.description) {
+            html += '<div class="social-card-description">' + data.description + '</div>';
+          }
+          html += '<div class="social-card-footer"><span class="social-card-url">' + hostname + '</span></div>';
+          html += '</div></a>';
+          
+          container.innerHTML = html;
+        });
+      };
+
+      function processSocialEmbeds(target) {
+        var containers = target.querySelectorAll('.social-embed-container');
+        containers.forEach(function(container) {
+          if (container.innerHTML.trim()) return; // Already processed
+
+          var url = container.getAttribute('data-url');
+          var platform = container.getAttribute('data-platform');
+
+          if (platform === 'youtube') {
+            var videoId = getYoutubeId(url);
+            if (videoId) {
+              container.innerHTML = '<iframe src="https://www.youtube.com/embed/' + videoId + '" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>';
+              return;
+            }
+          }
+
+          // For other platforms, request metadata from native side
+          container.innerHTML = '<div class="social-loader"><div class="social-loader-spinner"></div><span>Loading ' + platform + '...</span></div>';
+          if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'fetchSocialMetadata', url: url }));
+          }
+        });
+      }
+
+      window.__processSocialEmbeds = processSocialEmbeds;
     })();
   </script>
 </head>

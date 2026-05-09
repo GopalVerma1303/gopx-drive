@@ -591,13 +591,64 @@ const sanitizeSchema = {
       "className",
       "data-mermaid-source",
       "data-sandbox-source",
-      ["className", "math", "math-display", "sandbox-block"],
+      "data-url",
+      "data-platform",
+      ["className", "math", "math-display", "sandbox-block", "social-embed-container"],
     ],
     annotation: ["encoding"],
   },
 };
 
 let processor: ReturnType<typeof createProcessor> | null = null;
+
+function rehypeSocialEmbeds() {
+  const PLATFORM_PATTERNS: Record<string, RegExp> = {
+    youtube: /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/,
+    twitter: /^(https?:\/\/)?(www\.)?(twitter\.com|x\.com)\/.+$/,
+    instagram: /^(https?:\/\/)?(www\.)?instagram\.com\/.+$/,
+    tiktok: /^(https?:\/\/)?(www\.)?tiktok\.com\/.+$/,
+    facebook: /^(https?:\/\/)?(www\.)?facebook\.com\/.+$/,
+    linkedin: /^(https?:\/\/)?(www\.)?linkedin\.com\/.+$/,
+    discord: /^(https?:\/\/)?(www\.)?discord\.(com|gg)\/.+$/,
+    github: /^(https?:\/\/)?(www\.)?github\.com\/.+$/,
+    bluesky: /^(https?:\/\/)?(www\.)?bsky\.app\/.+$/,
+    quora: /^(https?:\/\/)?(www\.)?quora\.com\/.+$/,
+    reddit: /^(https?:\/\/)?(www\.)?reddit\.com\/.+$/,
+    threads: /^(https?:\/\/)?(www\.)?threads\.net\/.+$/,
+    spotify: /^(https?:\/\/)?(open\.spotify\.com)\/.+$/,
+  };
+
+  const getPlatformFromUrl = (url: string): string | null => {
+    for (const [platform, pattern] of Object.entries(PLATFORM_PATTERNS)) {
+      if (pattern.test(url)) return platform;
+    }
+    return null;
+  };
+
+  return (tree: HastNode) => {
+    visit(tree as any, "element", (node: HastNode) => {
+      if (node.tagName !== "p" || !node.children || node.children.length !== 1) return;
+
+      const child = node.children[0];
+      if (child.tagName !== "a" || !child.properties) return;
+
+      const href = child.properties.href as string | undefined;
+      if (!href) return;
+
+      const platform = getPlatformFromUrl(href);
+      if (!platform) return;
+
+      // Transform paragraph into a social embed container
+      node.tagName = "div";
+      node.properties = {
+        className: ["social-embed-container"],
+        "data-url": href,
+        "data-platform": platform,
+      };
+      node.children = []; // Clear children, will be populated by script
+    });
+  };
+}
 
 function createProcessor() {
   return (unified() as any)
@@ -607,6 +658,7 @@ function createProcessor() {
     .use(remarkRehype, { allowDangerousHtml: false })
     .use(rehypeMermaidBlocks)
     .use(rehypeSandboxBlocks)
+    .use(rehypeSocialEmbeds)
     .use(rehypeMentions)
     .use(rehypeHashtags)
     .use(rehypeMark)

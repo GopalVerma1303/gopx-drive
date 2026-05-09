@@ -13,6 +13,8 @@ import { Check, Copy } from "lucide-react-native";
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Image, Linking, Platform, Pressable, Text as RNText, useWindowDimensions, View } from "react-native";
 import Markdown, { renderRules } from "react-native-markdown-display";
+import { SocialEmbed } from "./social-embed";
+import { getPlatformFromUrl } from "@/lib/social-metadata";
 
 // Import extracted modules
 import { useSelection } from "./markdown-editor/hooks/useSelection";
@@ -1709,6 +1711,16 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
     // Custom renderer for links (handles tel: and mailto: with Linking API)
     const renderLink = (node: any, children: any, parent: any, styles: any) => {
       const href = node.attributes?.href || node.href || '';
+
+      // Check if this link should be embedded
+      // Condition: It's a supported social platform AND it's the only thing in the paragraph
+      const platform = getPlatformFromUrl(href);
+      const isParagraphParent = Array.isArray(parent) && parent.length > 0 && parent[0].type === 'paragraph';
+      const isOnlyChild = isParagraphParent && parent[0].children?.length === 1;
+
+      if (platform && isOnlyChild && isPreview) {
+        return <SocialEmbed key={node.key} url={href} />;
+      }
 
       const handlePress = async () => {
         if (!href) return;
