@@ -31,6 +31,8 @@ import { ChevronDown, ChevronUp, Replace, ReplaceAll, Search, X } from "lucide-r
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  AppState,
+  AppStateStatus,
   BackHandler,
   Dimensions,
   Modal,
@@ -97,6 +99,53 @@ export default function NoteEditorScreen() {
   const [totalMatches, setTotalMatches] = useState(0);
 
   const isDirty = title !== lastSavedTitle || content !== lastSavedContent;
+
+  const [editorRemountKey, setEditorRemountKey] = useState(0);
+  const backgroundTimestampRef = useRef<number | null>(null);
+
+  const appStateRef = useRef(AppState.currentState);
+
+  // Monitor AppState to force a remount of the editor if the app wakes up after > 15 mins
+  // This prevents the blank WebView issue on mobile when OS reclaims background memory.
+  useEffect(() => {
+    console.log(`[AppState] NoteEditorScreen mounted. Initial state: ${AppState.currentState}`);
+    
+    const subscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
+      console.log(`[AppState] Transitioning from ${appStateRef.current} to: ${nextAppState}`);
+      
+      if (appStateRef.current.match(/inactive|background/) && nextAppState === "active") {
+        if (backgroundTimestampRef.current) {
+          const timeSuspendedMs = Date.now() - backgroundTimestampRef.current;
+          const timeSuspendedMins = (timeSuspendedMs / 1000 / 60).toFixed(2);
+          console.log(`[AppState] App resumed. It was in the background for ${timeSuspendedMins} minutes (${timeSuspendedMs}ms).`);
+          
+          // 15 minutes = 15 * 60 * 1000 = 900000 ms
+          if (timeSuspendedMs > 15 * 60 * 1000) {
+            console.log(`[AppState] 🚨 Background time exceeded 15 minutes! Forcing MarkdownEditor to remount...`);
+            setEditorRemountKey((prev) => {
+              console.log(`[AppState] Updating editorRemountKey from ${prev} to ${prev + 1}`);
+              return prev + 1;
+            });
+          } else {
+            console.log(`[AppState] ✅ Background time is under 15 minutes. No remount needed.`);
+          }
+        } else {
+          console.log(`[AppState] ⚠️ App resumed to active, but backgroundTimestampRef was null!`);
+        }
+        backgroundTimestampRef.current = null;
+      } else if (nextAppState === "background") {
+        backgroundTimestampRef.current = Date.now();
+        console.log(`[AppState] App backgrounded at: ${new Date(backgroundTimestampRef.current).toISOString()}`);
+      }
+      
+      appStateRef.current = nextAppState;
+    });
+
+    return () => {
+      console.log(`[AppState] NoteEditorScreen unmounted. Cleaning up listener.`);
+      subscription.remove();
+    };
+  }, []);
 
   // On native, give the editor ScrollView content a min height so the WebView gets a real height.
   // Otherwise flex:1 inside ScrollView can resolve to 0 and the editor is invisible.
@@ -845,7 +894,7 @@ export default function NoteEditorScreen() {
                   >
                     {false ? null : ( // Keep mounted to avoid WebView resets on save
                       <MarkdownEditor
-                        key="note-editor"
+                        key={`note-editor-${id}-${editorRemountKey}`}
                         id={id}
                         ref={editorRef}
                         value={content}
