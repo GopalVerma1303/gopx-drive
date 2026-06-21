@@ -827,12 +827,15 @@ export default function NoteEditorScreen() {
               <View className="flex-1 w-full relative">
                 {/* Editor: always mounted, hidden when previewing for instant switch */}
                 <View
-                  style={{
-                    flex: 1,
-                    display: isPreview ? "none" : "flex",
-                    zIndex: isPreview ? 0 : 1
-                  }}
+                  style={
+                    isPreview
+                      ? { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0, zIndex: 0 }
+                      : { flex: 1, zIndex: 1 }
+                  }
                   className="w-full flex-col"
+                  pointerEvents={isPreview ? "none" : "auto"}
+                  accessibilityElementsHidden={isPreview}
+                  importantForAccessibility={isPreview ? "no-hide-descendants" : "auto"}
                 >
                   <View
                     className="flex-1 w-full max-w-[672px] self-center bg-muted"
@@ -884,12 +887,15 @@ export default function NoteEditorScreen() {
 
                 {/* Preview: always mounted, hidden when editing for instant switch */}
                 <View
-                  style={{
-                    flex: 1,
-                    display: isPreview ? "flex" : "none",
-                    zIndex: isPreview ? 1 : 0
-                  }}
+                  style={
+                    !isPreview
+                      ? { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0, zIndex: 0 }
+                      : { flex: 1, zIndex: 1 }
+                  }
                   className="w-full"
+                  pointerEvents={!isPreview ? "none" : "auto"}
+                  accessibilityElementsHidden={!isPreview}
+                  importantForAccessibility={!isPreview ? "no-hide-descendants" : "auto"}
                 >
                   <View className="flex-1 w-full max-w-[672px] self-center bg-muted">
                     <MarkdownPreview
