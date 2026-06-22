@@ -101,9 +101,28 @@ export default function NoteEditorScreen() {
   const isDirty = title !== lastSavedTitle || content !== lastSavedContent;
 
   const [editorRemountKey, setEditorRemountKey] = useState(0);
+  const [isEditorReadyToMount, setIsEditorReadyToMount] = useState(false);
   const backgroundTimestampRef = useRef<number | null>(null);
 
   const appStateRef = useRef(AppState.currentState);
+
+  // Wake-Up Shield: Prevent WebView from mounting instantly if the app just woke up
+  // to avoid Metro network race conditions in development.
+  useEffect(() => {
+    const wakeTime = (global as any).__appWakeTime || 0;
+    const timeSinceWake = Date.now() - wakeTime;
+    
+    // Only apply in development (or unconditionally for safety), if woke up < 3s ago
+    if (__DEV__ && timeSinceWake < 3000) {
+      console.log(`[Wake-Up Shield] App just woke up ${timeSinceWake}ms ago. Delaying editor mount by 1.5s...`);
+      const timer = setTimeout(() => {
+        setIsEditorReadyToMount(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    } else {
+      setIsEditorReadyToMount(true);
+    }
+  }, []);
 
   // Monitor AppState to force a remount of the editor if the app wakes up after > 15 mins
   // This prevents the blank WebView issue on mobile when OS reclaims background memory.
@@ -121,11 +140,13 @@ export default function NoteEditorScreen() {
           
           // 15 minutes = 15 * 60 * 1000 = 900000 ms
           if (timeSuspendedMs > 15 * 60 * 1000) {
-            console.log(`[AppState] 🚨 Background time exceeded 15 minutes! Forcing MarkdownEditor to remount...`);
-            setEditorRemountKey((prev) => {
-              console.log(`[AppState] Updating editorRemountKey from ${prev} to ${prev + 1}`);
-              return prev + 1;
-            });
+            console.log(`[AppState] 🚨 Background time exceeded 15 minutes! Waiting 1.5s for network reconnect, then forcing remount...`);
+            setTimeout(() => {
+              setEditorRemountKey((prev) => {
+                console.log(`[AppState] Updating editorRemountKey from ${prev} to ${prev + 1}`);
+                return prev + 1;
+              });
+            }, 1500);
           } else {
             console.log(`[AppState] ✅ Background time is under 15 minutes. No remount needed.`);
           }

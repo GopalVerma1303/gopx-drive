@@ -155,6 +155,7 @@ export default function AppLayout() {
         appState.current.match(/inactive|background/) &&
         nextAppState === "active"
       ) {
+        (global as any).__appWakeTime = Date.now();
         Promise.all([
           queryClient.refetchQueries({
             queryKey: ["files"],
