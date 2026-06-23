@@ -35,6 +35,7 @@ import {
   AppStateStatus,
   BackHandler,
   Dimensions,
+  InteractionManager,
   Modal,
   Platform,
   Pressable,
@@ -101,28 +102,29 @@ export default function NoteEditorScreen() {
   const isDirty = title !== lastSavedTitle || content !== lastSavedContent;
 
   const [editorRemountKey, setEditorRemountKey] = useState(0);
-  const [isEditorReadyToMount, setIsEditorReadyToMount] = useState(false);
   const backgroundTimestampRef = useRef<number | null>(null);
-
   const appStateRef = useRef(AppState.currentState);
+  
+  const [hasEditorEverBeenVisible, setHasEditorEverBeenVisible] = useState(
+    // Default to true if opening in edit mode, false if in preview mode
+    id === "new" || editParam === "1"
+  );
 
-  // Wake-Up Shield: Prevent WebView from mounting instantly if the app just woke up
-  // to avoid Metro network race conditions in development.
   useEffect(() => {
-    const wakeTime = (global as any).__appWakeTime || 0;
-    const timeSinceWake = Date.now() - wakeTime;
-    
-    // Only apply in development (or unconditionally for safety), if woke up < 3s ago
-    if (__DEV__ && timeSinceWake < 3000) {
-      console.log(`[Wake-Up Shield] App just woke up ${timeSinceWake}ms ago. Delaying editor mount by 1.5s...`);
-      const timer = setTimeout(() => {
-        setIsEditorReadyToMount(true);
-      }, 1500);
-      return () => clearTimeout(timer);
+    if (!isPreview) {
+      setHasEditorEverBeenVisible(true);
     } else {
-      setIsEditorReadyToMount(true);
+      // Pre-load the editor silently after the screen transition finishes
+      // Wait for UI to be completely idle to avoid WKWebView instantiation bugs
+      const task = InteractionManager.runAfterInteractions(() => {
+        const timer = setTimeout(() => {
+          setHasEditorEverBeenVisible(true);
+        }, 300);
+        return () => clearTimeout(timer);
+      });
+      return () => task.cancel();
     }
-  }, []);
+  }, [isPreview]);
 
   // Monitor AppState to force a remount of the editor if the app wakes up after > 15 mins
   // This prevents the blank WebView issue on mobile when OS reclaims background memory.
@@ -899,7 +901,7 @@ export default function NoteEditorScreen() {
                 <View
                   style={
                     isPreview
-                      ? { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0, zIndex: 0 }
+                      ? { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0, zIndex: -1 }
                       : { flex: 1, zIndex: 1 }
                   }
                   className="w-full flex-col"
@@ -913,7 +915,7 @@ export default function NoteEditorScreen() {
                       minHeight: nativeEditorContentMinHeight,
                     }}
                   >
-                    {false ? null : ( // Keep mounted to avoid WebView resets on save
+                    {hasEditorEverBeenVisible && (
                       <MarkdownEditor
                         key={`note-editor-${id}-${editorRemountKey}`}
                         id={id}
