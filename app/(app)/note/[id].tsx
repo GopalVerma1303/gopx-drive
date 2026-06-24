@@ -901,7 +901,7 @@ export default function NoteEditorScreen() {
                 <View
                   style={
                     isPreview
-                      ? { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0, zIndex: -1 }
+                      ? { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 1, zIndex: -1 }
                       : { flex: 1, zIndex: 1 }
                   }
                   className="w-full flex-col"
